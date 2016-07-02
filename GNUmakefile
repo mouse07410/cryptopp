@@ -179,6 +179,9 @@ ifeq ($(GCC_COMPILER)$(MACPORTS_COMPILER),11)
 ifneq ($(findstring -Wa,-q,$(CXXFLAGS)),-Wa,-q)
 CXXFLAGS += -Wa,-q
 endif
+ifneq ($(findstring -Wa,-q,$(CXXFLAGS)),-DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+CXXFLAGS += -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER=1
+endif
 endif
 
 # Allow use of "/" operator for GNU Assembler.
