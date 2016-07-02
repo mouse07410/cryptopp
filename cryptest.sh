@@ -128,6 +128,8 @@ fi
 
 SUN_COMPILER=$("$CXX" -V 2>&1 | "$EGREP" -i -c "CC: Sun")
 GCC_COMPILER=$("$CXX" --version 2>&1 | "$EGREP" -i -c "(gcc|g\+\+)")
+INTEL_COMPILER=$("$CXX" --version 2>&1 | "$EGREP" -i -c "\(ICC\)")
+MACPORTS_COMPILER=$("$CXX" --version 2>&1 | "$EGREP" -i -c "MacPorts")
 CLANG_COMPILER=$("$CXX" --version 2>&1 | "$EGREP" -i -c "clang")
 
 if [[ ($("$CXX" -dM -E - </dev/null 2>/dev/null | "$EGREP" -c '(__x64_64__|__amd64__)') -ne "0") && ($("$CXX" -dM -E -</dev/null 2>/dev/null | "$EGREP" -c '(__ILP32|__ILP32)') -ne "0") ]]; then
@@ -3672,6 +3674,75 @@ if [[ ("$INTEL_COMPILER" -eq "0") ]]; then
 			./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
 			if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 				echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+			fi
+		fi
+	fi
+fi
+
+############################################
+# Perform a quick check with MacPorts compilers, if available.
+if [[ ("$MACPORTS_COMPILER" -eq "0") ]]; then
+
+	MACPORTS_CXX=$(find /opt/local/bin -name 'g++*' 2>/dev/null | head -1)
+	if [[ (-z "$MACPORTS_CXX") ]]; then
+		"$MACPORTS_CXX" -x c++ -DCRYPTOPP_ADHOC_MAIN adhoc.cpp.proto -o "$TMP/adhoc.exe" > /dev/null 2>&1
+		if [[ "$?" -eq "0" ]]; then
+
+			############################################
+			# GCC build
+			echo
+			echo "************************************" | tee -a "$TEST_RESULTS"
+			echo "Testing: MacPorts GCC compiler" | tee -a "$TEST_RESULTS"
+			echo
+
+			unset CXXFLAGS
+			"$MAKE" clean > /dev/null 2>&1
+			rm -f adhoc.cpp > /dev/null 2>&1
+
+			"$MAKE" "${MAKEARGS[@]}" CXX="$MACPORTS_CXX" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+			if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+				echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+			else
+				./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+				if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+					echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+				fi
+				./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+				if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+					echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+				fi
+			fi
+		fi
+	fi
+
+	MACPORTS_CXX=$(find /opt/local/bin -name 'clang++*' 2>/dev/null | head -1)
+	if [[ (-z "$MACPORTS_CXX") ]]; then
+		"$MACPORTS_CXX" -x c++ -DCRYPTOPP_ADHOC_MAIN adhoc.cpp.proto -o "$TMP/adhoc.exe" > /dev/null 2>&1
+		if [[ "$?" -eq "0" ]]; then
+
+			############################################
+			# Clang build
+			echo
+			echo "************************************" | tee -a "$TEST_RESULTS"
+			echo "Testing: MacPorts Clang compiler" | tee -a "$TEST_RESULTS"
+			echo
+
+			unset CXXFLAGS
+			"$MAKE" clean > /dev/null 2>&1
+			rm -f adhoc.cpp > /dev/null 2>&1
+
+			"$MAKE" "${MAKEARGS[@]}" CXX="$MACPORTS_CXX" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+			if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+				echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+			else
+				./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+				if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+					echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+				fi
+				./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+				if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+					echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+				fi
 			fi
 		fi
 	fi
