@@ -194,7 +194,7 @@ fi
 
 if [[ (-z "$HAVE_GNU14") ]]; then
 	HAVE_GNU14=0
-	"$CXX" -DCRYPTOPP_ADHOC_MAIN -std=c++14 adhoc.cpp -o "$TMP/adhoc.exe" > /dev/null 2>&1
+	"$CXX" -DCRYPTOPP_ADHOC_MAIN -std=gnu++14 adhoc.cpp -o "$TMP/adhoc.exe" > /dev/null 2>&1
 	if [[ "$?" -eq "0" ]]; then
 		HAVE_GNU14=1
 	fi
@@ -211,7 +211,7 @@ fi
 
 if [[ (-z "$HAVE_GNU11") ]]; then
 	HAVE_GNU11=0
-	"$CXX" -DCRYPTOPP_ADHOC_MAIN -std=c++11 adhoc.cpp -o "$TMP/adhoc.exe" > /dev/null 2>&1
+	"$CXX" -DCRYPTOPP_ADHOC_MAIN -std=gnu++11 adhoc.cpp -o "$TMP/adhoc.exe" > /dev/null 2>&1
 	if [[ "$?" -eq "0" ]]; then
 		HAVE_GNU11=1
 	fi
