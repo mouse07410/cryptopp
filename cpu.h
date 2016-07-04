@@ -415,7 +415,7 @@ inline int GetCacheLineSize()
 #else
 	#define CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
 
-#if defined(CRYPTOPP_LLVM_CLANG_VERSION) || defined(CRYPTOPP_APPLE_CLANG_VERSION)
+#if defined(CRYPTOPP_LLVM_CLANG_VERSION) || defined(CRYPTOPP_APPLE_CLANG_VERSION) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
 	#define NEW_LINE "\n"
 	#define INTEL_PREFIX ".intel_syntax;"
 	#define INTEL_NOPREFIX ".intel_syntax;"

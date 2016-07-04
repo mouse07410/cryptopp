@@ -13,7 +13,7 @@
 #ifndef CRYPTOPP_GENERATE_X64_MASM
 
 // Clang 3.3 integrated assembler crash on Linux
-#if defined(CRYPTOPP_LLVM_CLANG_VERSION) && (CRYPTOPP_LLVM_CLANG_VERSION < 30400)
+#if (defined(CRYPTOPP_LLVM_CLANG_VERSION) && (CRYPTOPP_LLVM_CLANG_VERSION < 30400)) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
 # undef CRYPTOPP_X86_ASM_AVAILABLE
 # undef CRYPTOPP_X32_ASM_AVAILABLE
 # undef CRYPTOPP_X64_ASM_AVAILABLE
@@ -21,18 +21,6 @@
 # undef CRYPTOPP_BOOL_SSSE3_ASM_AVAILABLE
 # define CRYPTOPP_BOOL_SSE2_ASM_AVAILABLE 0
 # define CRYPTOPP_BOOL_SSSE3_ASM_AVAILABLE 0
-#endif
-
-// This is an absolute hack to try and get MacPorts GCC woking with Clang Integrated
-//   Assembler. The idea is to use GCC version to proxy the LLVM Clang version so we
-//   get at the routines the for the Integrated Assembler. LLVM 3.6 was released on
-//   27 Feb 2015. That equates to GCC 5.1 which was released April 22, 2015.
-#if defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER) && defined(MACPORTS_GCC_COMPILER)
-# if CRYPTOPP_GCC_VERSION >= 50100
-#  define CRYPTOPP_LLVM_CLANG_VERSION 30600
-# else
-#  define CRYPTOPP_LLVM_CLANG_VERSION 30500
-# endif
 #endif
 
 #include "gcm.h"

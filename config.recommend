@@ -254,7 +254,7 @@ const lword LWORD_MAX = W64LIT(0xffffffffffffffff);
 
 // Clang due to "Inline assembly operands don't work with .intel_syntax", http://llvm.org/bugs/show_bug.cgi?id=24232
 //   TODO: supply the upper version when LLVM fixes it. We set it to 20.0 for compilation purposes.
-#if (defined(CRYPTOPP_LLVM_CLANG_VERSION) && CRYPTOPP_LLVM_CLANG_VERSION <= 200000) || (defined(CRYPTOPP_APPLE_CLANG_VERSION) && CRYPTOPP_APPLE_CLANG_VERSION <= 200000)
+#if (defined(CRYPTOPP_LLVM_CLANG_VERSION) && CRYPTOPP_LLVM_CLANG_VERSION <= 200000) || (defined(CRYPTOPP_APPLE_CLANG_VERSION) && CRYPTOPP_APPLE_CLANG_VERSION <= 200000) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
 	#define CRYPTOPP_DISABLE_INTEL_ASM 1
 #endif
 
