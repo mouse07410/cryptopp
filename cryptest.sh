@@ -4165,14 +4165,14 @@ fi
 # Report warnings
 
 echo
-echo "************************************************" | tee -a "$WARN_RESULTS"
-echo | tee -a "$WARN_RESULTS"
+echo "************************************************" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
+echo | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 
 WCOUNT=$("$EGREP" -a '(warning:)' $WARN_RESULTS | "$GREP" -v 'deprecated-declarations' | wc -l | "$AWK" '{print $1}')
 if (( "$WCOUNT" == "0" )); then
-	echo "No warnings detected" | tee -a "$WARN_RESULTS" | tee -a "$WARN_RESULTS"
+	echo "No warnings detected" | tee -a "$TEST_RESULTS" "$WARN_RESULTS" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 else
-	echo "$WCOUNT warnings detected. See $WARN_RESULTS for details" | tee -a "$WARN_RESULTS"
+	echo "$WCOUNT warnings detected. See $WARN_RESULTS for details" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 	# "$EGREP" -an '(warning:)' $WARN_RESULTS | "$GREP" -v 'deprecated-declarations'
 fi
 
@@ -4181,8 +4181,8 @@ fi
 
 echo
 echo "************************************************" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
+echo | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 
-echo
 echo "Testing started: $TEST_BEGIN" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 echo "Testing finished: $TEST_END" | tee -a "$TEST_RESULTS" "$WARN_RESULTS"
 echo
