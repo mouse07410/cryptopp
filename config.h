@@ -57,15 +57,15 @@
 // Define this to ensure C/C++ standard compliance and respect for GCC aliasing rules and other alignment fodder. If you
 // experience a break with GCC at -O3, you should try this first. Guard it in case its set on the command line (and it differs).
 #ifndef CRYPTOPP_NO_UNALIGNED_DATA_ACCESS
-// # define CRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+# define CRYPTOPP_NO_UNALIGNED_DATA_ACCESS
 #endif
 
 // Define this to choose the FIPS 202 version of SHA3, and not the original version of SHA3. NIST selected Keccak as SHA3
 // in January 2013. SHA3 was finalized in FIPS 202 in August 2015, and it was a modified version of the original selection.
 // If CRYPTOPP_USE_FIPS_202_SHA3 is defined, then sha3_fips_202.txt test vectors will be used instead of sha3.txt.
-// #ifndef CRYPTOPP_USE_FIPS_202_SHA3
-// # define CRYPTOPP_USE_FIPS_202_SHA3
-// #endif
+#ifndef CRYPTOPP_USE_FIPS_202_SHA3
+# define CRYPTOPP_USE_FIPS_202_SHA3
+#endif
 
 // ***************** Less Important Settings ***************
 
@@ -86,7 +86,7 @@
 // Also see https://cryptopp.com/wiki/Config.h#Avoid_MAINTAIN_BACKWARDS_COMPATIBILITY
 #if (CRYPTOPP_VERSION <= 600)
 # if !defined(CRYPTOPP_NO_BACKWARDS_COMPATIBILITY_562) && !defined(CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562)
-#  define CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
+// #  define CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 # endif
 #endif
 
@@ -134,7 +134,7 @@
 // Under GCC, the library uses init_priority attribute in the range
 // [CRYPTOPP_INIT_PRIORITY, CRYPTOPP_INIT_PRIORITY+100]. Under Windows,
 // CRYPTOPP_INIT_PRIORITY enlists "#pragma init_seg(lib)".
-// #define CRYPTOPP_INIT_PRIORITY 250
+#define CRYPTOPP_INIT_PRIORITY 250
 
 // CRYPTOPP_USER_PRIORITY is for other libraries and user code that is using Crypto++
 // and managing C++ static object creation. It is guaranteed not to conflict with
@@ -569,8 +569,6 @@ NAMESPACE_END
 	#define CRYPTOPP_BOOL_ARM32 0
 #endif
 
-// Microsoft plans to support ARM-64, but its not clear how to detect it.
-// TODO: Add MSC_VER and ARM-64 platform define when available
 #if defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
 	#define CRYPTOPP_BOOL_ARM64 1
 #else
