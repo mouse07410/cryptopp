@@ -45,7 +45,7 @@
 #endif
 
 // "Error: The operand ___LKDB cannot be assigned to", http://github.com/weidai11/cryptopp/issues/188
-#if (__SUNPRO_CC == 0x5130)
+#if (__SUNPRO_CC >= 0x5130)
 # define MAYBE_CONST
 # define MAYBE_UNCONST_CAST const_cast<word*>
 #else
@@ -2963,7 +2963,7 @@ Integer::Integer(const byte *encodedInteger, size_t byteCount, Signedness s, Byt
 	if(o == LITTLE_ENDIAN_ORDER)
 	{
 		SecByteBlock block(byteCount);
-#if (CRYPTOPP_MSC_VERSION >= 1500)
+#if (CRYPTOPP_MSC_VERSION >= 1400)
 		std::reverse_copy(encodedInteger, encodedInteger+byteCount,
 			stdext::make_checked_array_iterator(block.begin(), block.size()));
 #else

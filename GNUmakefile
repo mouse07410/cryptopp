@@ -29,15 +29,17 @@ IS_CYGWIN := $(shell $(CXX) -dumpmachine 2>&1 | $(EGREP) -i -c "Cygwin")
 IS_DARWIN := $(shell $(CXX) -dumpmachine 2>&1 | $(EGREP) -i -c "Darwin")
 IS_NETBSD := $(shell $(CXX) -dumpmachine 2>&1 | $(EGREP) -i -c "NetBSD")
 
-SUN_COMPILER := $(shell $(CXX) -V 2>&1 | $(EGREP) -i -c "CC: Sun")
-GCC_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -i -c "(gcc|g\+\+)")
+SUN_COMPILER := $(shell $(CXX) -V 2>&1 | $(EGREP) -i -c "CC: (Sun|Studio)")
+GCC_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -i -v "clang" | $(EGREP) -i -c "(gcc|g\+\+)")
 CLANG_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -i -c "clang")
-INTEL_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -c "\(ICC\)")
+INTEL_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -i -c "\(icc\)")
 MACPORTS_COMPILER := $(shell $(CXX) --version 2>&1 | $(EGREP) -i -c "macports")
 
-# Sun Studio 12.0 (0x0510) and 12.3 (0x0512)
-SUNCC_120_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: Sun .* (5\.1[0-9]|5\.[2-9]|6\.)")
-SUNCC_123_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: Sun .* (5\.1[2-9]|5\.[2-9]|6\.)")
+# Sun Studio 12.0 provides SunCC 0x0510; and Sun Studio 12.3 provides SunCC 0x0512
+SUNCC_510_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: (Sun|Studio) .* (5\.1[0-9]|5\.[2-9]|6\.)")
+SUNCC_511_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: (Sun|Studio) .* (5\.1[1-9]|5\.[2-9]|6\.)")
+SUNCC_512_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: (Sun|Studio) .* (5\.1[2-9]|5\.[2-9]|6\.)")
+SUNCC_513_OR_LATER := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: (Sun|Studio) .* (5\.1[3-9]|5\.[2-9]|6\.)")
 
 HAS_SOLIB_VERSION := $(IS_LINUX)
 
@@ -53,7 +55,7 @@ endif
 
 # Base CXXFLAGS used if the user did not specify them
 ifeq ($(SUN_COMPILER),1)
-  ifeq ($(SUNCC_123_OR_LATER),1)
+  ifeq ($(SUNCC_512_OR_LATER),1)
     CXXFLAGS ?= -DNDEBUG -g3 -xO2
   else
     CXXFLAGS ?= -DNDEBUG -g -xO2
@@ -140,17 +142,21 @@ else
   endif # X86/X32/X64
 endif
 
-# Aligned access required at -O3 for GCC due to vectorization (circa 08/2008). Expect other compilers to do the same.
+# Aligned access required for -O3 and above due to vectorization
 UNALIGNED_ACCESS := $(shell $(EGREP) -c "^[[:space:]]*//[[:space:]]*\#[[:space:]]*define[[:space:]]*CRYPTOPP_NO_UNALIGNED_DATA_ACCESS" config.h)
-ifeq ($(findstring -O3,$(CXXFLAGS)),-O3)
 ifneq ($(UNALIGNED_ACCESS),0)
-ifeq ($(GCC46_OR_LATER),1)
 ifeq ($(findstring -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS,$(CXXFLAGS)),)
+ifeq ($(findstring -O3,$(CXXFLAGS)),-O3)
 CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -O3
+ifeq ($(findstring -O5,$(CXXFLAGS)),-O5)
+CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -O5
+ifeq ($(findstring -Ofast,$(CXXFLAGS)),-Ofast)
+CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -Ofast
 endif # CRYPTOPP_NO_UNALIGNED_DATA_ACCESS
-endif # GCC 4.6
 endif # UNALIGNED_ACCESS
-endif # Vectorization
 
 ifneq ($(INTEL_COMPILER),0)
 CXXFLAGS += -wd68 -wd186 -wd279 -wd327 -wd161 -wd3180
@@ -175,10 +181,20 @@ endif
 endif
 
 # Tell MacPorts GCC to use Clang integrated assembler
+#   http://github.com/weidai11/cryptopp/issues/190
 ifeq ($(GCC_COMPILER)$(MACPORTS_COMPILER),11)
 ifneq ($(findstring -Wa,-q,$(CXXFLAGS)),-Wa,-q)
 CXXFLAGS += -Wa,-q
 endif
+ifneq ($(findstring -Wa,-q,$(CXXFLAGS)),-DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+CXXFLAGS += -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER=1
+endif
+endif
+
+# GCC on Solaris needs -m64. Otherwise, i386 is default
+#   http://github.com/weidai11/cryptopp/issues/230
+ifeq ($(IS_SUN)$(GCC_COMPILER)$(IS_X64),111)
+CXXFLAGS += -m64
 endif
 
 # Allow use of "/" operator for GNU Assembler.
@@ -214,6 +230,22 @@ ifeq ($(findstring -save-temps,$(CXXFLAGS)),)
 CXXFLAGS += -pipe
 endif
 endif
+
+# Aligned access required for -O3 and above due to vectorization
+UNALIGNED_ACCESS := $(shell $(EGREP) -c "^[[:space:]]*//[[:space:]]*\#[[:space:]]*define[[:space:]]*CRYPTOPP_NO_UNALIGNED_DATA_ACCESS" config.h)
+ifneq ($(UNALIGNED_ACCESS),0)
+ifeq ($(findstring -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS,$(CXXFLAGS)),)
+ifeq ($(findstring -O3,$(CXXFLAGS)),-O3)
+CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -O3
+ifeq ($(findstring -O5,$(CXXFLAGS)),-O5)
+CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -O5
+ifeq ($(findstring -Ofast,$(CXXFLAGS)),-Ofast)
+CXXFLAGS += -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # -Ofast
+endif # CRYPTOPP_NO_UNALIGNED_DATA_ACCESS
+endif # UNALIGNED_ACCESS
 
 endif	# IS_X86
 
@@ -253,23 +285,30 @@ endif
 ifneq ($(SUN_COMPILER),0)	# override flags for CC Sun C++ compiler
 IS_64 := $(shell isainfo -b 2>/dev/null | grep -i -c "64")
 ifeq ($(IS_64),1)
-CXXFLAGS += -native -m64
+CXXFLAGS += -m64
 else ifeq ($(IS_64),0)
-CXXFLAGS += -native -m32
+CXXFLAGS += -m32
+endif
+ifneq ($(SUNCC_513_OR_LATER),0)
+CXXFLAGS += -native
 endif
 # Add for non-i386
 ifneq ($(IS_X86),1)
 CXXFLAGS += -KPIC
 endif
 # Add to all Solaris
-CXXFLAGS += -template=no%extdef -w -erroff=wvarhidemem -erroff=voidretw
+CXXFLAGS += -template=no%extdef
+# Add to Sun Studio 12.2 and above
+ifneq ($(SUNCC_511_OR_LATER),0)
+CXXFLAGS += -w -erroff=wvarhidemem -erroff=voidretw
+endif
 SUN_CC10_BUGGY := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: Sun .* 5\.10 .* (2009|2010/0[1-4])")
 ifneq ($(SUN_CC10_BUGGY),0)
 # -DCRYPTOPP_INCLUDE_VECTOR_CC is needed for Sun Studio 12u1 Sun C++ 5.10 SunOS_i386 128229-02 2009/09/21 and was fixed in May 2010
 # remove it if you get "already had a body defined" errors in vector.cc
 CXXFLAGS += -DCRYPTOPP_INCLUDE_VECTOR_CC
 endif
-#ifneq ($SUNCC_123_OR_LATER),0)
+#ifneq ($SUNCC_512_OR_LATER),0)
 #CXXFLAGS += -xarch=aes -D__AES__=1 -xarch=no%sse4_1 -xarch=no%sse4_2
 #endif
 AR = $(CXX)
@@ -300,10 +339,10 @@ endif # Asan
 
 # LD gold linker testing. Triggered by 'LD=ld.gold'.
 ifeq ($(findstring ld.gold,$(LD)),ld.gold)
-ifeq ($(findstring -Wl,-fuse-ld=gold,$(LDFLAGS)),)
+ifeq ($(findstring -fuse-ld=gold,$(CXXFLAGS)),)
 ELF_FORMAT := $(shell file `which ld.gold` 2>&1 | cut -d":" -f 2 | $(EGREP) -i -c "elf")
 ifneq ($(ELF_FORMAT),0)
-LDFLAGS += -Wl,-fuse-ld=gold
+LDFLAGS += -fuse-ld=gold
 endif # ELF/ELF64
 endif # CXXFLAGS
 endif # Gold
@@ -506,7 +545,7 @@ endif
 distclean: clean
 	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt cryptest-*.txt
 	-$(RM) CMakeCache.txt Makefile CTestTestfile.cmake cmake_install.cmake cryptopp-config-version.cmake
-	-$(RM) cryptopp.tgz *.o *.ii *.s *~
+	-$(RM) cryptopp.tgz *.o *.bc *.ii *.s *~
 ifneq ($(wildcard CMakeFiles/),)
 	-$(RM) -r CMakeFiles/
 endif
@@ -730,6 +769,9 @@ endif
 
 %.export.o : %.cpp
 	$(CXX) $(CXXFLAGS) -DCRYPTOPP_EXPORTS -c $< -o $@
+
+%.bc : %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -c $<

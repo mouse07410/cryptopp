@@ -87,6 +87,8 @@ bool ValidateAll(bool thorough)
 	pass=TestSecBlock() && pass;
 	// http://github.com/weidai11/cryptopp/issues/64
 	pass=TestPolynomialMod2() && pass;
+	// http://github.com/weidai11/cryptopp/pull/242
+	pass=TestHuffmanCodes() && pass;
 #endif
 
 	pass=ValidateCRC32() && pass;
@@ -315,13 +317,14 @@ bool TestSettings()
 
 #elif (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 	bool hasNEON = HasNEON();
+	bool hasPMULL = HasPMULL();
 	bool hasCRC32 = HasCRC32();
 	bool hasAES = HasAES();
 	bool hasSHA1 = HasSHA1();
 	bool hasSHA2 = HasSHA2();
 
 	cout << "passed:  ";
-	cout << "hasNEON == " << hasNEON << ", hasCRC32 == " << hasCRC32 << ", hasAES == " << hasAES << ", hasSHA1 == " << hasSHA1 << ", hasSHA2 == " << hasSHA2 << endl;
+	cout << "hasNEON == " << hasNEON << ", hasPMULL == " << hasPMULL << ", hasCRC32 == " << hasCRC32 << ", hasAES == " << hasAES << ", hasSHA1 == " << hasSHA1 << ", hasSHA2 == " << hasSHA2 << endl;
 #endif
 
 	if (!pass)
@@ -802,6 +805,38 @@ bool TestSecBlock()
 	}
 
 	return result;
+}
+#endif
+
+#if !defined(NDEBUG) && !defined(CRYPTOPP_IMPORTS)
+bool TestHuffmanCodes()
+{
+    cout << "\nTesting Huffman codes...\n\n";
+
+    static const size_t nCodes = 30;
+    const unsigned int codeCounts[nCodes] = {
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    static const unsigned int maxCodeBits = nCodes >> 1;
+    unsigned int codeBits[nCodes] = {
+        ~0u, ~0u, ~0u, ~0u, ~0u,
+        ~0u, ~0u, ~0u, ~0u, ~0u,
+        ~0u, ~0u, ~0u, ~0u, ~0u,
+    };
+
+    try
+    {
+        HuffmanEncoder::GenerateCodeLengths(codeBits, maxCodeBits, codeCounts, nCodes);
+    }
+    catch(const Exception& ex)
+    {
+        CRYPTOPP_UNUSED(ex);
+        return false;
+    }
+
+    return true;
 }
 #endif
 

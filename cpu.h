@@ -2,31 +2,53 @@
 
 //! \file cpu.h
 //! \brief Functions for CPU features and intrinsics
-//! \details At the moment, the functions are used heavily in X86/X32/X64 code paths
-//    for SSE, SSE2 and SSE4. The funtions are also used on occassion for AArch32
-//!   and AArch64 code paths for NEON.
+//! \details The functions are used in X86/X32/X64 and NEON code paths
 
 #ifndef CRYPTOPP_CPU_H
 #define CRYPTOPP_CPU_H
 
 #include "config.h"
 
+// ARM32/ARM64 includes
 #if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
-# if defined(_MSC_VER) || defined(__BORLANDC__)
-#  define CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
-# else
-#  define CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
+# if defined(__GNUC__)
+#  include <stdint.h>
 # endif
-# if CRYPTOPP_BOOL_NEON_INTRINSICS_AVAILABLE
+# if CRYPTOPP_BOOL_NEON_INTRINSICS_AVAILABLE || defined(__ARM_NEON)
 #  include <arm_neon.h>
 # endif
-# if (CRYPTOPP_BOOL_ARM_CRYPTO_INTRINSICS_AVAILABLE || CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE)
-#  include <stdint.h>
-#  if (defined(__ARM_ACLE) || defined(__GNUC__)) && !defined(__APPLE__)
-#   include <arm_acle.h>
-#  endif
+# if (CRYPTOPP_BOOL_ARM_CRYPTO_INTRINSICS_AVAILABLE || CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE) || defined(__ARM_ACLE)
+#  include <arm_acle.h>
 # endif
-#endif  // ARM-32 or ARM-64
+#endif  // ARM32 and ARM64
+
+// Applies to both X86/X32/X64 and ARM32/ARM64. And we've got MIPS devices on the way.
+#if defined(_MSC_VER) || defined(__BORLANDC__)
+# define CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
+#else
+# define CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
+#endif
+
+// Applies to both X86/X32/X64 and ARM32/ARM64
+#if defined(CRYPTOPP_LLVM_CLANG_VERSION) || defined(CRYPTOPP_APPLE_CLANG_VERSION) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+	#define NEW_LINE "\n"
+	#define INTEL_PREFIX ".intel_syntax;"
+	#define INTEL_NOPREFIX ".intel_syntax;"
+	#define ATT_PREFIX ".att_syntax;"
+	#define ATT_NOPREFIX ".att_syntax;"
+#elif defined(__GNUC__)
+	#define NEW_LINE
+	#define INTEL_PREFIX ".intel_syntax prefix;"
+	#define INTEL_NOPREFIX ".intel_syntax noprefix;"
+	#define ATT_PREFIX ".att_syntax prefix;"
+	#define ATT_NOPREFIX ".att_syntax noprefix;"
+#else
+	#define NEW_LINE
+	#define INTEL_PREFIX
+	#define INTEL_NOPREFIX
+	#define ATT_PREFIX
+	#define ATT_NOPREFIX
+#endif
 
 #ifdef CRYPTOPP_GENERATE_X64_MASM
 
@@ -52,7 +74,7 @@
 #endif
 
 // PUSHFB needs Clang 3.3 and Apple Clang 5.0.
-#if !defined(__GNUC__) || defined(__SSSE3__)|| defined(__INTEL_COMPILER) || (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_APPLE_CLANG_VERSION >= 50000)
+#if !defined(__GNUC__) || defined(__SSSE3__)|| defined(__INTEL_COMPILER) || (CRYPTOPP_LLVM_CLANG_VERSION >= 30300) || (CRYPTOPP_APPLE_CLANG_VERSION >= 50000)
 #include <tmmintrin.h>
 #else
 NAMESPACE_BEGIN(CryptoPP)
@@ -66,7 +88,7 @@ NAMESPACE_END
 #endif // tmmintrin.h
 
 // PEXTRD needs Clang 3.3 and Apple Clang 5.0.
-#if !defined(__GNUC__) || defined(__SSE4_1__)|| defined(__INTEL_COMPILER) || (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_APPLE_CLANG_VERSION >= 50000)
+#if !defined(__GNUC__) || defined(__SSE4_1__)|| defined(__INTEL_COMPILER) || (CRYPTOPP_LLVM_CLANG_VERSION >= 30300) || (CRYPTOPP_APPLE_CLANG_VERSION >= 50000)
 #include <smmintrin.h>
 #else
 NAMESPACE_BEGIN(CryptoPP)
@@ -87,7 +109,7 @@ NAMESPACE_END
 #endif // smmintrin.h
 
 // AES needs Clang 2.8 and Apple Clang 4.6. PCLMUL needs Clang 3.4 and Apple Clang 6.0
-#if !defined(__GNUC__) || (defined(__AES__) && defined(__PCLMUL__)) || defined(__INTEL_COMPILER) || (CRYPTOPP_CLANG_VERSION >= 30400) || (CRYPTOPP_APPLE_CLANG_VERSION >= 60000)
+#if !defined(__GNUC__) || (defined(__AES__) && defined(__PCLMUL__)) || defined(__INTEL_COMPILER) || (CRYPTOPP_LLVM_CLANG_VERSION >= 30400) || (CRYPTOPP_APPLE_CLANG_VERSION >= 60000)
 #include <wmmintrin.h>
 #else
 NAMESPACE_BEGIN(CryptoPP)
@@ -139,13 +161,22 @@ NAMESPACE_END
 #endif // wmmintrin.h
 #endif // CRYPTOPP_BOOL_AESNI_INTRINSICS_AVAILABLE
 
+#if (CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE) && ((__SUNPRO_CC >= 0x5110) || defined(__clang__) || defined(__INTEL_COMPILER))
+# include <emmintrin.h>    // _mm_set_epi64x
+# include <smmintrin.h>    // _mm_blend_epi16
+# include <tmmintrin.h>    // _mm_shuffle_epi16
+# include <nmmintrin.h>    // _mm_crc32_u{8|16|32}
+#endif
+
 NAMESPACE_BEGIN(CryptoPP)
 
-#if CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64 || CRYPTOPP_DOXYGEN_PROCESSING
 
 #define CRYPTOPP_CPUID_AVAILABLE
 
-// these should not be used directly
+// Hide from Doxygen
+#ifndef CRYPTOPP_DOXYGEN_PROCESSING
+// These should not be used directly
 extern CRYPTOPP_DLL bool g_x86DetectionDone;
 extern CRYPTOPP_DLL bool g_hasMMX;
 extern CRYPTOPP_DLL bool g_hasISSE;
@@ -166,7 +197,12 @@ extern CRYPTOPP_DLL word32 g_cacheLineSize;
 
 CRYPTOPP_DLL void CRYPTOPP_API DetectX86Features();
 CRYPTOPP_DLL bool CRYPTOPP_API CpuId(word32 input, word32 output[4]);
+#endif // CRYPTOPP_DOXYGEN_PROCESSING
 
+//! \brief Determines MMX availability
+//! \returns true if MMX is determined to be available, false otherwise
+//! \details MMX, SSE and SSE2 are core processor features for x86_64, and
+//!   the function always returns true for the platform.
 inline bool HasMMX()
 {
 #if CRYPTOPP_BOOL_X64
@@ -178,6 +214,10 @@ inline bool HasMMX()
 #endif
 }
 
+//! \brief Determines SSE availability
+//! \returns true if SSE is determined to be available, false otherwise
+//! \details MMX, SSE and SSE2 are core processor features for x86_64, and
+//!   the function always returns true for the platform.
 inline bool HasISSE()
 {
 #if CRYPTOPP_BOOL_X64
@@ -189,6 +229,10 @@ inline bool HasISSE()
 #endif
 }
 
+//! \brief Determines SSE2 availability
+//! \returns true if SSE2 is determined to be available, false otherwise
+//! \details MMX, SSE and SSE2 are core processor features for x86_64, and
+//!   the function always returns true for the platform.
 inline bool HasSSE2()
 {
 #if CRYPTOPP_BOOL_X64
@@ -200,6 +244,10 @@ inline bool HasSSE2()
 #endif
 }
 
+//! \brief Determines SSSE3 availability
+//! \returns true if SSSE3 is determined to be available, false otherwise
+//! \details HasSSSE3() is a runtime check performed using CPUID
+//! \note Some Clang compilers incorrectly omit SSSE3 even though its native to the processor.
 inline bool HasSSSE3()
 {
 	if (!g_x86DetectionDone)
@@ -207,6 +255,9 @@ inline bool HasSSSE3()
 	return g_hasSSSE3;
 }
 
+//! \brief Determines SSE4 availability
+//! \returns true if SSE4.1 and SSE4.2 are determined to be available, false otherwise
+//! \details HasSSE4() is a runtime check performed using CPUID which requires both SSE4.1 and SSE4.2
 inline bool HasSSE4()
 {
 	if (!g_x86DetectionDone)
@@ -214,6 +265,9 @@ inline bool HasSSE4()
 	return g_hasSSE4;
 }
 
+//! \brief Determines AES-NI availability
+//! \returns true if AES-NI is determined to be available, false otherwise
+//! \details HasAESNI() is a runtime check performed using CPUID
 inline bool HasAESNI()
 {
 	if (!g_x86DetectionDone)
@@ -221,6 +275,9 @@ inline bool HasAESNI()
 	return g_hasAESNI;
 }
 
+//! \brief Determines Carryless Multiply availability
+//! \returns true if pclmulqdq is determined to be available, false otherwise
+//! \details HasCLMUL() is a runtime check performed using CPUID
 inline bool HasCLMUL()
 {
 	if (!g_x86DetectionDone)
@@ -228,6 +285,9 @@ inline bool HasCLMUL()
 	return g_hasCLMUL;
 }
 
+//! \brief Determines if the CPU is an Intel P4
+//! \returns true if the CPU is a P4, false otherwise
+//! \details IsP4() is a runtime check performed using CPUID
 inline bool IsP4()
 {
 	if (!g_x86DetectionDone)
@@ -235,6 +295,9 @@ inline bool IsP4()
 	return g_isP4;
 }
 
+//! \brief Determines RDRAND availability
+//! \returns true if RDRAND is determined to be available, false otherwise
+//! \details HasRDRAND() is a runtime check performed using CPUID
 inline bool HasRDRAND()
 {
 	if (!g_x86DetectionDone)
@@ -242,6 +305,9 @@ inline bool HasRDRAND()
 	return g_hasRDRAND;
 }
 
+//! \brief Determines RDSEED availability
+//! \returns true if RDSEED is determined to be available, false otherwise
+//! \details HasRDSEED() is a runtime check performed using CPUID
 inline bool HasRDSEED()
 {
 	if (!g_x86DetectionDone)
@@ -249,6 +315,9 @@ inline bool HasRDSEED()
 	return g_hasRDSEED;
 }
 
+//! \brief Determines Padlock RNG availability
+//! \returns true if VIA Padlock RNG is determined to be available, false otherwise
+//! \details HasPadlockRNG() is a runtime check performed using CPUID
 inline bool HasPadlockRNG()
 {
 	if (!g_x86DetectionDone)
@@ -256,6 +325,9 @@ inline bool HasPadlockRNG()
 	return g_hasPadlockRNG;
 }
 
+//! \brief Determines Padlock ACE availability
+//! \returns true if VIA Padlock ACE is determined to be available, false otherwise
+//! \details HasPadlockACE() is a runtime check performed using CPUID
 inline bool HasPadlockACE()
 {
 	if (!g_x86DetectionDone)
@@ -263,6 +335,9 @@ inline bool HasPadlockACE()
 	return g_hasPadlockACE;
 }
 
+//! \brief Determines Padlock ACE2 availability
+//! \returns true if VIA Padlock ACE2 is determined to be available, false otherwise
+//! \details HasPadlockACE2() is a runtime check performed using CPUID
 inline bool HasPadlockACE2()
 {
 	if (!g_x86DetectionDone)
@@ -270,6 +345,9 @@ inline bool HasPadlockACE2()
 	return g_hasPadlockACE2;
 }
 
+//! \brief Determines Padlock PHE availability
+//! \returns true if VIA Padlock PHE is determined to be available, false otherwise
+//! \details HasPadlockPHE() is a runtime check performed using CPUID
 inline bool HasPadlockPHE()
 {
 	if (!g_x86DetectionDone)
@@ -277,6 +355,9 @@ inline bool HasPadlockPHE()
 	return g_hasPadlockPHE;
 }
 
+//! \brief Determines Padlock PMM availability
+//! \returns true if VIA Padlock PMM is determined to be available, false otherwise
+//! \details HasPadlockPMM() is a runtime check performed using CPUID
 inline bool HasPadlockPMM()
 {
 	if (!g_x86DetectionDone)
@@ -284,6 +365,13 @@ inline bool HasPadlockPMM()
 	return g_hasPadlockPMM;
 }
 
+//! \brief Provides the cache line size
+//! \returns lower bound on the size of a cache line in bytes, if available
+//! \details GetCacheLineSize() returns the lower bound on the size of a cache line, if it
+//!   is available. If the value is not available at runtime, then 32 is returned for a 32-bit
+//!   processor and 64 is returned for a 64-bit processor.
+//! \details x86/x32/x64 uses CPUID to determine the value and its usually accurate. The ARM
+//!   processor equivalent is a privileged instruction, so a compile time value is returned.
 inline int GetCacheLineSize()
 {
 	if (!g_x86DetectionDone)
@@ -294,7 +382,7 @@ inline int GetCacheLineSize()
 #elif (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 
 extern bool g_ArmDetectionDone;
-extern bool g_hasNEON, g_hasCRC32, g_hasAES, g_hasSHA1, g_hasSHA2;
+extern bool g_hasNEON, g_hasPMULL, g_hasCRC32, g_hasAES, g_hasSHA1, g_hasSHA2;
 void CRYPTOPP_API DetectArmFeatures();
 
 //! \brief Determine if an ARM processor has Advanced SIMD available
@@ -308,6 +396,19 @@ inline bool HasNEON()
 	if (!g_ArmDetectionDone)
 		DetectArmFeatures();
 	return g_hasNEON;
+}
+
+//! \brief Determine if an ARM processor provides Polynomial Multiplication (long)
+//! \returns true if the hardware is capable of polynomial multiplications at runtime, false otherwise.
+//! \details The multiplication instructions are available under Aarch64 (ARM-64) and Aarch32 (ARM-32).
+//! \details Runtime support requires compile time support. When compiling with GCC, you may
+//!   need to compile with <tt>-march=armv8-a+crypto</tt>; while Apple requires
+//!   <tt>-arch arm64</tt>. Also see ARM's <tt>__ARM_FEATURE_CRYPTO</tt> preprocessor macro.
+inline bool HasPMULL()
+{
+	if (!g_ArmDetectionDone)
+		DetectArmFeatures();
+	return g_hasPMULL;
 }
 
 //! \brief Determine if an ARM processor has CRC32 available
@@ -415,20 +516,6 @@ inline int GetCacheLineSize()
 #else
 	#define CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
 
-#if defined(CRYPTOPP_CLANG_VERSION) || defined(CRYPTOPP_APPLE_CLANG_VERSION)
-	#define NEW_LINE "\n"
-	#define INTEL_PREFIX ".intel_syntax;"
-	#define INTEL_NOPREFIX ".intel_syntax;"
-	#define ATT_PREFIX ".att_syntax;"
-	#define ATT_NOPREFIX ".att_syntax;"
-#else
-	#define NEW_LINE
-	#define INTEL_PREFIX ".intel_syntax prefix;"
-	#define INTEL_NOPREFIX ".intel_syntax noprefix;"
-	#define ATT_PREFIX ".att_syntax prefix;"
-	#define ATT_NOPREFIX ".att_syntax noprefix;"
-#endif
-
 	// define these in two steps to allow arguments to be expanded
 	#define GNU_AS1(x) #x ";" NEW_LINE
 	#define GNU_AS2(x, y) #x ", " #y ";" NEW_LINE
@@ -448,21 +535,6 @@ inline int GetCacheLineSize()
 
 #define IF0(y)
 #define IF1(y) y
-
-// Should be confined to GCC, but its used to help manage Clang 3.4 compiler error.
-//   Also see LLVM Bug 24232, http://llvm.org/bugs/show_bug.cgi?id=24232 .
-#ifndef INTEL_PREFIX
-	#define INTEL_PREFIX
-#endif
-#ifndef INTEL_NOPREFIX
-	#define INTEL_NOPREFIX
-#endif
-#ifndef ATT_PREFIX
-	#define ATT_PREFIX
-#endif
-#ifndef ATT_NOPREFIX
-	#define ATT_NOPREFIX
-#endif
 
 #ifdef CRYPTOPP_GENERATE_X64_MASM
 #define ASM_MOD(x, y) ((x) MOD (y))
