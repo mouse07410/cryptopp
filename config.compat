@@ -77,11 +77,7 @@
 
 // Define this to retain (as much as possible) ABI and binary compatibility with Crypto++ 5.6.2.
 // Also see https://cryptopp.com/wiki/Config.h#Avoid_MAINTAIN_BACKWARDS_COMPATIBILITY
-#if (CRYPTOPP_VERSION <= 600)
-# if !defined(CRYPTOPP_NO_BACKWARDS_COMPATIBILITY_562) && !defined(CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562)
-#  define CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
-# endif
-#endif
+#define CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 
 // Define this if you want or need the library's memcpy_s and memmove_s.
 //   See http://github.com/weidai11/cryptopp/issues/28.
@@ -127,7 +123,9 @@
 // Under GCC, the library uses init_priority attribute in the range
 // [CRYPTOPP_INIT_PRIORITY, CRYPTOPP_INIT_PRIORITY+100]. Under Windows,
 // CRYPTOPP_INIT_PRIORITY enlists "#pragma init_seg(lib)".
-// #define CRYPTOPP_INIT_PRIORITY 250
+#ifndef CRYPTOPP_INIT_PRIORITY
+// # define CRYPTOPP_INIT_PRIORITY 250
+#endif
 
 // CRYPTOPP_USER_PRIORITY is for other libraries and user code that is using Crypto++
 // and managing C++ static object creation. It is guaranteed not to conflict with
@@ -135,7 +133,7 @@
 #if defined(CRYPTOPP_INIT_PRIORITY) && (CRYPTOPP_INIT_PRIORITY > 0)
 # define CRYPTOPP_USER_PRIORITY (CRYPTOPP_INIT_PRIORITY + 101)
 #else
-# define CRYPTOPP_USER_PRIORITY 250
+# define CRYPTOPP_USER_PRIORITY 350
 #endif
 
 // CRYPTOPP_DEBUG enables the library's CRYPTOPP_ASSERT. CRYPTOPP_ASSERT
@@ -143,7 +141,7 @@
 //   is only in effect when CRYPTOPP_DEBUG, DEBUG or _DEBUG is defined. Unlike
 //   Posix assert, CRYPTOPP_ASSERT is not affected by NDEBUG (or failure to
 //   define it).
-//   Also see http://github.com/weidai11/cryptopp/issues/277, CVE-2010-4179
+//   Also see http://github.com/weidai11/cryptopp/issues/277, CVE-2016-7420
 #if (defined(DEBUG) || defined(_DEBUG)) && !defined(CRYPTOPP_DEBUG)
 # define CRYPTOPP_DEBUG 1
 #endif
@@ -231,6 +229,14 @@ typedef unsigned int word32;
 // define large word type, used for file offsets and such
 typedef word64 lword;
 const lword LWORD_MAX = W64LIT(0xffffffffffffffff);
+
+// Clang pretends to be GCC, but can't consume the same programs. It breaks completely with -march-x86-64
+#if defined(__GNUC__) && defined(__clang__)
+# undef __GNUC__
+# undef __GNUC_MINOR__
+# undef __GNUC_PATCHLEVEL__
+# define __GNUC__ 4
+#endif
 
 // Clang pretends to be VC++, too.
 //   See http://github.com/weidai11/cryptopp/issues/147
@@ -744,7 +750,7 @@ NAMESPACE_END
 
 // Portable way to suppress warnings.
 //   Moved from misc.h due to circular depenedencies.
-#define CRYPTOPP_UNUSED(x) ((void)x)
+#define CRYPTOPP_UNUSED(x) ((void)(x))
 
 // ************** Deprecated ***************
 
