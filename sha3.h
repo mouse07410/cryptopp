@@ -42,7 +42,6 @@ public:
 	void Restart();
 	void TruncatedFinal(byte *hash, size_t size);
 
-	// unsigned int BlockSize() const { return r(); } // that's the idea behind it
 protected:
 	inline unsigned int r() const {return 200 - 2 * m_digestSize;}
 
@@ -57,15 +56,10 @@ class SHA3_224 : public SHA3
 {
 public:
 	CRYPTOPP_CONSTANT(DIGESTSIZE = 28)
-	CRYPTOPP_CONSTANT(BLOCKSIZE = 200 - 2 * DIGESTSIZE)
 
 	//! \brief Construct a SHA3-224 message digest
 	SHA3_224() : SHA3(DIGESTSIZE) {}
 	CRYPTOPP_CONSTEXPR static const char *StaticAlgorithmName() {return "SHA3-224";}
-	unsigned int BlockSize() const { return BLOCKSIZE; }
-private:
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE < 200); // ensure there was no underflow in the math
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE > DIGESTSIZE); // this is a general expectation by HMAC
 };
 
 //! \class SHA3_256
@@ -75,15 +69,10 @@ class SHA3_256 : public SHA3
 {
 public:
 	CRYPTOPP_CONSTANT(DIGESTSIZE = 32)
-	CRYPTOPP_CONSTANT(BLOCKSIZE = 200 - 2 * DIGESTSIZE)
 
 	//! \brief Construct a SHA3-256 message digest
 	SHA3_256() : SHA3(DIGESTSIZE) {}
 	CRYPTOPP_CONSTEXPR static const char *StaticAlgorithmName() {return "SHA3-256";}
-	unsigned int BlockSize() const { return BLOCKSIZE; }
-private:
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE < 200); // ensure there was no underflow in the math
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE > DIGESTSIZE); // this is a general expectation by HMAC
 };
 
 //! \class SHA3_384
@@ -93,15 +82,10 @@ class SHA3_384 : public SHA3
 {
 public:
 	CRYPTOPP_CONSTANT(DIGESTSIZE = 48)
-	CRYPTOPP_CONSTANT(BLOCKSIZE = 200 - 2 * DIGESTSIZE)
 
 	//! \brief Construct a SHA3-384 message digest
 	SHA3_384() : SHA3(DIGESTSIZE) {}
 	CRYPTOPP_CONSTEXPR static const char *StaticAlgorithmName() {return "SHA3-384";}
-	unsigned int BlockSize() const { return BLOCKSIZE; }
-private:
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE < 200); // ensure there was no underflow in the math
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE > DIGESTSIZE); // this is a general expectation by HMAC
 };
 
 //! \class SHA3_512
@@ -111,15 +95,10 @@ class SHA3_512 : public SHA3
 {
 public:
 	CRYPTOPP_CONSTANT(DIGESTSIZE = 64)
-	CRYPTOPP_CONSTANT(BLOCKSIZE = 200 - 2 * DIGESTSIZE)
 
 	//! \brief Construct a SHA3-512 message digest
 	SHA3_512() : SHA3(DIGESTSIZE) {}
 	CRYPTOPP_CONSTEXPR static const char *StaticAlgorithmName() {return "SHA3-512";}
-	unsigned int BlockSize() const { return BLOCKSIZE; }
-private:
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE < 200); // ensure there was no underflow in the math
-	CRYPTOPP_COMPILE_ASSERT(BLOCKSIZE > DIGESTSIZE); // this is a general expectation by HMAC
 };
 
 NAMESPACE_END
