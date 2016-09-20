@@ -245,7 +245,7 @@ typedef unsigned int word32;
 #if defined(_MSC_VER) || defined(__BORLANDC__)
 	typedef unsigned __int64 word64;
 	#define W64LIT(x) x##ui64
-#elif (_LP64 || __LP64__) && ((__arm64__ || __aarch64__) || !defined(CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562))
+#elif (_LP64 || __LP64__)
 	typedef unsigned long word64;
 	#define W64LIT(x) x##UL
 #else
@@ -481,7 +481,7 @@ NAMESPACE_END
 		#define CRYPTOPP_BOOL_SSE2_ASM_AVAILABLE 0
 	#endif
 
-	#if !defined(CRYPTOPP_DISABLE_SSE3) && (_MSC_VER >= 1400 || CRYPTOPP_GCC_VERSION >= 40102 || defined(__SSSE3__))
+	#if !defined(CRYPTOPP_DISABLE_SSE3) && (_MSC_VER >= 1400 || (defined(__SSE3__) && defined(__SSSE3__)))
 		#define CRYPTOPP_BOOL_SSSE3_ASM_AVAILABLE 1
 	#else
 		#define CRYPTOPP_BOOL_SSSE3_ASM_AVAILABLE 0
@@ -516,6 +516,13 @@ NAMESPACE_END
 	#define CRYPTOPP_BOOL_AESNI_INTRINSICS_AVAILABLE 1
 #else
 	#define CRYPTOPP_BOOL_AESNI_INTRINSICS_AVAILABLE 0
+#endif
+
+// AVX2 in MSC 18.00
+#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_AVX) && (((_MSC_VER >= 1600) && !defined(_M_ARM)) || (defined(__RDRND__) || defined(__RDSEED__) || defined(__AVX__)))
+	#define CRYPTOPP_BOOL_AVX_AVAILABLE 1
+#else
+	#define CRYPTOPP_BOOL_AVX_AVAILABLE 0
 #endif
 
 // Requires ARMv7 and ACLE 1.0. Testing shows ARMv7 is really ARMv7a under most toolchains.
