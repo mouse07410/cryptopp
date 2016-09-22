@@ -359,9 +359,9 @@ int CRYPTOPP_API main(int argc, char *argv[])
 		else if (command == "v" || command == "vv")
 			return !Validate(argc>2 ? StringToValue<int, true>(argv[2]) : 0, argv[1][1] == 'v', argc>3 ? argv[3] : NULL);
 		else if (command == "b")
-			BenchmarkAll(argc<3 ? 1 : StringToValue<float, true>(argv[2]), argc<4 ? 0 : StringToValue<float, true>(argv[3])*1e9);
+			BenchmarkAll(argc<3 ? 1 : StringToValue<float, true>(argv[2]), argc<4 ? 0.0f : StringToValue<float, true>(argv[3])*1e9);
 		else if (command == "b2")
-			BenchmarkAll2(argc<3 ? 1 : StringToValue<float, true>(argv[2]), argc<4 ? 0 : StringToValue<float, true>(argv[3])*1e9);
+			BenchmarkAll2(argc<3 ? 1 : StringToValue<float, true>(argv[2]), argc<4 ? 0.0f : StringToValue<float, true>(argv[3])*1e9);
 		else if (command == "z")
 			GzipFile(argv[3], argv[4], argv[2][0]-'0');
 		else if (command == "u")
@@ -431,11 +431,16 @@ void FIPS140_GenerateRandomFiles()
 template <class T, bool NON_NEGATIVE>
 T StringToValue(const std::string& str) {
 	std::istringstream iss(str);
+
+	// Arbitrary, but we need to clear a Coverity finding TAINTED_SCALAR
+	if(iss.str().length() > 25)
+		throw InvalidArgument("cryptest.exe: '" + str +"' is tool ong");
+
 	T value;
-	iss >> value;
+	iss >> std::noskipws >> value;
 
 	// Use fail(), not bad()
-	if (iss.fail())
+	if (iss.fail() || !iss.eof())
 		throw InvalidArgument("cryptest.exe: '" + str +"' is not a value");
 
 	if (NON_NEGATIVE && value < 0)
