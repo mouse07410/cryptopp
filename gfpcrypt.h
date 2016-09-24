@@ -624,10 +624,14 @@ public:
 };
 
 //! \brief Discrete Log Integrated Encryption Scheme
-//! \details ECIES is based on an early P1363 draft, which itself appears to be based on an
-//!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
-//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
-//! \details If you need this method for Crypto++ 4.2 compatibility, then use the DLIES template class with
+//! \details DLIES is an Integer based Integrated Encryption Scheme (IES). The scheme combines a Key Encapsulation Method (KEM)
+//!   with a Data Encapsulation Method (DEM) and a MAC tag. The scheme in
+//!   <A HREF="http://en.wikipedia.org/wiki/ciphertext_indistinguishability">IND-CCA2</A>, which is a strong notion of security.
+//!   You should prefer an Integrated Encryption Scheme over homegrown schemes.
+//! \details The library's implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
+//!   SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
+//!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need Integrated Encryption Scheme for Crypto++ 4.2 compatibility, then use the DLIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
 //! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
