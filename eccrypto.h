@@ -326,13 +326,13 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
  *      For cmpatibility with SEC1 and Crypto++ 4.2 set DHAES_MODE = false.
 	The combination of (IncompatibleCofactorMultiplication and DHAES_MODE = true) is recommended for best
 	efficiency and security. */
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_BITS = true>
+template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,
 		DL_KeyAgreementAlgorithm_DH<typename EC::Point, COFACTOR_OPTION>,
 		DL_KeyDerivationAlgorithm_P1363<typename EC::Point, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE, LABEL_BITS>,
+		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE, LABEL_OCTETS>,
 		ECIES<EC> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "ECIES";}	// TODO: fix this after name is standardized

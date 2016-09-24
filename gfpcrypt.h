@@ -504,7 +504,7 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<D
 //!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>. If you need this method for
 //!   compatibility, then use the ECIES_P1363 template class with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>.
 //! \since Cryto++ 4.0
-template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=true>
+template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=false>
 class DL_EncryptionAlgorithm_Xor : public DL_SymmetricEncryptionAlgorithm
 {
 public:
