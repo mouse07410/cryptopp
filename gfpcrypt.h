@@ -500,7 +500,7 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<D
 //! \tparam DHAES_MODE flag indicating DHAES mode
 //! \tparam LABEL_OCTETS flag indicating the label is octet count
 //! \details DL_EncryptionAlgorithm_Xor is based on an early P1363 draft, which itself appears to be based on an
-//!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
+//!   early Certicom SEC-1 draft (or an early SEC-1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
 //!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
 //! \details If you need this method for Crypto++ 4.2 compatibility, then use the ECIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
@@ -623,6 +623,7 @@ public:
 #endif
 };
 
+//! \class DLIES
 //! \brief Discrete Log Integrated Encryption Scheme
 //! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
 //! \tparam HASH HashTransformation derived class used for key drivation and MAC computation
@@ -633,7 +634,7 @@ public:
 //!   <A HREF="http://en.wikipedia.org/wiki/ciphertext_indistinguishability">IND-CCA2</A>, which is a strong notion of security.
 //!   You should prefer an Integrated Encryption Scheme over homegrown schemes.
 //! \details The library's original implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
-//!   SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
+//!   SEC-1 draft (or an early SEC-1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
 //!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
 //! \details If you desire an Integrated Encryption Scheme with Crypto++ 4.2 compatibility, then use the DLIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
@@ -643,6 +644,15 @@ public:
 //!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
 //!   SHA1 is used for compatibility reasons, but it can be changed of if desired. SHA-256 or another hash will likely improve the
 //!   security provided by the MAC. The hash is also used in the key derivation function as a PRF.
+//! \details Below is an example of constructing a Crypto++ 4.2 compatible DLIES encryptor and decryptor.
+//! <pre>
+//!     AutoSeededRandomPool prng;
+//!     DL_PrivateKey_GFP<DL_GroupParameters_GFP> key;
+//!     key.Initialize(prng, 2048);
+//!
+//!     DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(key);
+//!     DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
+//! </pre>
 //! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>,
 //!    Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic Curve Integrated Encryption Schemes</A>
 //! \since Crypto++ 4.0
