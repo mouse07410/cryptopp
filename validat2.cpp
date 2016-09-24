@@ -1123,8 +1123,8 @@ bool ValidateLegacyECIES()
 			"\xB2\x06\x7B\xB2";
 
 		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp160.dat", true, new HexDecoder);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Encryptor encryptor(decryptor);
 
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(64));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 64, recovered) != DecodingResult(3);
@@ -1145,8 +1145,8 @@ bool ValidateLegacyECIES()
 			"\x52\xEB\xC2\x0C\xAC\x8F\x17\x00";
 
 		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp256.dat", true, new HexDecoder);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Encryptor encryptor(decryptor);
 
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(88));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 88, recovered) != DecodingResult(3);
@@ -1168,8 +1168,8 @@ bool ValidateLegacyECIES()
 			"\x15\x0D\xB8\x7A\x06\x95\xA8\x78\xB8\x40\x21\x24\x45\xC5\x90\x5B\xD7\x8F\xFA\xD7";
 
 		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp384.dat", true, new HexDecoder);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Encryptor encryptor(decryptor);
 
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(120));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 120, recovered) != DecodingResult(3);
@@ -1193,8 +1193,8 @@ bool ValidateLegacyECIES()
 			"\x8F\x22\x4A\x50\x4A\x89\x76\xAD\xB2\xB2\xAA\xC2\x5F\x25\xFF\xA3";
 
 		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp512.dat", true, new HexDecoder);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
-		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,SHA1,true,true>::Encryptor encryptor(decryptor);
 
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(156));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 156, recovered) != DecodingResult(3);

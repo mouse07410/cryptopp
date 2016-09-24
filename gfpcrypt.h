@@ -496,7 +496,7 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<D
 
 //! \class DL_EncryptionAlgorithm_Xor
 //! \brief P1363 based XOR Encryption Method
-//! \tparam MAC MessageAuthenticationCode derived class
+//! \tparam MAC MessageAuthenticationCode derived class used for MAC computation
 //! \tparam DHAES_MODE flag indicating DHAES mode
 //! \tparam LABEL_OCTETS flag indicating the label is octet count
 //! \details DL_EncryptionAlgorithm_Xor is based on an early P1363 draft, which itself appears to be based on an
@@ -507,7 +507,7 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<D
 //! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the ECIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=ture</tt> and <tt>LABEL_OCTETS=false</tt>.
 //! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters.
-//! \since Cryto++ 4.0
+//! \since Crypto++ 4.0
 template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=false>
 class DL_EncryptionAlgorithm_Xor : public DL_SymmetricEncryptionAlgorithm
 {
@@ -625,6 +625,7 @@ public:
 
 //! \brief Discrete Log Integrated Encryption Scheme
 //! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+//! \tparam HASH HashTransformation derived class used for key drivation and MAC computation
 //! \tparam DHAES_MODE flag indicating if the MAC includes addition context parameters such as the label
 //! \tparam LABEL_OCTETS flag indicating if the label size is specified in octets or bits
 //! \details DLIES is an Integer based Integrated Encryption Scheme (IES). The scheme combines a Key Encapsulation Method (KEM)
@@ -634,21 +635,22 @@ public:
 //! \details The library's original implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
 //!   SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
 //!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
-//! \details If you need Integrated Encryption Scheme for Crypto++ 4.2 compatibility, then use the DLIES template class with
+//! \details If you desire an Integrated Encryption Scheme with Crypto++ 4.2 compatibility, then use the DLIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
-//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES template class with
-//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES
+//!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
 //! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
 //!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
-//! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>
-//! \since Cryto++ 4.0
-template <class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
+//! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>,
+//!    Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic Curve Integrated Encryption Schemes</A>
+//! \since Crypto++ 4.0
+template <class COFACTOR_OPTION = NoCofactorMultiplication, class HASH = SHA1, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
 struct DLIES
 	: public DL_ES<
 		DL_CryptoKeys_GFP,
 		DL_KeyAgreementAlgorithm_DH<Integer, COFACTOR_OPTION>,
-		DL_KeyDerivationAlgorithm_P1363<Integer, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE, LABEL_OCTETS>,
+		DL_KeyDerivationAlgorithm_P1363<Integer, DHAES_MODE, P1363_KDF2<HASH> >,
+		DL_EncryptionAlgorithm_Xor<HMAC<HASH>, DHAES_MODE, LABEL_OCTETS>,
 		DLIES<> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "DLIES";}	// TODO: fix this after name is standardized

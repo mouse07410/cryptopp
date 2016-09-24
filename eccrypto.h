@@ -272,7 +272,7 @@ template <class EC>
 struct DL_Keys_ECDSA
 {
 	typedef DL_PublicKey_EC<EC> PublicKey;
-	typedef DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<EC>, ECDSA<EC, SHA256> > PrivateKey;
+	typedef DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<EC>, ECDSA<EC, SHA256> > PrivateKey;
 
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~DL_Keys_ECDSA() {}
@@ -305,7 +305,7 @@ public:
 
 //! <a href="http://www.weidai.com/scan-mirror/sig.html#ECDSA">ECDSA</a>
 template <class EC, class H>
-struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_SignatrueMessageEncodingMethod_DSA, H>
+struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_SignatureMessageEncodingMethod_DSA, H>
 {
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~ECDSA() {}
@@ -314,7 +314,7 @@ struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_Signat
 
 //! ECNR
 template <class EC, class H = SHA>
-struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatrueMessageEncodingMethod_NR, H>
+struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMessageEncodingMethod_NR, H>
 {
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~ECNR() {}
@@ -323,6 +323,7 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatrueMe
 
 //! \brief Elliptic Curve Integrated Encryption Scheme
 //! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+//! \tparam HASH HashTransformation derived class used for key drivation and MAC computation
 //! \tparam DHAES_MODE flag indicating if the MAC includes addition context parameters such as the label
 //! \tparam LABEL_OCTETS flag indicating if the label size is specified in octets or bits
 //! \details ECIES is an Elliptic Curve based Integrated Encryption Scheme (IES). The scheme combines a Key Encapsulation
@@ -332,21 +333,22 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatrueMe
 //! \details The library's original implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
 //!   SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
 //!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
-//! \details If you need Integrated Encryption Scheme for Crypto++ 4.2 compatibility, then use the DLIES template class with
+//! \details If you desire an Integrated Encryption Scheme with Crypto++ 4.2 compatibility, then use the ECIES template class with
 //!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
-//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES template class with
-//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the ECIES
+//!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
 //! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
 //!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
-//! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>
-//! \since Cryto++ 4.0
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
+//! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>,
+//!    Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic Curve Integrated Encryption Schemes</A>
+//! \since Crypto++ 4.0
+template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, class HASH = SHA1, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,
 		DL_KeyAgreementAlgorithm_DH<typename EC::Point, COFACTOR_OPTION>,
-		DL_KeyDerivationAlgorithm_P1363<typename EC::Point, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE, LABEL_OCTETS>,
+		DL_KeyDerivationAlgorithm_P1363<typename EC::Point, DHAES_MODE, P1363_KDF2<HASH> >,
+		DL_EncryptionAlgorithm_Xor<HMAC<HASH>, DHAES_MODE, LABEL_OCTETS>,
 		ECIES<EC> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "ECIES";}	// TODO: fix this after name is standardized
@@ -376,8 +378,8 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_EC<ECP>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_EC<EC2N>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_Algorithm_GDSA<ECP::Point>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_Algorithm_GDSA<EC2N::Point>;
-CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<ECP>, ECDSA<ECP, SHA256> >;
-CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<EC2N>, ECDSA<EC2N, SHA256> >;
+CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<ECP>, ECDSA<ECP, SHA256> >;
+CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<EC2N>, ECDSA<EC2N, SHA256> >;
 
 NAMESPACE_END
 
