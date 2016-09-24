@@ -339,10 +339,12 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
 //!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
 //! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
 //!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//!   SHA1 is used for compatibility reasons, but it can be changed of if desired. SHA-256 or another hash will likely improve the
+//!   security provided by the MAC. The hash is also used in the key derivation function as a PRF.
 //! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>,
 //!    Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic Curve Integrated Encryption Schemes</A>
 //! \since Crypto++ 4.0
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, class HASH = SHA1, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
+template <class EC, class HASH = SHA1, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,

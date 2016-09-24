@@ -641,10 +641,12 @@ public:
 //!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
 //! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
 //!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//!   SHA1 is used for compatibility reasons, but it can be changed of if desired. SHA-256 or another hash will likely improve the
+//!   security provided by the MAC. The hash is also used in the key derivation function as a PRF.
 //! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>,
 //!    Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic Curve Integrated Encryption Schemes</A>
 //! \since Crypto++ 4.0
-template <class COFACTOR_OPTION = NoCofactorMultiplication, class HASH = SHA1, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
+template <class HASH = SHA1, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
 struct DLIES
 	: public DL_ES<
 		DL_CryptoKeys_GFP,
