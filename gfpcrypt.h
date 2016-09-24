@@ -498,11 +498,15 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<D
 //! \brief P1363 based XOR Encryption Method
 //! \tparam MAC MessageAuthenticationCode derived class
 //! \tparam DHAES_MODE flag indicating DHAES mode
-//! \tparam LABEL_OCTETS flag indicating label octet count
+//! \tparam LABEL_OCTETS flag indicating the label is octet count
 //! \details DL_EncryptionAlgorithm_Xor is based on an early P1363 draft, which itself appears to be based on an
 //!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
-//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>. If you need this method for
-//!   compatibility, then use the ECIES_P1363 template class with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>.
+//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Crypto++ 4.2 compatibility, then use the ECIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the ECIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=ture</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters.
 //! \since Cryto++ 4.0
 template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=false>
 class DL_EncryptionAlgorithm_Xor : public DL_SymmetricEncryptionAlgorithm
@@ -619,7 +623,18 @@ public:
 #endif
 };
 
-//! Discrete Log Integrated Encryption Scheme, AKA <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">DLIES</a>
+//! \brief Discrete Log Integrated Encryption Scheme
+//! \details ECIES is based on an early P1363 draft, which itself appears to be based on an
+//!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
+//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Crypto++ 4.2 compatibility, then use the DLIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
+//!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>
+//! \since Cryto++ 4.0
 template <class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
 struct DLIES
 	: public DL_ES<

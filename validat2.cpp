@@ -1098,6 +1098,7 @@ bool ValidateESIGN()
 	return pass;
 }
 
+// Test data generated with Crypto++ 5.6.2.
 bool ValidateLegacyDLIES()
 {
 	cout << "\nLegacy DLIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
@@ -1105,6 +1106,7 @@ bool ValidateLegacyDLIES()
 	return true;
 }
 
+// Test data generated with Crypto++ 5.6.2.
 bool ValidateLegacyECIES()
 {
 	cout << "\nLegacy ECIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
@@ -1129,7 +1131,7 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		// Pairwise tests
+		// Pairwise testing
 		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
@@ -1151,7 +1153,7 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		// Pairwise tests
+		// Pairwise testing
 		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
@@ -1174,7 +1176,7 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		// Pairwise tests
+		// Pairwise testing
 		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
@@ -1199,7 +1201,7 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		// Pairwise tests
+		// Pairwise testing
 		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 

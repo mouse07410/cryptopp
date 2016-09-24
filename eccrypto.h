@@ -272,7 +272,7 @@ template <class EC>
 struct DL_Keys_ECDSA
 {
 	typedef DL_PublicKey_EC<EC> PublicKey;
-	typedef DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<EC>, ECDSA<EC, SHA256> > PrivateKey;
+	typedef DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<EC>, ECDSA<EC, SHA256> > PrivateKey;
 
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~DL_Keys_ECDSA() {}
@@ -305,7 +305,7 @@ public:
 
 //! <a href="http://www.weidai.com/scan-mirror/sig.html#ECDSA">ECDSA</a>
 template <class EC, class H>
-struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_SignatureMessageEncodingMethod_DSA, H>
+struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_SignatrueMessageEncodingMethod_DSA, H>
 {
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~ECDSA() {}
@@ -314,18 +314,25 @@ struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_Signat
 
 //! ECNR
 template <class EC, class H = SHA>
-struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMessageEncodingMethod_NR, H>
+struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatrueMessageEncodingMethod_NR, H>
 {
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~ECNR() {}
 #endif
 };
 
-//! Elliptic Curve Integrated Encryption Scheme, AKA <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">ECIES</a>
-/*! Default to (NoCofactorMultiplication and DHAES_MODE = true) for compatibilty with BouncyCastle and Botan-1.11.
- *      For cmpatibility with SEC1 and Crypto++ 4.2 set DHAES_MODE = false.
-	The combination of (IncompatibleCofactorMultiplication and DHAES_MODE = true) is recommended for best
-	efficiency and security. */
+//! \brief Elliptic Curve Integrated Encryption Scheme
+//! \details ECIES is based on an early P1363 draft, which itself appears to be based on an
+//!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
+//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Crypto++ 4.2 compatibility, then use the DLIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
+//!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>
+//! \since Cryto++ 4.0
 template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
@@ -362,8 +369,8 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_EC<ECP>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_EC<EC2N>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_Algorithm_GDSA<ECP::Point>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_Algorithm_GDSA<EC2N::Point>;
-CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<ECP>, ECDSA<ECP, SHA256> >;
-CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_EC<EC2N>, ECDSA<EC2N, SHA256> >;
+CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<ECP>, ECDSA<ECP, SHA256> >;
+CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignatruePairwiseConsistencyTest<DL_PrivateKey_EC<EC2N>, ECDSA<EC2N, SHA256> >;
 
 NAMESPACE_END
 
