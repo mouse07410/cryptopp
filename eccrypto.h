@@ -326,7 +326,7 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
  *      For cmpatibility with SEC1 and Crypto++ 4.2 set DHAES_MODE = false.
 	The combination of (IncompatibleCofactorMultiplication and DHAES_MODE = true) is recommended for best
 	efficiency and security. */
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = false, bool LABEL_BITS = true>
+template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_BITS = true>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,
