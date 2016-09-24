@@ -1129,8 +1129,8 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		cout << (fail ? "FAILED    " : "passed    ");
-		cout << "P160 encryption and decryption\n";
+		// Pairwise tests
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
 	{
@@ -1151,8 +1151,8 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		cout << (fail ? "FAILED    " : "passed    ");
-		cout << "P256 encryption and decryption\n";
+		// Pairwise tests
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
 	{
@@ -1175,10 +1175,7 @@ bool ValidateLegacyECIES()
 		pass = pass && !fail;
 
 		// Pairwise tests
-		// pass = CryptoSystemValidate(decryptor, decryptor) && pass;
-
-		cout << (fail ? "FAILED    " : "passed    ");
-		cout << "P384 encryption and decryption\n";
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
 	{
@@ -1202,8 +1199,8 @@ bool ValidateLegacyECIES()
 		fail = fail || memcmp(plain, recovered, 3);
 		pass = pass && !fail;
 
-		cout << (fail ? "FAILED    " : "passed    ");
-		cout << "P512 encryption and decryption\n";
+		// Pairwise tests
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
 
 	return pass;
