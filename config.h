@@ -107,6 +107,14 @@
 // of 'b', 'o', 'h' or '.' (the last for decimal).
 // #define CRYPTOPP_USE_STD_SHOWBASE
 
+// Define this if you want to retain old ECIES and DLIES behavior. Prior to
+// 2016, Bouncy Castle, Botan and Crypto++ did not interop. Each library moved to
+// the same P1363 implementation (P1363a, Draft 13) at the following versions:
+//   * Bouncy Castle 1.53
+//   * Botan 1.11.3
+//   * Crypto++ 5.6.5
+// #define CRYPTOPP_NO_IES_INTEROP
+
 // choose which style of sockets to wrap (mostly useful for MinGW which has both)
 #if !defined(NO_BERKELEY_STYLE_SOCKETS) && !defined(PREFER_BERKELEY_STYLE_SOCKETS)
 # define PREFER_BERKELEY_STYLE_SOCKETS
