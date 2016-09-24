@@ -1097,3 +1097,128 @@ bool ValidateESIGN()
 
 	return pass;
 }
+
+bool ValidateLegacyDLIES()
+{
+	cout << "\nLegacy DLIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
+
+	return true;
+}
+
+bool ValidateLegacyECIES()
+{
+	cout << "\nLegacy ECIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
+
+	bool pass = true, fail;
+	static const char plain[4] = {'a','b','c'};
+
+	{
+		// secp160r1
+		static const byte cipher[65] =
+			"\x04\xF9\xF8\x82\x8F\xFE\xA3\x47\x92\xE7\xF9\x6B\x19\xE4\x0D\x36\x2B\xA7\x26\xD3"
+			"\x43\x17\x99\x3B\xCA\x37\xEB\x3A\x7C\xC4\xCE\x08\x9E\x23\x37\x75\x8B\xCD\x61\xF2"
+			"\x44\x88\x0C\x69\x32\xCE\xFA\x0E\x2E\x7B\x09\xA0\xEB\x18\xD8\x0D\x28\xF8\xFF\x4A"
+			"\xB2\x06\x7B\xB2";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp160.dat", true, new HexDecoder);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(64));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, 64, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+		pass = pass && !fail;
+
+		cout << (fail ? "FAILED    " : "passed    ");
+		cout << "P160 encryption and decryption\n";
+	}
+
+	{
+		// secp256r1
+		static const byte cipher[89] =
+			"\x04\x69\x90\x56\xC6\x19\xDF\xCF\xEE\x61\x5C\x25\x00\xAB\x21\x63\xD0\xE4\x99\x7C"
+			"\x29\x42\x31\xBF\x93\x4B\x73\x7D\xD0\xD3\x02\xBA\x4D\xA8\xE2\xCF\x4B\x1A\xB2\xBB"
+			"\xB5\x49\xE0\x79\x59\x1D\xC9\x07\xCC\x20\x96\x2F\xD6\x21\x9C\x07\x55\x92\xC8\x9C"
+			"\x58\x3D\x1C\x9A\x3F\xF2\x8D\x02\x72\x79\xCC\x17\x0A\xEB\xC7\xAB\xF1\x20\xEB\xCD"
+			"\x52\xEB\xC2\x0C\xAC\x8F\x17\x00";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp256.dat", true, new HexDecoder);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(88));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, 88, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+		pass = pass && !fail;
+
+		cout << (fail ? "FAILED    " : "passed    ");
+		cout << "P256 encryption and decryption\n";
+	}
+
+	{
+		// secp384r1
+		static const byte cipher[121] =
+			"\x04\xA5\xF1\xB3\x24\xFE\x82\x62\x47\x10\xA0\xE9\xC9\xA0\x17\x86\xC9\x82\x39\xC1"
+			"\x18\x51\x23\x40\x3A\x85\x5E\x89\xDD\x72\xA8\xC4\xF2\x71\xE7\xC4\x61\x1A\xFF\xE8"
+			"\xBF\xA2\x7F\xBB\xDF\x60\x96\x04\x54\x05\xD5\x27\x86\xCF\x73\xBF\x43\x2C\x65\x77"
+			"\xA4\xE2\xD5\x3B\xC8\x6A\xF6\x87\x8B\x70\x9E\xEF\x1E\x53\x20\x23\x9E\xA5\xA8\xA0"
+			"\x72\x9C\x96\x11\x8E\x48\xFB\xBE\x8D\x32\x03\x8D\x9D\x7C\xDA\x2B\x47\xFA\x20\x9E"
+			"\x15\x0D\xB8\x7A\x06\x95\xA8\x78\xB8\x40\x21\x24\x45\xC5\x90\x5B\xD7\x8F\xFA\xD7";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp384.dat", true, new HexDecoder);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(120));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, 120, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+		pass = pass && !fail;
+
+		// Pairwise tests
+		// pass = CryptoSystemValidate(decryptor, decryptor) && pass;
+
+		cout << (fail ? "FAILED    " : "passed    ");
+		cout << "P384 encryption and decryption\n";
+	}
+
+	{
+		// secp512r1
+		static const byte cipher[157] =
+			"\x04\x01\x00\x62\xC1\x03\x83\x8E\x96\x81\x27\xBA\x59\x27\x42\xF1\x9F\x5E\x00\x7F"
+			"\xD2\x0F\xE9\x46\xC3\xFE\x23\x14\xD1\xDF\xCF\xE8\x3A\x94\xDD\xEE\xDD\x3D\x25\x0C"
+			"\xC7\x70\x38\x44\x9A\x99\x50\x57\xD9\x9C\x50\x62\xC9\x54\x09\x8E\xEB\xFA\xD0\xCE"
+			"\xD5\x8A\xCA\x71\x7D\x71\x0E\x00\x61\x25\x6D\xB6\x33\x40\x25\xCA\x44\xD3\xE3\xC0"
+			"\xE9\x2F\xD7\x6C\xAF\xB2\x54\x00\x71\xFF\xE5\x0D\xD6\x7E\xF8\x22\x4B\x75\x4B\xE7"
+			"\xA8\x6A\x99\x7F\x84\x6D\x7D\xC2\x9F\x2A\x12\x3C\xDF\xAC\xD3\xD0\x66\x41\x8D\x34"
+			"\x16\x30\xB4\x2A\xDF\xA2\x0F\x72\x4A\xC6\x8D\xEA\x8D\x27\x38\x7B\x42\xEF\x4E\x01"
+			"\x8F\x22\x4A\x50\x4A\x89\x76\xAD\xB2\xB2\xAA\xC2\x5F\x25\xFF\xA3";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/ecies_secp512.dat", true, new HexDecoder);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Decryptor decryptor(keys);
+		ECIES<ECP,NoCofactorMultiplication,true, true>::Encryptor encryptor(decryptor);
+
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(156));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, 156, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+		pass = pass && !fail;
+
+		cout << (fail ? "FAILED    " : "passed    ");
+		cout << "P512 encryption and decryption\n";
+	}
+
+	return pass;
+}
+
+bool ValidateInteropDLIES()
+{
+	cout << "\nInteroperable DLIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=false) validation suite running...\n\n";
+
+	return true;
+}
+
+bool ValidateInteropECIES()
+{
+	cout << "\nInteroperable ECIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=false) validation suite running...\n\n";
+
+	return true;
+}

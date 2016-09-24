@@ -90,6 +90,13 @@ bool ValidateEC2N();
 bool ValidateECDSA();
 bool ValidateESIGN();
 
+// Added at Crypto++ 5.6.5 to ensure interop with past and present.
+bool ValidateLegacyDLIES();
+bool ValidateLegacyECIES();
+// Added at Crypto++ 5.6.5, uses Bouncy Castle generated test data
+bool ValidateInteropDLIES();
+bool ValidateInteropECIES();
+
 #if CRYPTOPP_DEBUG
 bool TestSecBlock();
 bool TestPolynomialMod2();

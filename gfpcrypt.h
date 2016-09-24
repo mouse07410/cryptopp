@@ -494,18 +494,27 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PublicKey_GFP<DL_GroupParameters_DSA>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_GFP<DL_GroupParameters_DSA>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_GFP<DL_GroupParameters_DSA>, DSA2<SHA> >;
 
-//! the XOR encryption method, for use with DL-based cryptosystems
-template <class MAC, bool DHAES_MODE>
+//! \class DL_EncryptionAlgorithm_Xor
+//! \brief P1363 based XOR Encryption Method
+//! \tparam MAC MessageAuthenticationCode derived class
+//! \tparam DHAES_MODE flag indicating DHAES mode
+//! \tparam LABEL_OCTETS flag indicating label octet count
+//! \details DL_EncryptionAlgorithm_Xor is based on an early P1363 draft, which itself appears to be based on an
+//!   early Certicom SEC1 draft (or an early SEC1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
+//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>. If you need this method for
+//!   compatibility, then use the ECIES_P1363 template class with <tt>NoCofactorMultiplication</tt> and <tt>DHAES_MODE=false</tt>.
+//! \since Cryto++ 4.0
+template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=true>
 class DL_EncryptionAlgorithm_Xor : public DL_SymmetricEncryptionAlgorithm
 {
 public:
 	bool ParameterSupported(const char *name) const {return strcmp(name, Name::EncodingParameters()) == 0;}
 	size_t GetSymmetricKeyLength(size_t plaintextLength) const
-		{return plaintextLength + MAC::DEFAULT_KEYLENGTH;}
+		{return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
 	size_t GetSymmetricCiphertextLength(size_t plaintextLength) const
-		{return plaintextLength + MAC::DIGESTSIZE;}
+		{return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
 	size_t GetMaxSymmetricPlaintextLength(size_t ciphertextLength) const
-		{return (unsigned int)SaturatingSubtract(ciphertextLength, (unsigned int)MAC::DIGESTSIZE);}
+		{return SaturatingSubtract(ciphertextLength, static_cast<size_t>(MAC::DIGESTSIZE));}
 	void SymmetricEncrypt(RandomNumberGenerator &rng, const byte *key, const byte *plaintext, size_t plaintextLength, byte *ciphertext, const NameValuePairs &parameters) const
 	{
 		CRYPTOPP_UNUSED(rng);
@@ -532,8 +541,8 @@ public:
 		mac.Update(encodingParameters.begin(), encodingParameters.size());
 		if (DHAES_MODE)
 		{
-			byte L[8] = {0,0,0,0,0,0,0,0};
-			PutWord(false, BIG_ENDIAN_ORDER, L, word64(encodingParameters.size()));
+			byte L[8];
+			PutWord(false, BIG_ENDIAN_ORDER, L, (LABEL_OCTETS ? word64(encodingParameters.size()) : 8 * word64(encodingParameters.size())));
 			mac.Update(L, 8);
 		}
 		mac.Final(ciphertext + plaintextLength);
@@ -561,8 +570,8 @@ public:
 		mac.Update(encodingParameters.begin(), encodingParameters.size());
 		if (DHAES_MODE)
 		{
-			byte L[8] = {0,0,0,0,0,0,0,0};
-			PutWord(false, BIG_ENDIAN_ORDER, L, word64(encodingParameters.size()));
+			byte L[8];
+			PutWord(false, BIG_ENDIAN_ORDER, L, (LABEL_OCTETS ? word64(encodingParameters.size()) : 8 * word64(encodingParameters.size())));
 			mac.Update(L, 8);
 		}
 		if (!mac.Verify(ciphertext + plaintextLength))
@@ -611,13 +620,13 @@ public:
 };
 
 //! Discrete Log Integrated Encryption Scheme, AKA <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">DLIES</a>
-template <class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true>
+template <class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
 struct DLIES
 	: public DL_ES<
 		DL_CryptoKeys_GFP,
 		DL_KeyAgreementAlgorithm_DH<Integer, COFACTOR_OPTION>,
 		DL_KeyDerivationAlgorithm_P1363<Integer, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE>,
+		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE, LABEL_OCTETS>,
 		DLIES<> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "DLIES";}	// TODO: fix this after name is standardized

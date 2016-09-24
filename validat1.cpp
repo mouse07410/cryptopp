@@ -167,6 +167,11 @@ bool ValidateAll(bool thorough)
 	pass=ValidateECDSA() && pass;
 	pass=ValidateESIGN() && pass;
 
+	pass=ValidateLegacyDLIES() && pass;
+	pass=ValidateLegacyECIES() && pass;
+	pass=ValidateInteropDLIES() && pass;
+	pass=ValidateInteropECIES() && pass;
+
 	if (pass)
 		cout << "\nAll tests passed!\n";
 	else
