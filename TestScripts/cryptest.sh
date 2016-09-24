@@ -4707,7 +4707,10 @@ if [[ ("$HAVE_X86_AES" -ne "0" || "$HAVE_X86_RDRAND" -ne "0" || "$HAVE_X86_RDSEE
 	echo "Testing: AES, RDRAND and RDSEED" | tee -a "$TEST_RESULTS"
 	echo
 
-	OPTS=("-march=native")
+	OPTS=()
+	if [[ ("$GCC_COMPILER" -ne "0") ]]; then
+		OPTS=("-march=native")
+	fi
 	if [[ "$HAVE_X86_AES" -ne "0" ]]; then
 		OPTS+=("-maes")
 	fi
@@ -5576,7 +5579,7 @@ if [[ ("$IS_CYGWIN" -eq "0") && ("$IS_MINGW" -eq "0") ]]; then
 			echo "************************************" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 			echo "Testing: Install (benchmarks)" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 			echo
-			./cryptest.exe b 1 2.4+1e9 2>&1 | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
+			./cryptest.exe b 1 "$CPU_FREQ" 2>&1 | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 			if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 				echo "ERROR: failed to execute benchmarks" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 			fi
