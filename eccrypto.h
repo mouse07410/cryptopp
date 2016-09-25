@@ -325,7 +325,7 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
 /*! Default to (NoCofactorMultiplication and DHAES_MODE = false) for compatibilty with SEC1 and Crypto++ 4.2.
 	The combination of (IncompatibleCofactorMultiplication and DHAES_MODE = true) is recommended for best
 	efficiency and security. */
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = false>
+template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,
@@ -340,13 +340,7 @@ struct ECIES
 	virtual ~ECIES() {}
 #endif
 
-#if (CRYPTOPP_GCC_VERSION >= 40500) || (CRYPTOPP_LLVM_CLANG_VERSION >= 20800)
-} __attribute__((deprecated ("ECIES will be changing in the near future due to (1) an implementation bug and (2) an interop issue")));
-#elif (CRYPTOPP_GCC_VERSION)
-} __attribute__((deprecated));
-#else
 };
-#endif
 
 NAMESPACE_END
 
