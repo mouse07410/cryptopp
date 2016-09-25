@@ -647,7 +647,7 @@ public:
 //! \details Below is an example of constructing a Crypto++ 4.2 compatible DLIES encryptor and decryptor.
 //! <pre>
 //!     AutoSeededRandomPool prng;
-//!     DL_PrivateKey_GFP<DL_GroupParameters_GFP> key;
+//!     DL_PrivateKey_GFP<DL_GroupParameters_GFP_DefaultSafePrime> key;
 //!     key.Initialize(prng, 2048);
 //!
 //!     DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(key);
