@@ -1109,7 +1109,7 @@ bool ValidateLegacyDLIES()
 	cout << "\nLegacy DLIES validation suite running...\n\n";
 
 	bool pass = true, fail;
-	static const char plain[] = "test";
+	static const char plain[] = "abc";
 
 	{
 		// 1024 modulus, SHA1
