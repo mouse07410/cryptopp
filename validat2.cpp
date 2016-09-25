@@ -1233,8 +1233,8 @@ bool ValidateLegacyDLIES()
 		// Pairwise testing
 		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
 	}
-#endif
 	return pass;
+#endif
 }
 
 // Test data generated with Crypto++ 5.6.2.
