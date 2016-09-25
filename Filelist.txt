@@ -319,8 +319,8 @@ TestData/cast256v.dat
 TestData/descert.dat
 TestData/dh1024.dat
 TestData/dh2048.dat
-TestData/dlie1024.dat
-TestData/dlie2048.dat
+TestData/dlies1024.dat
+TestData/dlies2048.dat
 TestData/dsa1024.dat
 TestData/dsa1024b.dat
 TestData/dsa512.dat

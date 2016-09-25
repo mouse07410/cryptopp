@@ -436,8 +436,9 @@ echo unless it undergoes FIPS validation.
     <None Include="TestData\descert.dat" />
     <None Include="TestData\dh1024.dat" />
     <None Include="TestData\dh2048.dat" />
-    <None Include="TestData\dlie1024.dat" />
-    <None Include="TestData\dlie2048.dat" />
+    <None Include="TestData\dlies1024.dat" />
+    <None Include="TestData\dlies2048.dat" />
+    <None Include="TestData\dlies3072.dat" />
     <None Include="TestData\dsa1024.dat" />
     <None Include="TestData\dsa1024b.dat" />
     <None Include="TestData\dsa512.dat" />
