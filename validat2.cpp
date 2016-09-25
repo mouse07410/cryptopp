@@ -1261,7 +1261,7 @@ bool ValidateLegacyECIES()
 	}
 
 	{
-		// secp512r1, SHA1
+		// secp521r1, SHA1
 		static const byte cipher[157] =
 			"\x04\x01\x00\x62\xC1\x03\x83\x8E\x96\x81\x27\xBA\x59\x27\x42\xF1\x9F\x5E\x00\x7F"
 			"\xD2\x0F\xE9\x46\xC3\xFE\x23\x14\xD1\xDF\xCF\xE8\x3A\x94\xDD\xEE\xDD\x3D\x25\x0C"
@@ -1280,7 +1280,7 @@ bool ValidateLegacyECIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 156, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "secp512r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "secp521r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
