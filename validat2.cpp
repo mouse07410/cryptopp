@@ -661,7 +661,7 @@ bool ValidateDLIES()
 	cout << "\nDLIES validation suite running...\n\n";
 	bool pass = true;
 	{
-		FileSource fc(CRYPTOPP_DATA_DIR "TestData/dlie1024.dat", true, new HexDecoder);
+		FileSource fc(CRYPTOPP_DATA_DIR "TestData/dlies1024.dat", true, new HexDecoder);
 		DLIES<>::Decryptor privC(fc);
 		DLIES<>::Encryptor pubC(privC);
 		pass = CryptoSystemValidate(privC, pubC) && pass;
@@ -1124,7 +1124,7 @@ bool ValidateLegacyDLIES()
 			"\x74\xCE\xBA\xD8\x80\xDB\x77\x58\x56\x4C\xF2\xF6\xCB\x47\xC3\xC0\x64\x1B\x1E\x09"
 			"\x49\xB1\xF3\x99\x0D\xB5\x11";
 
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies_512.dat", true, new HexDecoder);
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies512.dat", true, new HexDecoder);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
 
@@ -1150,7 +1150,7 @@ bool ValidateLegacyDLIES()
 			"\xA3\x3A\xED\xEF\x73\xB8\x54\xA0\x92\x2D\xB0\x47\xF1\x8A\x36\x32\x49\x1E\xBA\x90"
 			"\x56\x8D\xC4\x27\xFA\x48\x7F\x9E\x45\x39\x0A";
 
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies_1024.dat", true, new HexDecoder);
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies1024.dat", true, new HexDecoder);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
 
@@ -1182,7 +1182,7 @@ bool ValidateLegacyDLIES()
 			"\x5A\xF6\x1A\x68\x0E\xA9\xB6\xA0\x83\xC3\x29\x13\xEE\xDF\x04\xD4\xEC\xEA\x12\xDA"
 			"\x93\x9E\x96\x2A\xD5\xDA\xCC\x68\x49\xF1\x00\xC6\xC5\x64\xB4\xD8\x6B\xF3\x86";
 
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies_2048.dat", true, new HexDecoder);
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies2048.dat", true, new HexDecoder);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
 
@@ -1221,7 +1221,7 @@ bool ValidateLegacyDLIES()
 			"\x92\x5F\x28\xBA\x0C\x17\xDA\x53\xEC\x22\x97\x0D\x70\x42\x59\xAE\x00\x51\x9D\xFE"
 			"\x5D\x19\xAD\x58\x40\x71\x1B";
 
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies_3072.dat", true, new HexDecoder);
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies3072.dat", true, new HexDecoder);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
 

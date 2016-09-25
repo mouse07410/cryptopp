@@ -287,13 +287,13 @@ void BenchmarkAll2(double t, double hertz)
 	cout << "\n<TBODY style=\"background: yellow\">";
 	BenchMarkCrypto<RSAES<OAEP<SHA> > >(CRYPTOPP_DATA_DIR "TestData/rsa1024.dat", "RSA 1024", t);
 	BenchMarkCrypto<LUCES<OAEP<SHA> > >(CRYPTOPP_DATA_DIR "TestData/luc1024.dat", "LUC 1024", t);
-	BenchMarkCrypto<DLIES<> >(CRYPTOPP_DATA_DIR "TestData/dlie1024.dat", "DLIES 1024", t);
+	BenchMarkCrypto<DLIES<> >(CRYPTOPP_DATA_DIR "TestData/dlies1024.dat", "DLIES 1024", t);
 	BenchMarkCrypto<LUC_IES<> >(CRYPTOPP_DATA_DIR "TestData/lucc512.dat", "LUCELG 512", t);
 
 	cout << "\n<TBODY style=\"background: white\">";
 	BenchMarkCrypto<RSAES<OAEP<SHA> > >(CRYPTOPP_DATA_DIR "TestData/rsa2048.dat", "RSA 2048", t);
 	BenchMarkCrypto<LUCES<OAEP<SHA> > >(CRYPTOPP_DATA_DIR "TestData/luc2048.dat", "LUC 2048", t);
-	BenchMarkCrypto<DLIES<> >(CRYPTOPP_DATA_DIR "TestData/dlie2048.dat", "DLIES 2048", t);
+	BenchMarkCrypto<DLIES<> >(CRYPTOPP_DATA_DIR "TestData/dlies2048.dat", "DLIES 2048", t);
 	BenchMarkCrypto<LUC_IES<> >(CRYPTOPP_DATA_DIR "TestData/lucc1024.dat", "LUCELG 1024", t);
 
 	cout << "\n<TBODY style=\"background: yellow\">";
