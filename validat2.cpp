@@ -1112,30 +1112,6 @@ bool ValidateLegacyDLIES()
 
 #if 0
 	bool pass = true, fail;
-	static const char plain[4] = {'a','b','c'};
-
-	{
-		// 512 modulus, SHA1
-		static const size_t size = 358;
-		static const byte cipher[size+1] =
-			"\xB3\xAC\xCC\xA6\x3C\xC6\x9E\x2B\x12\x72\x9E\xEA\x7E\x50\xB0\xBE\xAC\xAF\x68\x57"
-			"\x2F\xD5\x62\xDB\xBB\xC3\x31\x4D\x91\x6F\x39\x55\x16\x31\x2D\xC5\x15\x6E\xE3\x60"
-			"\x21\x32\x0D\xF1\xA0\x43\x05\x4F\x8A\xB1\x05\xB2\x4B\x1F\xB6\x18\x04\x26\x04\x49"
-			"\x74\xCE\xBA\xD8\x80\xDB\x77\x58\x56\x4C\xF2\xF6\xCB\x47\xC3\xC0\x64\x1B\x1E\x09"
-			"\x49\xB1\xF3\x99\x0D\xB5\x11";
-
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies512.dat", true, new HexDecoder);
-		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
-		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
-
-		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
-		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
-		fail = fail || memcmp(plain, recovered, 3);
-		pass = pass && !fail;
-
-		// Pairwise testing
-		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
-	}
 
 	{
 		// 1024 modulus, SHA1
