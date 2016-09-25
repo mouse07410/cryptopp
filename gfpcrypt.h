@@ -494,18 +494,31 @@ CRYPTOPP_DLL_TEMPLATE_CLASS DL_PublicKey_GFP<DL_GroupParameters_DSA>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_GFP<DL_GroupParameters_DSA>;
 CRYPTOPP_DLL_TEMPLATE_CLASS DL_PrivateKey_WithSignaturePairwiseConsistencyTest<DL_PrivateKey_GFP<DL_GroupParameters_DSA>, DSA2<SHA> >;
 
-//! the XOR encryption method, for use with DL-based cryptosystems
-template <class MAC, bool DHAES_MODE>
+//! \class DL_EncryptionAlgorithm_Xor
+//! \brief P1363 based XOR Encryption Method
+//! \tparam MAC MessageAuthenticationCode derived class used for MAC computation
+//! \tparam DHAES_MODE flag indicating DHAES mode
+//! \tparam LABEL_OCTETS flag indicating the label is octet count
+//! \details DL_EncryptionAlgorithm_Xor is based on an early P1363 draft, which itself appears to be based on an
+//!   early Certicom SEC-1 draft (or an early SEC-1 draft was based on a P1363 draft). Crypto++ 4.2 used it in its Integrated
+//!   Ecryption Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Crypto++ 4.2 compatibility, then use the ECIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you need this method for Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the ECIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=ture</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters.
+//! \since Crypto++ 4.0
+template <class MAC, bool DHAES_MODE, bool LABEL_OCTETS=false>
 class DL_EncryptionAlgorithm_Xor : public DL_SymmetricEncryptionAlgorithm
 {
 public:
 	bool ParameterSupported(const char *name) const {return strcmp(name, Name::EncodingParameters()) == 0;}
 	size_t GetSymmetricKeyLength(size_t plaintextLength) const
-		{return plaintextLength + MAC::DEFAULT_KEYLENGTH;}
+		{return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
 	size_t GetSymmetricCiphertextLength(size_t plaintextLength) const
-		{return plaintextLength + MAC::DIGESTSIZE;}
+		{return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
 	size_t GetMaxSymmetricPlaintextLength(size_t ciphertextLength) const
-		{return (unsigned int)SaturatingSubtract(ciphertextLength, (unsigned int)MAC::DIGESTSIZE);}
+		{return SaturatingSubtract(ciphertextLength, static_cast<size_t>(MAC::DIGESTSIZE));}
 	void SymmetricEncrypt(RandomNumberGenerator &rng, const byte *key, const byte *plaintext, size_t plaintextLength, byte *ciphertext, const NameValuePairs &parameters) const
 	{
 		CRYPTOPP_UNUSED(rng);
@@ -532,8 +545,8 @@ public:
 		mac.Update(encodingParameters.begin(), encodingParameters.size());
 		if (DHAES_MODE)
 		{
-			byte L[8] = {0,0,0,0,0,0,0,0};
-			PutWord(false, BIG_ENDIAN_ORDER, L, word64(encodingParameters.size()));
+			byte L[8];
+			PutWord(false, BIG_ENDIAN_ORDER, L, (LABEL_OCTETS ? word64(encodingParameters.size()) : 8 * word64(encodingParameters.size())));
 			mac.Update(L, 8);
 		}
 		mac.Final(ciphertext + plaintextLength);
@@ -561,8 +574,8 @@ public:
 		mac.Update(encodingParameters.begin(), encodingParameters.size());
 		if (DHAES_MODE)
 		{
-			byte L[8] = {0,0,0,0,0,0,0,0};
-			PutWord(false, BIG_ENDIAN_ORDER, L, word64(encodingParameters.size()));
+			byte L[8];
+			PutWord(false, BIG_ENDIAN_ORDER, L, (LABEL_OCTETS ? word64(encodingParameters.size()) : 8 * word64(encodingParameters.size())));
 			mac.Update(L, 8);
 		}
 		if (!mac.Verify(ciphertext + plaintextLength))
@@ -610,14 +623,47 @@ public:
 #endif
 };
 
-//! Discrete Log Integrated Encryption Scheme, AKA <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">DLIES</a>
-template <class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true>
+//! \class DLIES
+//! \brief Discrete Log Integrated Encryption Scheme
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+//! \tparam HASH HashTransformation derived class used for key drivation and MAC computation
+//! \tparam DHAES_MODE flag indicating if the MAC includes addition context parameters such as the label
+//! \tparam LABEL_OCTETS flag indicating if the label size is specified in octets or bits
+//! \details DLIES is an Integer based Integrated Encryption Scheme (IES). The scheme combines a Key Encapsulation Method (KEM)
+//!   with a Data Encapsulation Method (DEM) and a MAC tag. The scheme is
+//!   <A HREF="http://en.wikipedia.org/wiki/ciphertext_indistinguishability">IND-CCA2</A>, which is a strong notion of security.
+//!   You should prefer an Integrated Encryption Scheme over homegrown schemes.
+//! \details The library's original implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
+//!   SEC-1 draft (or an early SEC-1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
+//!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Crypto++ 4.2 compatibility, then use the DLIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Bouncy Castle 1.55 and Botan 1.11 compatibility, then use the DLIES
+//!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details Bouncy Castle 1.55 and Botan 1.11 compatibility are the default template parameters. The combination of
+//!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//!   SHA1 is used for compatibility reasons, but it can be changed of if desired. SHA-256 or another hash will likely improve the
+//!   security provided by the MAC. The hash is also used in the key derivation function as a PRF.
+//! \details Below is an example of constructing a Crypto++ 4.2 compatible DLIES encryptor and decryptor.
+//! <pre>
+//!     AutoSeededRandomPool prng;
+//!     DL_PrivateKey_GFP<DL_GroupParameters_GFP_DefaultSafePrime> key;
+//!     key.Initialize(prng, 2048);
+//!
+//!     DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(key);
+//!     DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
+//! </pre>
+//! \sa ECIES, <a href="http://www.weidai.com/scan-mirror/ca.html#DLIES">Discrete Log Integrated Encryption Scheme (DLIES)</a>,
+//!   Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic
+//!   Curve Integrated Encryption Schemes</A>
+//! \since Crypto++ 4.0
+template <class HASH = SHA1, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS=false>
 struct DLIES
 	: public DL_ES<
 		DL_CryptoKeys_GFP,
 		DL_KeyAgreementAlgorithm_DH<Integer, COFACTOR_OPTION>,
-		DL_KeyDerivationAlgorithm_P1363<Integer, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE>,
+		DL_KeyDerivationAlgorithm_P1363<Integer, DHAES_MODE, P1363_KDF2<HASH> >,
+		DL_EncryptionAlgorithm_Xor<HMAC<HASH>, DHAES_MODE, LABEL_OCTETS>,
 		DLIES<> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "DLIES";}	// TODO: fix this after name is standardized

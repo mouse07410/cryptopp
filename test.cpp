@@ -963,6 +963,8 @@ bool Validate(int alg, bool thorough, const char *seedInput)
 	case 70: result = ValidateHKDF(); break;
 	case 71: result = ValidateBLAKE2s(); break;
 	case 72: result = ValidateBLAKE2b(); break;
+	case 73: result = ValidateLegacyDLIES(); break;
+	case 74: result = ValidateLegacyECIES(); break;
 	default: return false;
 	}
 
