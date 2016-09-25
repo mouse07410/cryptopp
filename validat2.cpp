@@ -1106,12 +1106,10 @@ bool ValidateESIGN()
 // Test data generated with Crypto++ 5.6.2.
 bool ValidateLegacyDLIES()
 {
-	cout << "\nLegacy DLIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
+	cout << "\nLegacy DLIES validation suite running...\n\n";
 
-	return true;
-
-#if 0
 	bool pass = true, fail;
+	static const char plain[] = "test";
 
 	{
 		// 1024 modulus, SHA1
@@ -1133,6 +1131,8 @@ bool ValidateLegacyDLIES()
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "1024-bit, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1162,61 +1162,26 @@ bool ValidateLegacyDLIES()
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
 		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
 
+#if 0
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "2048-bit, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
-
-		// Pairwise testing
-		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
-	}
-
-	{
-		// 3072 modulus, SHA1
-		static const size_t size = 1670;
-		static const byte cipher[size+1] =
-			"\x07\x9F\xD3\x15\x4C\x7C\x15\xEE\xD1\x39\x5E\xC1\xC4\xDF\x34\x22\x84\x49\xEC\x68"
-			"\x8C\xC0\x67\xBA\x58\xCD\x8F\x74\x7A\xE6\x9B\xB2\xF5\x3F\x4A\x18\x9A\xCD\x8C\xA0"
-			"\x3D\xC1\xED\xF7\xE6\x1F\x28\xF8\x2C\xAB\x97\xEE\xE5\x28\xF8\x5C\x42\x65\xCC\x8D"
-			"\x25\xCF\x9C\x44\x45\xF9\x48\x63\x98\x78\xD5\xE3\x62\x6D\xE2\x2B\x7B\x80\xAD\x11"
-			"\x1C\xF3\x9B\xD9\xC9\x86\xCD\xCA\x52\x55\xFF\x6B\x66\x7B\x48\x62\x82\x28\x21\x1F"
-			"\x2C\x41\xAE\xBC\x5B\x77\x92\xEC\xA3\xD9\x08\xD5\x9B\x6D\xA1\x1A\xC2\xAB\x42\x26"
-			"\xBD\x98\x7E\xAE\x1F\xD1\x29\x4B\x43\x0A\x68\x4B\xA3\x37\x02\xDD\x49\x24\xD4\x47"
-			"\x70\x11\xC4\x05\x65\xAE\xBE\x10\xA9\xB5\xFE\x43\x19\x96\x1E\x67\xD6\x5F\x6C\x6B"
-			"\xFC\x6B\xB3\xAA\x05\x1D\x51\xA4\xAC\x21\xC0\x18\xD0\xCD\x2D\x2D\x82\x69\x7F\x13"
-			"\xC7\x84\x96\x0F\x1B\xC8\x8F\x0E\xCE\xF3\xB2\xE6\x0E\x08\x4A\xE5\x3B\xBA\x94\xE2"
-			"\xBB\xEC\xE4\x39\x8C\x31\xFB\xF4\xA7\x2D\x61\x0F\x2E\x42\x16\x9C\x5C\x84\x55\x35"
-			"\x25\xE8\xC0\xF9\x11\x5D\xC0\x7C\x8C\x3C\x6D\xFA\x9E\x89\xD5\x7F\xC4\xD8\x30\x79"
-			"\xFD\x2E\xC0\x70\x99\xD5\x2B\x80\xD9\x19\x86\xC2\x24\x09\x53\x3C\xDA\x6D\xF5\x97"
-			"\x66\x5A\x1C\xC0\xD9\xA9\x7C\xE9\xF9\x08\xE1\x2F\xE3\xA7\x31\x72\x39\x60\x9E\x16"
-			"\x84\xAD\xD1\xCE\xA1\xB6\xA7\xC4\xB1\x30\x34\x42\x3F\x7D\x79\x52\xEC\x68\xA2\x04"
-			"\x39\x37\x48\xB5\x85\x1F\x26\x35\x1D\x90\x0C\x61\x15\xA4\xA7\x64\x5D\xBD\xD1\x68"
-			"\x26\x8B\xD7\x0D\x2A\x72\x6F\x9C\x4F\x44\xAF\xB8\xDF\xB4\xC9\xFF\x89\x41\xE5\xA3"
-			"\x7D\x3B\xE8\x24\x4E\x42\x6B\x51\x90\x58\x22\x19\xFC\xE7\x58\x24\x59\x98\xD3\x6A"
-			"\xB1\xB7\x02\xDC\x03\xF4\xF3\x5E\x09\x32\xD5\x8A\x2D\x6F\x8C\xD4\xED\xF5\x0F\xBF"
-			"\x92\x5F\x28\xBA\x0C\x17\xDA\x53\xEC\x22\x97\x0D\x70\x42\x59\xAE\x00\x51\x9D\xFE"
-			"\x5D\x19\xAD\x58\x40\x71\x1B";
-
-		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies3072.dat", true, new HexDecoder);
-		DLIES<SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(keys);
-		DLIES<SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
-
-		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
-		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
-		fail = fail || memcmp(plain, recovered, 3);
-		pass = pass && !fail;
-
-		// Pairwise testing
-		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
-	}
-	return pass;
 #endif
+
+		// Pairwise testing
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
+	}
+
+	return pass;
 }
 
 // Test data generated with Crypto++ 5.6.2.
 bool ValidateLegacyECIES()
 {
-	cout << "\nLegacy ECIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=true) validation suite running...\n\n";
+	cout << "\nLegacy ECIES validation suite running...\n\n";
 
 	bool pass = true, fail;
 	static const char plain[4] = {'a','b','c'};
@@ -1236,6 +1201,8 @@ bool ValidateLegacyECIES()
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(64));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 64, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "secp160r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1258,6 +1225,8 @@ bool ValidateLegacyECIES()
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(88));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 88, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "secp256r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1281,6 +1250,8 @@ bool ValidateLegacyECIES()
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(120));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 120, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "secp384r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1306,6 +1277,8 @@ bool ValidateLegacyECIES()
 		SecByteBlock recovered(decryptor.MaxPlaintextLength(156));
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 156, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "secp512r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1317,14 +1290,14 @@ bool ValidateLegacyECIES()
 
 bool ValidateInteropDLIES()
 {
-	cout << "\nInteroperable DLIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=false) validation suite running...\n\n";
+	cout << "\nInteroperable DLIES validation suite running...\n\n";
 
 	return true;
 }
 
 bool ValidateInteropECIES()
 {
-	cout << "\nInteroperable ECIES (NoCofactorMultiplication, DHAES_MODE=true, LABEL_OCTET=false) validation suite running...\n\n";
+	cout << "\nInteroperable ECIES validation suite running...\n\n";
 
 	return true;
 }
