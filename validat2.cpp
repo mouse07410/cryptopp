@@ -1133,7 +1133,7 @@ bool ValidateLegacyDLIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "1024-bit, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "1024-bit, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 #endif
 
@@ -1169,7 +1169,82 @@ bool ValidateLegacyDLIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "2048-bit, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "2048-bit, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
+		pass = pass && !fail;
+#endif
+
+		// Pairwise testing
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
+	}
+		
+	{
+		// 1024 modulus, SHA1
+		static const size_t size = 620;
+		static const byte cipher[size+1] =
+			"\x17\x48\x21\x11\xC8\x87\xDB\x41\x9A\x75\x6D\x1B\xF4\xCB\x8A\x82\xA2\x65\x87"
+			"\x9F\xFA\xCB\x07\x8C\xBE\x22\x08\x90\x71\xA4\xB8\xC1\xD8\x44\x33\x03\xF7\x5F"
+			"\xEA\x18\x57\xA9\x95\xD1\x8A\xC5\x29\x8F\xF8\x48\x04\x63\xC7\x43\xDD\x34\x04"
+			"\x56\x4C\xD4\xC3\x4A\x98\xC0\x8C\x3E\xC4\x7B\xE3\x6B\xE1\x01\x2D\xBA\xFB\x9E"
+			"\x91\xD8\xFC\x54\x69\x75\x79\x0C\xE6\x4D\xF2\x86\xAC\xBF\x14\x04\x95\x51\xBA"
+			"\x27\xD3\xEF\x41\x76\x9B\xDF\x74\x71\xC8\x72\x34\xA7\xF2\x79\x6A\x88\x17\x11"
+			"\x29\xCF\xD4\xE3\xCC\x00\xAE\x5A\x1A\x11\x22\x9F\x7C\xCA\xD0\x18\xA5\x66\x9A"
+			"\x99\x62\x28\xFE\x33\xA5\xC0\x24\xF2\xCE\x06\xF7\xA6\x1C\x97\x28\x13\x6E";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies1024.dat", true, new HexDecoder);
+		DLIES<SHA1,CompatibleCofactorMultiplication,true,true>::Decryptor decryptor(keys);
+		DLIES<SHA1,CompatibleCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
+
+#if 0
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "1024-bit, CompatibleCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
+		pass = pass && !fail;
+#endif
+
+		// Pairwise testing
+		pass = CryptoSystemValidate(decryptor, encryptor) && pass;
+	}
+
+	{
+		// 2048 modulus, SHA1
+		static const size_t size = 1144;
+		static const byte cipher[size+1] =
+			"\x17\x48\x21\x11\xC8\x87\xDB\x41\x9A\x75\x6D\x1B\xF4\xCB\x8A\x82\xA2\x65\x87"
+			"\x9F\xFA\xCB\x07\x8C\xBE\x22\x08\x90\x71\xA4\xB8\xC1\xD8\x44\x33\x03\xF7\x5F"
+			"\xEA\x18\x57\xA9\x95\xD1\x8A\xC5\x29\x8F\xF8\x48\x04\x63\xC7\x43\xDD\x34\x04"
+			"\x56\x4C\xD4\xC3\x4A\x98\xC0\x8C\x3E\xC4\x7B\xE3\x6B\xE1\x01\x2D\xBA\xFB\x9E"
+			"\x91\xD8\xFC\x54\x69\x75\x79\x0C\xE6\x4D\xF2\x86\xAC\xBF\x14\x04\x95\x51\xBA"
+			"\x27\xD3\xEF\x41\x76\x9B\xDF\x74\x71\xC8\x72\x34\xA7\xF2\x79\x6A\x88\x17\x11"
+			"\x29\xCF\xD4\xE3\xCC\x00\xAE\x5A\x1A\x11\x22\x9F\x7C\xCA\xD0\x18\xA5\x66\x9A"
+			"\x99\x62\x28\xFE\x33\xA5\xC0\x24\xF2\xCE\x06\xF7\xA6\x1C\x97\x28\x13\x6E\x77"
+			"\xFB\x87\x81\xC8\xC1\xF4\xC4\x1C\x90\x09\x09\x00\x3B\x78\x16\xAA\x38\x21\xD3"
+			"\x71\x93\xFB\x5E\x2E\xD6\xC5\x74\x40\xDC\x2E\xE7\x0F\x2A\x2E\x38\x82\xC5\xB1"
+			"\x9F\x27\xEC\x93\x34\x98\x67\x3A\x63\x98\xF8\xD0\x56\x75\x34\x52\x1F\x9D\xAA"
+			"\x1C\xF7\x3A\x17\x61\xD8\xE4\x94\x1C\x57\xEC\x20\xDF\xA8\x09\xA4\x73\xDD\x8A"
+			"\xD5\xBC\x8B\x0A\x22\x18\x32\xB6\x41\xEE\x74\xC9\x27\xB5\xC6\xCA\xB7\x6D\x1E"
+			"\x7A\x8F\x04\x61\xFB\x00\x25\xB3\xDC\xDE\xB9\xDA\xA8\xA5\x39\x54\x08\x59\x12"
+			"\xD2\x68\xA9\xAC\x90\x12\x2C\x96\xED\x8D\x4A\x7E\xAC\x9E\xF2\xA7\x1B\xCF\x47"
+			"\xEE\x85\x2A\x1C\x42\x97\x5E\xF9\x04\xFE\x1B\x2B\x06\x7C\xE0\xC5\x2C\xA7\xD9"
+			"\x76\x3B\x00\x7A\xF6\x78\xC1\xE4\x15\x2A\x29\xC4\xB8\x5B\xF6\xD7\x61\xE0\xDF"
+			"\xE4\x61\xA8\xA8\xDC\x45\xEE\x2A\x07\x71\x4E\xF3\xBB\xA3\x15\xFC\x28\x0D\xF3"
+			"\x1F\x88\x76\xCC\x56\xA9\xBE\xB6\x47\x0C\x94\xA3\x37\x3C\xDB\x22\xD5\x8E\x1A"
+			"\x2A\x23\xAE\xCC\x4A\xFC\x52\x6B\x3A\x37\xF8\xF3\x71\x4E\x51\x3B\x1B\xED\x5B"
+			"\x08\x21\x5F\x27\x96\xD7\x80\xD0\x6B\x0F\xD8\xB3\x0B\xAB\x48\xB4\x42\xC0\xFA"
+			"\x25\x9E\x32\x79\x87\x61\x68\x28\x6F\x18\x77\xD8\x12\xA8\xED\x3D\xE7\xC6\xAE"
+			"\xA8\xBE\xDC\xF6\x72\x33\xDD\x01\xAB\xE2\x34\xAB";
+
+		FileSource keys(CRYPTOPP_DATA_DIR "TestData/dlies2048.dat", true, new HexDecoder);
+		DLIES<SHA1,CompatibleCofactorMultiplication,true,true>::Decryptor decryptor(keys);
+		DLIES<SHA1,CompatibleCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
+
+#if 0
+		SecByteBlock recovered(decryptor.MaxPlaintextLength(size));
+		fail = decryptor.Decrypt(GlobalRNG(), cipher, size, recovered) != DecodingResult(3);
+		fail = fail || memcmp(plain, recovered, 3);
+
+		cout << (fail ? "FAILED    " : "passed    ") << "2048-bit, CompatibleCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 #endif
 
@@ -1204,7 +1279,7 @@ bool ValidateLegacyECIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 64, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "secp160r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "secp160r1, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1228,7 +1303,7 @@ bool ValidateLegacyECIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 88, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "secp256r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "secp256r1, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1253,7 +1328,7 @@ bool ValidateLegacyECIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 120, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "secp384r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "secp384r1, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
@@ -1280,7 +1355,7 @@ bool ValidateLegacyECIES()
 		fail = decryptor.Decrypt(GlobalRNG(), cipher, 156, recovered) != DecodingResult(3);
 		fail = fail || memcmp(plain, recovered, 3);
 
-		cout << (fail ? "FAILED    " : "passed    ") << "secp521r1, NoCofactorMultiplication,DHAES_MODE=true,LABEL_OCTET=true\n";
+		cout << (fail ? "FAILED    " : "passed    ") << "secp521r1, NoCofactorMult,DHAES_MODE=true,LABEL_OCTET=true\n";
 		pass = pass && !fail;
 
 		// Pairwise testing
