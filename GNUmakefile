@@ -432,7 +432,7 @@ endif
 OBJS := $(SRCS:.cpp=.o)
 
 # List test.cpp first to tame C++ static initialization problems.
-TESTSRCS := test.cpp bench1.cpp bench2.cpp validat1.cpp validat2.cpp validat3.cpp adhoc.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp
+TESTSRCS := test.cpp bench1.cpp bench2.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp adhoc.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp
 TESTOBJS := $(TESTSRCS:.cpp=.o)
 LIBOBJS := $(filter-out $(TESTOBJS),$(OBJS))
 
