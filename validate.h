@@ -2,6 +2,7 @@
 #define CRYPTOPP_VALIDATE_H
 
 #include "cryptlib.h"
+#include "pubkey.h"
 #include <iostream>
 #include <iomanip>
 
@@ -135,6 +136,7 @@ private:
 // Functions that need a RNG; uses AES inf CFB mode with Seed.
 CryptoPP::RandomNumberGenerator & GlobalRNG();
 
+bool CryptoSystemValidate(CryptoPP::PK_Decryptor &priv, CryptoPP::PK_Encryptor &pub, bool thorough = false);
 bool RunTestDataFile(const char *filename, const CryptoPP::NameValuePairs &overrideParameters=CryptoPP::g_nullNameValuePairs, bool thorough=true);
 
 #endif

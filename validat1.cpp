@@ -68,7 +68,6 @@
 #endif
 
 USING_NAMESPACE(CryptoPP)
-USING_NAMESPACE(std)
 
 bool ValidateAll(bool thorough)
 {
@@ -173,9 +172,9 @@ bool ValidateAll(bool thorough)
 	pass=ValidateInteropECIES() && pass;
 
 	if (pass)
-		cout << "\nAll tests passed!\n";
+		std::cout << "\nAll tests passed!\n";
 	else
-		cout << "\nOops!  Not all tests passed.\n";
+		std::cout << "\nOops!  Not all tests passed.\n";
 
 	return pass;
 }
@@ -189,7 +188,7 @@ bool TestSettings()
 
 	bool pass = true;
 
-	cout << "\nTesting Settings...\n\n";
+	std::cout << "\nTesting Settings...\n\n";
 
 	word32 w;
 	memcpy_s(&w, sizeof(w), "\x01\x02\x03\x04", 4);
@@ -197,26 +196,26 @@ bool TestSettings()
 	if (w == 0x04030201L)
 	{
 #ifdef IS_LITTLE_ENDIAN
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 #else
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 #endif
-		cout << "Your machine is little endian.\n";
+		std::cout << "Your machine is little endian.\n";
 	}
 	else if (w == 0x01020304L)
 	{
 #ifndef IS_LITTLE_ENDIAN
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 #else
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 #endif
-		cout << "Your machine is big endian.\n";
+		std::cout << "Your machine is big endian.\n";
 	}
 	else
 	{
-		cout << "FAILED:  Your machine is neither big endian nor little endian.\n";
+		std::cout << "FAILED:  Your machine is neither big endian nor little endian.\n";
 		pass = false;
 	}
 
@@ -224,61 +223,61 @@ bool TestSettings()
 	// Don't CRYPTOPP_ASSERT the alignment of testvals. That's what this test is for.
 	byte testvals[10] = {1,2,2,3,3,3,3,2,2,1};
 	if (*(word32 *)(void *)(testvals+3) == 0x03030303 && *(word64 *)(void *)(testvals+1) == W64LIT(0x0202030303030202))
-		cout << "passed:  Your machine allows unaligned data access.\n";
+		std::cout << "passed:  Your machine allows unaligned data access.\n";
 	else
 	{
-		cout << "FAILED:  Unaligned data access gave incorrect results.\n";
+		std::cout << "FAILED:  Unaligned data access gave incorrect results.\n";
 		pass = false;
 	}
 #else
-	cout << "passed:  CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS is not defined. Will restrict to aligned data access.\n";
+	std::cout << "passed:  CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS is not defined. Will restrict to aligned data access.\n";
 #endif
 
 	if (sizeof(byte) == 1)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(byte) == " << sizeof(byte) << endl;
+	std::cout << "sizeof(byte) == " << sizeof(byte) << std::endl;
 
 	if (sizeof(word16) == 2)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(word16) == " << sizeof(word16) << endl;
+	std::cout << "sizeof(word16) == " << sizeof(word16) << std::endl;
 
 	if (sizeof(word32) == 4)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(word32) == " << sizeof(word32) << endl;
+	std::cout << "sizeof(word32) == " << sizeof(word32) << std::endl;
 
 	if (sizeof(word64) == 8)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(word64) == " << sizeof(word64) << endl;
+	std::cout << "sizeof(word64) == " << sizeof(word64) << std::endl;
 
 #ifdef CRYPTOPP_WORD128_AVAILABLE
 	if (sizeof(word128) == 16)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(word128) == " << sizeof(word128) << endl;
+	std::cout << "sizeof(word128) == " << sizeof(word128) << std::endl;
 #endif
 
 	if (sizeof(word) == 2*sizeof(hword)
@@ -286,17 +285,17 @@ bool TestSettings()
 		&& sizeof(dword) == 2*sizeof(word)
 #endif
 		)
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 	else
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
-	cout << "sizeof(hword) == " << sizeof(hword) << ", sizeof(word) == " << sizeof(word);
+	std::cout << "sizeof(hword) == " << sizeof(hword) << ", sizeof(word) == " << sizeof(word);
 #ifdef CRYPTOPP_NATIVE_DWORD_AVAILABLE
-	cout << ", sizeof(dword) == " << sizeof(dword);
+	std::cout << ", sizeof(dword) == " << sizeof(dword);
 #endif
-	cout << endl;
+	std::cout << std::endl;
 
 #ifdef CRYPTOPP_CPUID_AVAILABLE
 	bool hasMMX = HasMMX();
@@ -309,15 +308,15 @@ bool TestSettings()
 
 	if ((isP4 && (!hasMMX || !hasSSE2)) || (hasSSE2 && !hasMMX) || (cacheLineSize < 16 || cacheLineSize > 256 || !IsPowerOf2(cacheLineSize)))
 	{
-		cout << "FAILED:  ";
+		std::cout << "FAILED:  ";
 		pass = false;
 	}
 	else
-		cout << "passed:  ";
+		std::cout << "passed:  ";
 
-	cout << "hasMMX == " << hasMMX << ", hasISSE == " << hasISSE << ", hasSSE2 == " << hasSSE2 << ", hasSSSE3 == " << hasSSSE3 << ", hasSSE4 == " << hasSSE4;
-	cout << ", hasAESNI == " << HasAESNI() << ", hasCLMUL == " << HasCLMUL() << ", hasRDRAND == " << HasRDRAND() << ", hasRDSEED == " << HasRDSEED();
-	cout << ", isP4 == " << isP4 << ", cacheLineSize == " << cacheLineSize << endl;
+	std::cout << "hasMMX == " << hasMMX << ", hasISSE == " << hasISSE << ", hasSSE2 == " << hasSSE2 << ", hasSSSE3 == " << hasSSSE3 << ", hasSSE4 == " << hasSSE4;
+	std::cout << ", hasAESNI == " << HasAESNI() << ", hasCLMUL == " << HasCLMUL() << ", hasRDRAND == " << HasRDRAND() << ", hasRDSEED == " << HasRDSEED();
+	std::cout << ", isP4 == " << isP4 << ", cacheLineSize == " << cacheLineSize << std::endl;
 
 #elif (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 	bool hasNEON = HasNEON();
@@ -327,13 +326,13 @@ bool TestSettings()
 	bool hasSHA1 = HasSHA1();
 	bool hasSHA2 = HasSHA2();
 
-	cout << "passed:  ";
-	cout << "hasNEON == " << hasNEON << ", hasPMULL == " << hasPMULL << ", hasCRC32 == " << hasCRC32 << ", hasAES == " << hasAES << ", hasSHA1 == " << hasSHA1 << ", hasSHA2 == " << hasSHA2 << endl;
+	std::cout << "passed:  ";
+	std::cout << "hasNEON == " << hasNEON << ", hasPMULL == " << hasPMULL << ", hasCRC32 == " << hasCRC32 << ", hasAES == " << hasAES << ", hasSHA1 == " << hasSHA1 << ", hasSHA2 == " << hasSHA2 << std::endl;
 #endif
 
 	if (!pass)
 	{
-		cout << "Some critical setting in config.h is in error.  Please fix it and recompile." << endl;
+		std::cout << "Some critical setting in config.h is in error.  Please fix it and recompile." << std::endl;
 		abort();
 	}
 	return pass;
@@ -342,7 +341,7 @@ bool TestSettings()
 #if CRYPTOPP_DEBUG && !defined(CRYPTOPP_IMPORTS)
 bool TestSecBlock()
 {
-	cout << "\nTesting SecBlock...\n\n";
+	std::cout << "\nTesting SecBlock...\n\n";
 
 	bool pass1=true, pass2=true, pass3=true, pass4=true, pass5=true, pass6=true, pass7=true, temp=false;
 
@@ -358,10 +357,10 @@ bool TestSecBlock()
 
 		pass1 &= temp;
 		if (!temp)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  Zeroized byte array" << endl;
+			std::cout << "passed:";
+		std::cout << "  Zeroized byte array" << std::endl;
 
 		SecBlock<word32> z2(NULL, 256);
 		temp = true;
@@ -371,10 +370,10 @@ bool TestSecBlock()
 
 		pass1 &= temp;
 		if (!temp)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  Zeroized word32 array" << endl;
+			std::cout << "passed:";
+		std::cout << "  Zeroized word32 array" << std::endl;
 
 		SecBlock<word64> z3(NULL, 256);
 		temp = true;
@@ -384,10 +383,10 @@ bool TestSecBlock()
 
 		pass1 &= temp;
 		if (!temp)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  Zeroized word64 array" << endl;
+			std::cout << "passed:";
+		std::cout << "  Zeroized word64 array" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 		SecBlock<word128> z4(NULL, 256);
@@ -398,10 +397,10 @@ bool TestSecBlock()
 
 		pass1 &= temp;
 		if (!temp)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  Zeroized word128 array" << endl;
+			std::cout << "passed:";
+		std::cout << "  Zeroized word128 array" << std::endl;
 #endif
 	}
 
@@ -435,10 +434,10 @@ bool TestSecBlock()
 
 	pass2 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Assign byte" << endl;
+		std::cout << "passed:";
+	std::cout << "  Assign byte" << std::endl;
 
 	try
 	{
@@ -470,10 +469,10 @@ bool TestSecBlock()
 
 	pass2 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Assign word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  Assign word32" << std::endl;
 
 	try
 	{
@@ -505,10 +504,10 @@ bool TestSecBlock()
 
 	pass2 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Assign word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  Assign word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	try
@@ -541,10 +540,10 @@ bool TestSecBlock()
 
 	pass2 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Assign word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  Assign word128" << std::endl;
 #endif
 
 	//********** Append **********//
@@ -587,10 +586,10 @@ bool TestSecBlock()
 
 	pass3 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Append byte" << endl;
+		std::cout << "passed:";
+	std::cout << "  Append byte" << std::endl;
 
 	try
 	{
@@ -632,10 +631,10 @@ bool TestSecBlock()
 
 	pass3 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Append word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  Append word32" << std::endl;
 
 	try
 	{
@@ -677,10 +676,10 @@ bool TestSecBlock()
 
 	pass3 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Append word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  Append word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	try
@@ -723,10 +722,10 @@ bool TestSecBlock()
 
 	pass3 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Append word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  Append word128" << std::endl;
 #endif
 
 	//********** Concatenate **********//
@@ -762,10 +761,10 @@ bool TestSecBlock()
 
 	pass4 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Concatenate byte" << endl;
+		std::cout << "passed:";
+	std::cout << "  Concatenate byte" << std::endl;
 
 	// word32
 	try
@@ -800,10 +799,10 @@ bool TestSecBlock()
 
 	pass4 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Concatenate word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  Concatenate word32" << std::endl;
 
 	// word64
 	try
@@ -838,10 +837,10 @@ bool TestSecBlock()
 
 	pass4 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Concatenate word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  Concatenate word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	try
@@ -876,10 +875,10 @@ bool TestSecBlock()
 
 	pass4 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Concatenate word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  Concatenate word128" << std::endl;
 #endif
 
 	//********** Equality **********//
@@ -917,10 +916,10 @@ bool TestSecBlock()
 
 	pass5 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Equality byte" << endl;
+		std::cout << "passed:";
+	std::cout << "  Equality byte" << std::endl;
 
 	// word32
 	try
@@ -955,10 +954,10 @@ bool TestSecBlock()
 
 	pass5 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Equality word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  Equality word32" << std::endl;
 
 	// word64
 	try
@@ -993,10 +992,10 @@ bool TestSecBlock()
 
 	pass5 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Equality word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  Equality word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	// word128
@@ -1032,10 +1031,10 @@ bool TestSecBlock()
 
 	pass5 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Equality word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  Equality word128" << std::endl;
 #endif
 
 	//********** Allocator Size/Overflow **********//
@@ -1059,10 +1058,10 @@ bool TestSecBlock()
 
 	pass6 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Overflow word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  Overflow word32" << std::endl;
 
 	try
 	{
@@ -1083,10 +1082,10 @@ bool TestSecBlock()
 
 	pass6 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Overflow word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  Overflow word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	try
@@ -1108,10 +1107,10 @@ bool TestSecBlock()
 
 	pass6 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  Overflow word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  Overflow word128" << std::endl;
 #endif
 
 	//********** FixedSizeAllocatorWithCleanup and Grow **********//
@@ -1148,10 +1147,10 @@ bool TestSecBlock()
 
 	pass7 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  FixedSizeAllocator Grow with byte" << endl;
+		std::cout << "passed:";
+	std::cout << "  FixedSizeAllocator Grow with byte" << std::endl;
 
 	// word32
 	try
@@ -1186,10 +1185,10 @@ bool TestSecBlock()
 
 	pass7 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  FixedSizeAllocator Grow with word32" << endl;
+		std::cout << "passed:";
+	std::cout << "  FixedSizeAllocator Grow with word32" << std::endl;
 
 	// word64
 	try
@@ -1224,10 +1223,10 @@ bool TestSecBlock()
 
 	pass7 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  FixedSizeAllocator Grow with word64" << endl;
+		std::cout << "passed:";
+	std::cout << "  FixedSizeAllocator Grow with word64" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
 	// word128
@@ -1263,10 +1262,10 @@ bool TestSecBlock()
 
 	pass7 &= temp;
 	if (!temp)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  FixedSizeAllocator Grow with word128" << endl;
+		std::cout << "passed:";
+	std::cout << "  FixedSizeAllocator Grow with word128" << std::endl;
 #endif
 
 	return pass1 && pass2 && pass3 && pass4 && pass5 && pass6 && pass7;
@@ -1276,7 +1275,7 @@ bool TestSecBlock()
 #if CRYPTOPP_DEBUG && !defined(CRYPTOPP_IMPORTS)
 bool TestHuffmanCodes()
 {
-    cout << "\nTesting Huffman codes...\n\n";
+    std::cout << "\nTesting Huffman codes...\n\n";
 	bool pass=true;
 
     static const size_t nCodes = 30;
@@ -1302,10 +1301,10 @@ bool TestHuffmanCodes()
     }
 
 	if (!pass)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  GenerateCodeLengths" << endl;
+		std::cout << "passed:";
+	std::cout << "  GenerateCodeLengths" << std::endl;
 
     return pass;
 }
@@ -1324,7 +1323,7 @@ bool TestOS_RNG()
 
 	if (rng.get())
 	{
-		cout << "\nTesting operating system provided blocking random number generator...\n\n";
+		std::cout << "\nTesting operating system provided blocking random number generator...\n\n";
 
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		RandomNumberSource test(*rng, UINT_MAX, false, new Deflator(new Redirector(meter)));
@@ -1342,12 +1341,12 @@ bool TestOS_RNG()
 
 		if (total < 16)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			pass = false;
 		}
 		else
-			cout << "passed:";
-		cout << "  it took " << long(t1) << " seconds to generate " << total << " bytes" << endl;
+			std::cout << "passed:";
+		std::cout << "  it took " << long(t1) << " seconds to generate " << total << " bytes" << std::endl;
 
 #if 0	// disable this part. it's causing an unpredictable pause during the validation testing
 		if (t1 < 2)
@@ -1372,12 +1371,12 @@ bool TestOS_RNG()
 			}
 			if (length > 1024)
 			{
-				cout << "FAILED:";
+				std::cout << "FAILED:";
 				pass = false;
 			}
 			else
-				cout << "passed:";
-			cout << "  it generated " << length << " bytes in " << long(time(NULL) - t) << " seconds" << endl;
+				std::cout << "passed:";
+			std::cout << "  it generated " << length << " bytes in " << long(time(NULL) - t) << " seconds" << std::endl;
 		}
 #endif
 
@@ -1385,15 +1384,15 @@ bool TestOS_RNG()
 
 		if (meter.GetTotalBytes() < total)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			pass = false;
 		}
 		else
-			cout << "passed:";
-		cout << "  " << total << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << endl;
+			std::cout << "passed:";
+		std::cout << "  " << total << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << std::endl;
 	}
 	else
-		cout << "\nNo operating system provided blocking random number generator, skipping test." << endl;
+		std::cout << "\nNo operating system provided blocking random number generator, skipping test." << std::endl;
 
 	rng.reset(NULL);
 #ifdef NONBLOCKING_RNG_AVAILABLE
@@ -1403,22 +1402,22 @@ bool TestOS_RNG()
 
 	if (rng.get())
 	{
-		cout << "\nTesting operating system provided nonblocking random number generator...\n\n";
+		std::cout << "\nTesting operating system provided nonblocking random number generator...\n\n";
 
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		RandomNumberSource test(*rng, 100000, true, new Deflator(new Redirector(meter)));
 
 		if (meter.GetTotalBytes() < 100000)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			pass = false;
 		}
 		else
-			cout << "passed:";
-		cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << endl;
+			std::cout << "passed:";
+		std::cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << std::endl;
 	}
 	else
-		cout << "\nNo operating system provided nonblocking random number generator, skipping test." << endl;
+		std::cout << "\nNo operating system provided nonblocking random number generator, skipping test." << std::endl;
 
 	return pass;
 }
@@ -1436,7 +1435,7 @@ bool TestAutoSeededX917()
 bool TestAutoSeeded()
 {
 	// This tests Auto-Seeding and GenerateIntoBufferedTransformation.
-	cout << "\nTesting AutoSeeded generator...\n\n";
+	std::cout << "\nTesting AutoSeeded generator...\n\n";
 
 	AutoSeededRandomPool prng;
 	static const unsigned int ENTROPY_SIZE = 32;
@@ -1447,12 +1446,12 @@ bool TestAutoSeeded()
 
 	if (meter.GetTotalBytes() < 100000)
 	{
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 		generate = false;
 	}
 	else
-		cout << "passed:";
-	cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << endl;
+		std::cout << "passed:";
+	std::cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << std::endl;
 
 	try
 	{
@@ -1464,10 +1463,10 @@ bool TestAutoSeeded()
 	}
 
 	if (!discard)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  discarded 10000 bytes" << endl;
+		std::cout << "passed:";
+	std::cout << "  discarded 10000 bytes" << std::endl;
 
 	try
 	{
@@ -1489,10 +1488,10 @@ bool TestAutoSeeded()
 	}
 
 	if (!incorporate)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  IncorporateEntropy with " << 4*ENTROPY_SIZE << " bytes" << endl;
+		std::cout << "passed:";
+	std::cout << "  IncorporateEntropy with " << 4*ENTROPY_SIZE << " bytes" << std::endl;
 
 	return generate && discard && incorporate;
 }
@@ -1500,7 +1499,7 @@ bool TestAutoSeeded()
 bool TestAutoSeededX917()
 {
 	// This tests Auto-Seeding and GenerateIntoBufferedTransformation.
-	cout << "\nTesting AutoSeeded X917 generator...\n\n";
+	std::cout << "\nTesting AutoSeeded X917 generator...\n\n";
 
 	AutoSeededX917RNG<AES> prng;
 	static const unsigned int ENTROPY_SIZE = 32;
@@ -1511,12 +1510,12 @@ bool TestAutoSeededX917()
 
 	if (meter.GetTotalBytes() < 100000)
 	{
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 		generate = false;
 	}
 	else
-		cout << "passed:";
-	cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << endl;
+		std::cout << "passed:";
+	std::cout << "  100000 generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE" << std::endl;
 
 	try
 	{
@@ -1528,10 +1527,10 @@ bool TestAutoSeededX917()
 	}
 
 	if (!discard)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  discarded 10000 bytes" << endl;
+		std::cout << "passed:";
+	std::cout << "  discarded 10000 bytes" << std::endl;
 
 	try
 	{
@@ -1553,10 +1552,10 @@ bool TestAutoSeededX917()
 	}
 
 	if (!incorporate)
-		cout << "FAILED:";
+		std::cout << "FAILED:";
 	else
-		cout << "passed:";
-	cout << "  IncorporateEntropy with " << 4*ENTROPY_SIZE << " bytes" << endl;
+		std::cout << "passed:";
+	std::cout << "  IncorporateEntropy with " << 4*ENTROPY_SIZE << " bytes" << std::endl;
 
 	return generate && discard && incorporate;
 }
@@ -1572,7 +1571,7 @@ bool TestRDRAND()
 
 	if (HasRDRAND())
 	{
-		cout << "\nTesting RDRAND generator...\n\n";
+		std::cout << "\nTesting RDRAND generator...\n\n";
 
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		Deflator deflator(new Redirector(meter));
@@ -1589,25 +1588,25 @@ bool TestRDRAND()
 		const double mv = maurer.GetTestValue();
 		if (mv < 0.98f)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			entropy = false;
 		}
 		else
-			cout << "passed:";
+			std::cout << "passed:";
 
 		// Coverity finding, also see http://stackoverflow.com/a/34509163/608639.
-		StreamState ss(cout);
-		cout << std::setiosflags(std::ios::fixed) << std::setprecision(6);
-		cout << "  Maurer Randomness Test returned value " << mv << endl;
+		StreamState ss(std::cout);
+		std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(6);
+		std::cout << "  Maurer Randomness Test returned value " << mv << std::endl;
 
 		if (meter.GetTotalBytes() < SIZE)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			compress = false;
 		}
 		else
-			cout << "passed:";
-		cout << "  " << SIZE << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE\n";
+			std::cout << "passed:";
+		std::cout << "  " << SIZE << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE\n";
 
 		try
 		{
@@ -1619,13 +1618,13 @@ bool TestRDRAND()
 		}
 
 		if (!discard)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  discarded " << SIZE << " bytes\n";
+			std::cout << "passed:";
+		std::cout << "  discarded " << SIZE << " bytes\n";
 	}
 	else
-		cout << "\nRDRAND generator not available, skipping test.\n";
+		std::cout << "\nRDRAND generator not available, skipping test.\n";
 
 	// Squash code coverage warnings on unused functions
 	(void)rdrand.AlgorithmName();
@@ -1634,7 +1633,7 @@ bool TestRDRAND()
 	rdrand.IncorporateEntropy(NULL, 0);
 
 	if (!(entropy && compress && discard))
-		cout.flush();
+		std::cout.flush();
 
 	return entropy && compress && discard;
 }
@@ -1651,7 +1650,7 @@ bool TestRDSEED()
 
 	if (HasRDSEED())
 	{
-		cout << "\nTesting RDSEED generator...\n\n";
+		std::cout << "\nTesting RDSEED generator...\n\n";
 
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		Deflator deflator(new Redirector(meter));
@@ -1668,25 +1667,25 @@ bool TestRDSEED()
 		const double mv = maurer.GetTestValue();
 		if (mv < 0.98f)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			entropy = false;
 		}
 		else
-			cout << "passed:";
+			std::cout << "passed:";
 
 		// Coverity finding, also see http://stackoverflow.com/a/34509163/608639.
-		StreamState ss(cout);
-		cout << std::setiosflags(std::ios::fixed) << std::setprecision(6);
-		cout << "  Maurer Randomness Test returned value " << mv << endl;
+		StreamState ss(std::cout);
+		std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(6);
+		std::cout << "  Maurer Randomness Test returned value " << mv << std::endl;
 
 		if (meter.GetTotalBytes() < SIZE)
 		{
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 			compress = false;
 		}
 		else
-			cout << "passed:";
-		cout << "  " << SIZE << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE\n";
+			std::cout << "passed:";
+		std::cout << "  " << SIZE << " generated bytes compressed to " << meter.GetTotalBytes() << " bytes by DEFLATE\n";
 
 		try
 		{
@@ -1698,13 +1697,13 @@ bool TestRDSEED()
 		}
 
 		if (!discard)
-			cout << "FAILED:";
+			std::cout << "FAILED:";
 		else
-			cout << "passed:";
-		cout << "  discarded " << SIZE << " bytes\n";
+			std::cout << "passed:";
+		std::cout << "  discarded " << SIZE << " bytes\n";
 	}
 	else
-		cout << "\nRDSEED generator not available, skipping test.\n";
+		std::cout << "\nRDSEED generator not available, skipping test.\n";
 
 	// Squash code coverage warnings on unused functions
 	(void)rdseed.AlgorithmName();
@@ -1713,14 +1712,14 @@ bool TestRDSEED()
 	rdseed.IncorporateEntropy(NULL, 0);
 
 	if (!(entropy && compress && discard))
-		cout.flush();
+		std::cout.flush();
 
 	return entropy && compress && discard;
 }
 #endif
 
 // VC50 workaround
-typedef auto_ptr<BlockTransformation> apbt;
+typedef std::auto_ptr<BlockTransformation> apbt;
 
 class CipherFactory
 {
@@ -1765,7 +1764,7 @@ public:
 
 bool BlockTransformationTest(const CipherFactory &cg, BufferedTransformation &valdata, unsigned int tuples = 0xffff)
 {
-	HexEncoder output(new FileSink(cout));
+	HexEncoder output(new FileSink(std::cout));
 	SecByteBlock plain(cg.BlockSize()), cipher(cg.BlockSize()), out(cg.BlockSize()), outplain(cg.BlockSize());
 	SecByteBlock key(cg.KeyLength());
 	bool pass=true, fail;
@@ -1786,13 +1785,13 @@ bool BlockTransformationTest(const CipherFactory &cg, BufferedTransformation &va
 
 		pass = pass && !fail;
 
-		cout << (fail ? "FAILED   " : "passed   ");
+		std::cout << (fail ? "FAILED   " : "passed   ");
 		output.Put(key, cg.KeyLength());
-		cout << "   ";
+		std::cout << "   ";
 		output.Put(outplain, cg.BlockSize());
-		cout << "   ";
+		std::cout << "   ";
 		output.Put(out, cg.BlockSize());
-		cout << endl;
+		std::cout << std::endl;
 	}
 	return pass;
 }
@@ -1856,12 +1855,12 @@ bool TestFilter(BufferedTransformation &bt, const byte *in, size_t inLen, const 
 
 bool ValidateDES()
 {
-	cout << "\nDES validation suite running...\n\n";
+	std::cout << "\nDES validation suite running...\n\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/descert.dat", true, new HexDecoder);
 	bool pass = BlockTransformationTest(FixedRoundsCipherFactory<DESEncryption, DESDecryption>(), valdata);
 
-	cout << "\nTesting EDE2, EDE3, and XEX3 variants...\n\n";
+	std::cout << "\nTesting EDE2, EDE3, and XEX3 variants...\n\n";
 
 	FileSource valdata1(CRYPTOPP_DATA_DIR "TestData/3desval.dat", true, new HexDecoder);
 	pass = BlockTransformationTest(FixedRoundsCipherFactory<DES_EDE2_Encryption, DES_EDE2_Decryption>(), valdata1, 1) && pass;
@@ -1902,7 +1901,7 @@ bool TestModeIV(SymmetricCipher &e, SymmetricCipher &d)
 
 bool ValidateCipherModes()
 {
-	cout << "\nTesting DES modes...\n\n";
+	std::cout << "\nTesting DES modes...\n\n";
 	const byte key[] = {0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef};
 	const byte iv[] = {0x12,0x34,0x56,0x78,0x90,0xab,0xcd,0xef};
 	const byte plain[] = {	// "Now is the time for all " without tailing 0
@@ -1924,13 +1923,13 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "ECB encryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "ECB encryption" << std::endl;
 
 		ECB_Mode_ExternalCipher::Decryption modeD(desD);
 		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "ECB decryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "ECB decryption" << std::endl;
 	}
 	{
 		// from FIPS 81
@@ -1943,17 +1942,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with no padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with no padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with no padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with no padding" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC mode IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC mode IV generation" << std::endl;
 	}
 	{
 		// generated with Crypto++, matches FIPS 81
@@ -1968,13 +1967,13 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with PKCS #7 padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with PKCS #7 padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with PKCS #7 padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with PKCS #7 padding" << std::endl;
 	}
 	{
 		// generated with Crypto++ 5.2, matches FIPS 81
@@ -1989,13 +1988,13 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with one-and-zeros padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with one-and-zeros padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with one-and-zeros padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with one-and-zeros padding" << std::endl;
 	}
 	{
 		const byte plain_1[] = {'a', 0, 0, 0, 0, 0, 0, 0};
@@ -2007,13 +2006,13 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::ZEROS_PADDING).Ref(),
 			plain_1, 1, encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with zeros padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with zeros padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::ZEROS_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain_1, sizeof(plain_1));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with zeros padding" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with zeros padding" << std::endl;
 	}
 	{
 		// generated with Crypto++, matches FIPS 81
@@ -2027,17 +2026,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with ciphertext stealing (CTS)" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with ciphertext stealing (CTS)" << std::endl;
 
 		CBC_CTS_Mode_ExternalCipher::Decryption modeD(desD, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with ciphertext stealing (CTS)" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with ciphertext stealing (CTS)" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC CTS IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC CTS IV generation" << std::endl;
 	}
 	{
 		// generated with Crypto++
@@ -2052,13 +2051,13 @@ bool ValidateCipherModes()
 			plain, 3, encrypted, sizeof(encrypted));
 		fail = memcmp(stolenIV, decryptionIV, 8) != 0 || fail;
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with ciphertext and IV stealing" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with ciphertext and IV stealing" << std::endl;
 
 		CBC_CTS_Mode_ExternalCipher::Decryption modeD(desD, stolenIV);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, 3);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with ciphertext and IV stealing" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with ciphertext and IV stealing" << std::endl;
 	}
 	{
 		const byte encrypted[] = {	// from FIPS 81
@@ -2070,17 +2069,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB encryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB encryption" << std::endl;
 
 		CFB_Mode_ExternalCipher::Decryption modeD(desE, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB decryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB decryption" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB mode IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB mode IV generation" << std::endl;
 	}
 	{
 		const byte plain_2[] = {	// "Now is the." without tailing 0
@@ -2092,17 +2091,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain_2, sizeof(plain_2), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) encryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) encryption" << std::endl;
 
 		CFB_Mode_ExternalCipher::Decryption modeD(desE, iv, 1);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain_2, sizeof(plain_2));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) decryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) decryption" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CFB (8-bit feedback) IV generation" << std::endl;
 	}
 	{
 		const byte encrypted[] = {	// from Eric Young's libdes
@@ -2114,17 +2113,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "OFB encryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "OFB encryption" << std::endl;
 
 		OFB_Mode_ExternalCipher::Decryption modeD(desE, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "OFB decryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "OFB decryption" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "OFB IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "OFB IV generation" << std::endl;
 	}
 	{
 		const byte encrypted[] = {	// generated with Crypto++
@@ -2136,17 +2135,17 @@ bool ValidateCipherModes()
 		fail = !TestFilter(StreamTransformationFilter(modeE).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode encryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode encryption" << std::endl;
 
 		CTR_Mode_ExternalCipher::Decryption modeD(desE, iv);
 		fail = !TestFilter(StreamTransformationFilter(modeD).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode decryption" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode decryption" << std::endl;
 
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode IV generation" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "Counter Mode IV generation" << std::endl;
 	}
 	{
 		const byte plain_3[] = {	// "7654321 Now is the time for "
@@ -2163,41 +2162,41 @@ bool ValidateCipherModes()
 		HashFilter cbcmacFilter(cbcmac);
 		fail = !TestFilter(cbcmacFilter, plain_3, sizeof(plain_3), mac1, sizeof(mac1));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "CBC MAC" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC MAC" << std::endl;
 
 		DMAC<DES> dmac(key);
 		HashFilter dmacFilter(dmac);
 		fail = !TestFilter(dmacFilter, plain_3, sizeof(plain_3), mac2, sizeof(mac2));
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "DMAC" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "DMAC" << std::endl;
 	}
 	{
 		CTR_Mode<AES>::Encryption modeE(plain, 16, plain);
 		CTR_Mode<AES>::Decryption modeD(plain, 16, plain);
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "AES CTR Mode" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "AES CTR Mode" << std::endl;
 	}
 	{
 		OFB_Mode<AES>::Encryption modeE(plain, 16, plain);
 		OFB_Mode<AES>::Decryption modeD(plain, 16, plain);
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "AES OFB Mode" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "AES OFB Mode" << std::endl;
 	}
 	{
 		CFB_Mode<AES>::Encryption modeE(plain, 16, plain);
 		CFB_Mode<AES>::Decryption modeD(plain, 16, plain);
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "AES CFB Mode" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "AES CFB Mode" << std::endl;
 	}
 	{
 		CBC_Mode<AES>::Encryption modeE(plain, 16, plain);
 		CBC_Mode<AES>::Decryption modeD(plain, 16, plain);
 		fail = !TestModeIV(modeE, modeD);
 		pass = pass && !fail;
-		cout << (fail ? "FAILED   " : "passed   ") << "AES CBC Mode" << endl;
+		std::cout << (fail ? "FAILED   " : "passed   ") << "AES CBC Mode" << std::endl;
 	}
 
 	return pass;
@@ -2205,7 +2204,7 @@ bool ValidateCipherModes()
 
 bool ValidateIDEA()
 {
-	cout << "\nIDEA validation suite running...\n\n";
+	std::cout << "\nIDEA validation suite running...\n\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/ideaval.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<IDEAEncryption, IDEADecryption>(), valdata);
@@ -2213,7 +2212,7 @@ bool ValidateIDEA()
 
 bool ValidateSAFER()
 {
-	cout << "\nSAFER validation suite running...\n\n";
+	std::cout << "\nSAFER validation suite running...\n\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/saferval.dat", true, new HexDecoder);
 	bool pass = true;
@@ -2226,10 +2225,10 @@ bool ValidateSAFER()
 
 bool ValidateRC2()
 {
-	cout << "\nRC2 validation suite running...\n\n";
+	std::cout << "\nRC2 validation suite running...\n\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/rc2val.dat", true, new HexDecoder);
-	HexEncoder output(new FileSink(cout));
+	HexEncoder output(new FileSink(std::cout));
 	SecByteBlock plain(RC2Encryption::BLOCKSIZE), cipher(RC2Encryption::BLOCKSIZE), out(RC2Encryption::BLOCKSIZE), outplain(RC2Encryption::BLOCKSIZE);
 	SecByteBlock key(128);
 	bool pass=true, fail;
@@ -2254,13 +2253,13 @@ bool ValidateRC2()
 
 		pass = pass && !fail;
 
-		cout << (fail ? "FAILED   " : "passed   ");
+		std::cout << (fail ? "FAILED   " : "passed   ");
 		output.Put(key, keyLen);
-		cout << "   ";
+		std::cout << "   ";
 		output.Put(outplain, RC2Encryption::BLOCKSIZE);
-		cout << "   ";
+		std::cout << "   ";
 		output.Put(out, RC2Encryption::BLOCKSIZE);
-		cout << endl;
+		std::cout << std::endl;
 	}
 	return pass;
 }
@@ -2391,44 +2390,44 @@ bool ValidateARC4()
 	0x9e,0x27,0x55,0xab,0x18,0x1a,0xb7,0xe9,0x40,0xb0,
 	0xc0};
 
-	// VC60 workaround: auto_ptr lacks reset()
+	// VC60 workaround: std::auto_ptr lacks reset()
 	member_ptr<Weak::ARC4> arc4;
 	bool pass=true, fail;
 	unsigned int i;
 
-	cout << "\nARC4 validation suite running...\n\n";
+	std::cout << "\nARC4 validation suite running...\n\n";
 
 	arc4.reset(new Weak::ARC4(Key0, sizeof(Key0)));
 	arc4->ProcessString(Input0, sizeof(Input0));
 	fail = memcmp(Input0, Output0, sizeof(Input0)) != 0;
-	cout << (fail ? "FAILED" : "passed") << "    Test 0" << endl;
+	std::cout << (fail ? "FAILED" : "passed") << "    Test 0" << std::endl;
 	pass = pass && !fail;
 
 	arc4.reset(new Weak::ARC4(Key1, sizeof(Key1)));
 	arc4->ProcessString(Key1, Input1, sizeof(Key1));
 	fail = memcmp(Output1, Key1, sizeof(Key1)) != 0;
-	cout << (fail ? "FAILED" : "passed") << "    Test 1" << endl;
+	std::cout << (fail ? "FAILED" : "passed") << "    Test 1" << std::endl;
 	pass = pass && !fail;
 
 	arc4.reset(new Weak::ARC4(Key2, sizeof(Key2)));
 	for (i=0, fail=false; i<sizeof(Input2); i++)
 		if (arc4->ProcessByte(Input2[i]) != Output2[i])
 			fail = true;
-	cout << (fail ? "FAILED" : "passed") << "    Test 2" << endl;
+	std::cout << (fail ? "FAILED" : "passed") << "    Test 2" << std::endl;
 	pass = pass && !fail;
 
 	arc4.reset(new Weak::ARC4(Key3, sizeof(Key3)));
 	for (i=0, fail=false; i<sizeof(Input3); i++)
 		if (arc4->ProcessByte(Input3[i]) != Output3[i])
 			fail = true;
-	cout << (fail ? "FAILED" : "passed") << "    Test 3" << endl;
+	std::cout << (fail ? "FAILED" : "passed") << "    Test 3" << std::endl;
 	pass = pass && !fail;
 
 	arc4.reset(new Weak::ARC4(Key4, sizeof(Key4)));
 	for (i=0, fail=false; i<sizeof(Input4); i++)
 		if (arc4->ProcessByte(Input4[i]) != Output4[i])
 			fail = true;
-	cout << (fail ? "FAILED" : "passed") << "    Test 4" << endl;
+	std::cout << (fail ? "FAILED" : "passed") << "    Test 4" << std::endl;
 	pass = pass && !fail;
 
 	return pass;
@@ -2436,7 +2435,7 @@ bool ValidateARC4()
 
 bool ValidateRC5()
 {
-	cout << "\nRC5 validation suite running...\n\n";
+	std::cout << "\nRC5 validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	RC5Encryption enc;  // 0 to 2040-bits (255-bytes)
@@ -2456,7 +2455,7 @@ bool ValidateRC5()
 	pass2 = dec.StaticGetValidKeyLength(256) == 255 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/rc5val.dat", true, new HexDecoder);
 	return BlockTransformationTest(VariableRoundsCipherFactory<RC5Encryption, RC5Decryption>(16, 12), valdata) && pass1 && pass2;
@@ -2464,7 +2463,7 @@ bool ValidateRC5()
 
 bool ValidateRC6()
 {
-	cout << "\nRC6 validation suite running...\n\n";
+	std::cout << "\nRC6 validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	RC6Encryption enc;
@@ -2486,7 +2485,7 @@ bool ValidateRC6()
 	pass2 = dec.StaticGetValidKeyLength(128) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/rc6val.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<RC6Encryption, RC6Decryption>(16), valdata, 2) && pass3;
@@ -2497,7 +2496,7 @@ bool ValidateRC6()
 
 bool ValidateMARS()
 {
-	cout << "\nMARS validation suite running...\n\n";
+	std::cout << "\nMARS validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	MARSEncryption enc;
@@ -2519,7 +2518,7 @@ bool ValidateMARS()
 	pass2 = dec.StaticGetValidKeyLength(128) == 56 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/marsval.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<MARSEncryption, MARSDecryption>(16), valdata, 4) && pass3;
@@ -2530,7 +2529,7 @@ bool ValidateMARS()
 
 bool ValidateRijndael()
 {
-	cout << "\nRijndael (AES) validation suite running...\n\n";
+	std::cout << "\nRijndael (AES) validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	RijndaelEncryption enc;
@@ -2552,7 +2551,7 @@ bool ValidateRijndael()
 	pass2 = dec.StaticGetValidKeyLength(128) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/rijndael.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<RijndaelEncryption, RijndaelDecryption>(16), valdata, 4) && pass3;
@@ -2564,7 +2563,7 @@ bool ValidateRijndael()
 
 bool ValidateTwofish()
 {
-	cout << "\nTwofish validation suite running...\n\n";
+	std::cout << "\nTwofish validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	TwofishEncryption enc;
@@ -2582,7 +2581,7 @@ bool ValidateTwofish()
 	pass2 = dec.StaticGetValidKeyLength(32) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(64) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(128) == 32 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/twofishv.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<TwofishEncryption, TwofishDecryption>(16), valdata, 4) && pass3;
@@ -2593,7 +2592,7 @@ bool ValidateTwofish()
 
 bool ValidateSerpent()
 {
-	cout << "\nSerpent validation suite running...\n\n";
+	std::cout << "\nSerpent validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	SerpentEncryption enc;
@@ -2611,7 +2610,7 @@ bool ValidateSerpent()
 	pass2 = dec.StaticGetValidKeyLength(32) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(64) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(128) == 32 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/serpentv.dat", true, new HexDecoder);
 	bool pass = true;
@@ -2623,7 +2622,7 @@ bool ValidateSerpent()
 
 bool ValidateBlowfish()
 {
-	cout << "\nBlowfish validation suite running...\n\n";
+	std::cout << "\nBlowfish validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true, fail;
 
 	BlowfishEncryption enc1;	// 32 to 448-bits (4 to 56-bytes)
@@ -2653,9 +2652,9 @@ bool ValidateBlowfish()
 	pass2 = dec1.StaticGetValidKeyLength(60) == 56 && pass2;
 	pass2 = dec1.StaticGetValidKeyLength(64) == 56 && pass2;
 	pass2 = dec1.StaticGetValidKeyLength(128) == 56 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
-	HexEncoder output(new FileSink(cout));
+	HexEncoder output(new FileSink(std::cout));
 	const char *key[]={"abcdefghijklmnopqrstuvwxyz", "Who is John Galt?"};
 	byte *plain[]={(byte *)"BLOWFISH", (byte *)"\xfe\xdc\xba\x98\x76\x54\x32\x10"};
 	byte *cipher[]={(byte *)"\x32\x4e\xd0\xfe\xf4\x13\xa2\x03", (byte *)"\xcc\x91\x73\x2b\x80\x22\xf6\x84"};
@@ -2672,21 +2671,21 @@ bool ValidateBlowfish()
 		fail = fail || memcmp(outplain, plain[i], 8);
 		pass3 = pass3 && !fail;
 
-		cout << (fail ? "FAILED    " : "passed    ");
-		cout << '\"' << key[i] << '\"';
+		std::cout << (fail ? "FAILED    " : "passed    ");
+		std::cout << '\"' << key[i] << '\"';
 		for (int j=0; j<(signed int)(30-strlen(key[i])); j++)
-			cout << ' ';
+			std::cout << ' ';
 		output.Put(outplain, 8);
-		cout << "  ";
+		std::cout << "  ";
 		output.Put(out, 8);
-		cout << endl;
+		std::cout << std::endl;
 	}
 	return pass1 && pass2 && pass3;
 }
 
 bool ValidateThreeWay()
 {
-	cout << "\n3-WAY validation suite running...\n\n";
+	std::cout << "\n3-WAY validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	ThreeWayEncryption enc;  // 96-bit only
@@ -2700,7 +2699,7 @@ bool ValidateThreeWay()
 	pass2 = dec.StaticGetValidKeyLength(8) == 12 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(12) == 12 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(16) == 12 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/3wayval.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<ThreeWayEncryption, ThreeWayDecryption>(), valdata) && pass1 && pass2;
@@ -2708,7 +2707,7 @@ bool ValidateThreeWay()
 
 bool ValidateGOST()
 {
-	cout << "\nGOST validation suite running...\n\n";
+	std::cout << "\nGOST validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	GOSTEncryption enc;  // 256-bit only
@@ -2726,7 +2725,7 @@ bool ValidateGOST()
 	pass2 = dec.StaticGetValidKeyLength(32) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(40) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(64) == 32 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/gostval.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<GOSTEncryption, GOSTDecryption>(), valdata) && pass1 && pass2;
@@ -2734,7 +2733,7 @@ bool ValidateGOST()
 
 bool ValidateSHARK()
 {
-	cout << "\nSHARK validation suite running...\n\n";
+	std::cout << "\nSHARK validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	SHARKEncryption enc;  // 128-bit only
@@ -2752,7 +2751,7 @@ bool ValidateSHARK()
 	pass2 = dec.StaticGetValidKeyLength(16) == 16 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(17) == 16 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(32) == 16 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/sharkval.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<SHARKEncryption, SHARKDecryption>(), valdata) && pass1 && pass2;
@@ -2760,7 +2759,7 @@ bool ValidateSHARK()
 
 bool ValidateCAST()
 {
-	cout << "\nCAST-128 validation suite running...\n\n";
+	std::cout << "\nCAST-128 validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	CAST128Encryption enc1;  // 40 to 128-bits (5 to 16-bytes)
@@ -2778,14 +2777,14 @@ bool ValidateCAST()
 	pass2 = dec1.StaticGetValidKeyLength(15) == 15 && pass2;
 	pass2 = dec1.StaticGetValidKeyLength(16) == 16 && pass2;
 	pass2 = dec1.StaticGetValidKeyLength(17) == 16 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource val128(CRYPTOPP_DATA_DIR "TestData/cast128v.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<CAST128Encryption, CAST128Decryption>(16), val128, 1) && pass3;
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<CAST128Encryption, CAST128Decryption>(10), val128, 1) && pass3;
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<CAST128Encryption, CAST128Decryption>(5), val128, 1) && pass3;
 
-	cout << "\nCAST-256 validation suite running...\n\n";
+	std::cout << "\nCAST-256 validation suite running...\n\n";
 	bool pass4 = true, pass5 = true, pass6 = true;
 
 	CAST256Encryption enc2;  // 128, 160, 192, 224, or 256-bits (16 to 32-bytes, step 4)
@@ -2811,7 +2810,7 @@ bool ValidateCAST()
 	pass5 = dec2.StaticGetValidKeyLength(31) == 32 && pass5;
 	pass5 = dec2.StaticGetValidKeyLength(32) == 32 && pass5;
 	pass5 = dec2.StaticGetValidKeyLength(33) == 32 && pass5;
-	cout << (pass4 && pass5 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass4 && pass5 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource val256(CRYPTOPP_DATA_DIR "TestData/cast256v.dat", true, new HexDecoder);
 	pass6 = BlockTransformationTest(FixedRoundsCipherFactory<CAST256Encryption, CAST256Decryption>(16), val256, 1) && pass6;
@@ -2823,7 +2822,7 @@ bool ValidateCAST()
 
 bool ValidateSquare()
 {
-	cout << "\nSquare validation suite running...\n\n";
+	std::cout << "\nSquare validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	SquareEncryption enc;  // 128-bits only
@@ -2837,7 +2836,7 @@ bool ValidateSquare()
 	pass2 = dec.StaticGetValidKeyLength(15) == 16 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(16) == 16 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(17) == 16 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/squareva.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<SquareEncryption, SquareDecryption>(), valdata) && pass1 && pass2;
@@ -2845,7 +2844,7 @@ bool ValidateSquare()
 
 bool ValidateSKIPJACK()
 {
-	cout << "\nSKIPJACK validation suite running...\n\n";
+	std::cout << "\nSKIPJACK validation suite running...\n\n";
 	bool pass1 = true, pass2 = true;
 
 	SKIPJACKEncryption enc;  // 80-bits only
@@ -2859,7 +2858,7 @@ bool ValidateSKIPJACK()
 	pass2 = dec.StaticGetValidKeyLength(9) == 10 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(10) == 10 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(16) == 10 && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/skipjack.dat", true, new HexDecoder);
 	return BlockTransformationTest(FixedRoundsCipherFactory<SKIPJACKEncryption, SKIPJACKDecryption>(), valdata) && pass1 && pass2;
@@ -2872,7 +2871,7 @@ bool ValidateSEAL()
 	static const byte iv[] = {0x01, 0x35, 0x77, 0xaf};
 	byte output[32];
 
-	cout << "\nSEAL validation suite running...\n\n";
+	std::cout << "\nSEAL validation suite running...\n\n";
 
 	SEAL<>::Encryption seal(key, sizeof(key), iv);
 	unsigned int size = sizeof(input);
@@ -2889,7 +2888,7 @@ bool ValidateSEAL()
 	seal.ProcessString(output+2, size-2);
 	pass = pass && memcmp(output+1, input+1, size-1) == 0;
 
-	cout << (pass ? "passed" : "FAILED") << endl;
+	std::cout << (pass ? "passed" : "FAILED") << std::endl;
 	return pass;
 }
 
@@ -2925,36 +2924,36 @@ bool ValidateBaseCode()
 		"39445230745055316462580A324E6E6132397A6433742F6734654C6A354F586D352B6A7036757673"
 		"3765377638504879382F5431397666342B6672372F50332B0A";
 
-	cout << "\nBase64, base32 and hex coding validation suite running...\n\n";
+	std::cout << "\nBase64, base32 and hex coding validation suite running...\n\n";
 
 	fail = !TestFilter(HexEncoder().Ref(), data, 255, (const byte *)hexEncoded, strlen(hexEncoded));
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Hex Encoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Hex Encoding\n";
 	pass = pass && !fail;
 
 	fail = !TestFilter(HexDecoder().Ref(), (const byte *)hexEncoded, strlen(hexEncoded), data, 255);
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Hex Decoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Hex Decoding\n";
 	pass = pass && !fail;
 
 	fail = !TestFilter(Base32Encoder().Ref(), data, 255, (const byte *)base32Encoded, strlen(base32Encoded));
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Base32 Encoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base32 Encoding\n";
 	pass = pass && !fail;
 
 	fail = !TestFilter(Base32Decoder().Ref(), (const byte *)base32Encoded, strlen(base32Encoded), data, 255);
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Base32 Decoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base32 Decoding\n";
 	pass = pass && !fail;
 
 	fail = !TestFilter(Base64Encoder(new HexEncoder).Ref(), data, 255, (const byte *)base64AndHexEncoded, strlen(base64AndHexEncoded));
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Base64 Encoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base64 Encoding\n";
 	pass = pass && !fail;
 
 	fail = !TestFilter(HexDecoder(new Base64Decoder).Ref(), (const byte *)base64AndHexEncoded, strlen(base64AndHexEncoded), data, 255);
-	cout << (fail ? "FAILED    " : "passed    ");
-	cout << "Base64 Decoding\n";
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base64 Decoding\n";
 	pass = pass && !fail;
 
 	return pass;
@@ -2962,7 +2961,7 @@ bool ValidateBaseCode()
 
 bool ValidateSHACAL2()
 {
-	cout << "\nSHACAL-2 validation suite running...\n\n";
+	std::cout << "\nSHACAL-2 validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	SHACAL2Encryption enc;  // 128 to 512-bits (16 to 64-bytes)
@@ -2984,7 +2983,7 @@ bool ValidateSHACAL2()
 	pass2 = dec.StaticGetValidKeyLength(128) == 64 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/shacal2v.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<SHACAL2Encryption, SHACAL2Decryption>(16), valdata, 4) && pass3;
@@ -2994,7 +2993,7 @@ bool ValidateSHACAL2()
 
 bool ValidateCamellia()
 {
-	cout << "\nCamellia validation suite running...\n\n";
+	std::cout << "\nCamellia validation suite running...\n\n";
 	bool pass1 = true, pass2 = true, pass3 = true;
 
 	CamelliaEncryption enc;
@@ -3016,7 +3015,7 @@ bool ValidateCamellia()
 	pass2 = dec.StaticGetValidKeyLength(128) == 32 && pass2;
 	pass2 = dec.StaticGetValidKeyLength(0) == dec.MinKeyLength() && pass2;
 	pass2 = dec.StaticGetValidKeyLength(SIZE_MAX) == dec.MaxKeyLength() && pass2;
-	cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
+	std::cout << (pass1 && pass2 ? "passed:" : "FAILED:") << "  Algorithm key lengths\n";
 
 	FileSource valdata(CRYPTOPP_DATA_DIR "TestData/camellia.dat", true, new HexDecoder);
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<CamelliaEncryption, CamelliaDecryption>(16), valdata, 15) && pass3;
@@ -3027,40 +3026,40 @@ bool ValidateCamellia()
 
 bool ValidateSalsa()
 {
-	cout << "\nSalsa validation suite running...\n";
+	std::cout << "\nSalsa validation suite running...\n";
 
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/salsa.txt");
 }
 
 bool ValidateSosemanuk()
 {
-	cout << "\nSosemanuk validation suite running...\n";
+	std::cout << "\nSosemanuk validation suite running...\n";
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/sosemanuk.txt");
 }
 
 bool ValidateVMAC()
 {
-	cout << "\nVMAC validation suite running...\n";
+	std::cout << "\nVMAC validation suite running...\n";
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/vmac.txt");
 }
 
 bool ValidateCCM()
 {
-	cout << "\nAES/CCM validation suite running...\n";
+	std::cout << "\nAES/CCM validation suite running...\n";
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/ccm.txt");
 }
 
 bool ValidateGCM()
 {
-	cout << "\nAES/GCM validation suite running...\n";
-	cout << "\n2K tables:";
+	std::cout << "\nAES/GCM validation suite running...\n";
+	std::cout << "\n2K tables:";
 	bool pass = RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/gcm.txt", MakeParameters(Name::TableSize(), (int)2048));
-	cout << "\n64K tables:";
+	std::cout << "\n64K tables:";
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/gcm.txt", MakeParameters(Name::TableSize(), (int)64*1024)) && pass;
 }
 
 bool ValidateCMAC()
 {
-	cout << "\nCMAC validation suite running...\n";
+	std::cout << "\nCMAC validation suite running...\n";
 	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/cmac.txt");
 }

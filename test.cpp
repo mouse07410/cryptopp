@@ -4,9 +4,9 @@
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 
 #include "dll.h"
-#include "aes.h"
 #include "cryptlib.h"
 #include "filters.h"
+#include "aes.h"
 #include "md5.h"
 #include "ripemd.h"
 #include "rng.h"
@@ -76,7 +76,6 @@
 #endif
 
 USING_NAMESPACE(CryptoPP)
-USING_NAMESPACE(std)
 
 const int MAX_PHRASE_LENGTH=250;
 
@@ -84,8 +83,8 @@ void RegisterFactories();
 void PrintSeedAndThreads(const std::string& seed);
 
 void GenerateRSAKey(unsigned int keyLength, const char *privFilename, const char *pubFilename, const char *seed);
-string RSAEncryptString(const char *pubFilename, const char *seed, const char *message);
-string RSADecryptString(const char *privFilename, const char *ciphertext);
+std::string RSAEncryptString(const char *pubFilename, const char *seed, const char *message);
+std::string RSADecryptString(const char *privFilename, const char *ciphertext);
 void RSASignFile(const char *privFilename, const char *messageFilename, const char *signatureFilename);
 bool RSAVerifyFile(const char *pubFilename, const char *messageFilename, const char *signatureFilename);
 
@@ -94,8 +93,8 @@ void HmacFile(const char *hexKey, const char *file);
 
 void AES_CTR_Encrypt(const char *hexKey, const char *hexIV, const char *infile, const char *outfile);
 
-string EncryptString(const char *plaintext, const char *passPhrase);
-string DecryptString(const char *ciphertext, const char *passPhrase);
+std::string EncryptString(const char *plaintext, const char *passPhrase);
+std::string DecryptString(const char *ciphertext, const char *passPhrase);
 
 void EncryptFile(const char *in, const char *out, const char *passPhrase);
 void DecryptFile(const char *in, const char *out, const char *passPhrase);
@@ -172,18 +171,18 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			char thisSeed[1024], privFilename[128], pubFilename[128];
 			unsigned int keyLength;
 
-			cout << "Key length in bits: ";
-			cin >> keyLength;
+			std::cout << "Key length in bits: ";
+			std::cin >> keyLength;
 
-			cout << "\nSave private key to file: ";
-			cin >> privFilename;
+			std::cout << "\nSave private key to file: ";
+			std::cin >> privFilename;
 
-			cout << "\nSave public key to file: ";
-			cin >> pubFilename;
+			std::cout << "\nSave public key to file: ";
+			std::cin >> pubFilename;
 
-			cout << "\nRandom Seed: ";
-			ws(cin);
-			cin.getline(thisSeed, 1024);
+			std::cout << "\nRandom Seed: ";
+			ws(std::cin);
+			std::cin.getline(thisSeed, 1024);
 
 			GenerateRSAKey(keyLength, privFilename, pubFilename, thisSeed);
 		}
@@ -192,56 +191,56 @@ int CRYPTOPP_API main(int argc, char *argv[])
 		else if (command == "rv")
 		{
 			bool verified = RSAVerifyFile(argv[2], argv[3], argv[4]);
-			cout << (verified ? "valid signature" : "invalid signature") << endl;
+			std::cout << (verified ? "valid signature" : "invalid signature") << std::endl;
 		}
 		else if (command == "r")
 		{
 			char privFilename[128], pubFilename[128];
 			char thisSeed[1024], message[1024];
 
-			cout << "Private key file: ";
-			cin >> privFilename;
+			std::cout << "Private key file: ";
+			std::cin >> privFilename;
 
-			cout << "\nPublic key file: ";
-			cin >> pubFilename;
+			std::cout << "\nPublic key file: ";
+			std::cin >> pubFilename;
 
-			cout << "\nRandom Seed: ";
-			ws(cin);
-			cin.getline(thisSeed, 1024);
+			std::cout << "\nRandom Seed: ";
+			ws(std::cin);
+			std::cin.getline(thisSeed, 1024);
 
-			cout << "\nMessage: ";
-			cin.getline(message, 1024);
+			std::cout << "\nMessage: ";
+			std::cin.getline(message, 1024);
 
-			string ciphertext = RSAEncryptString(pubFilename, thisSeed, message);
-			cout << "\nCiphertext: " << ciphertext << endl;
+			std::string ciphertext = RSAEncryptString(pubFilename, thisSeed, message);
+			std::cout << "\nCiphertext: " << ciphertext << std::endl;
 
-			string decrypted = RSADecryptString(privFilename, ciphertext.c_str());
-			cout << "\nDecrypted: " << decrypted << endl;
+			std::string decrypted = RSADecryptString(privFilename, ciphertext.c_str());
+			std::cout << "\nDecrypted: " << decrypted << std::endl;
 		}
 		else if (command == "mt")
 		{
 			MaurerRandomnessTest mt;
 			FileStore fs(argv[2]);
 			fs.TransferAllTo(mt);
-			cout << "Maurer Test Value: " << mt.GetTestValue() << endl;
+			std::cout << "Maurer Test Value: " << mt.GetTestValue() << std::endl;
 		}
 		else if (command == "mac_dll")
 		{
 			std::string fname(argv[2] ? argv[2] : "");
 
 			// sanity check on file size
-			std::fstream dllFile(fname.c_str(), ios::in | ios::out | ios::binary);
+			std::fstream dllFile(fname.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 			if (!dllFile.good())
 			{
-				cerr << "Failed to open file \"" << fname << "\"\n";
+				std::cerr << "Failed to open file \"" << fname << "\"\n";
 				return 1;
 			}
 
 			std::ifstream::pos_type fileEnd = dllFile.seekg(0, std::ios_base::end).tellg();
 			if (fileEnd > 20*1000*1000)
 			{
-				cerr << "Input file " << fname << " is too large";
-				cerr << "(size is " << fileEnd << ").\n";
+				std::cerr << "Input file " << fname << " is too large";
+				std::cerr << "(size is " << fileEnd << ").\n";
 				return 1;
 			}
 
@@ -257,7 +256,7 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			word16 optionalHeaderMagic = *(word16 *)(void *)(buf+optionalHeaderPos);
 			if (optionalHeaderMagic != 0x10b && optionalHeaderMagic != 0x20b)
 			{
-				cerr << "Target file is not a PE32 or PE32+ image.\n";
+				std::cerr << "Target file is not a PE32 or PE32+ image.\n";
 				return 3;
 			}
 			word32 checksumPos = optionalHeaderPos + 64;
@@ -265,14 +264,14 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			word32 certificateTablePos = *(word32 *)(void *)(buf+certificateTableDirectoryPos);
 			word32 certificateTableSize = *(word32 *)(void *)(buf+certificateTableDirectoryPos+4);
 			if (certificateTableSize != 0)
-				cerr << "Warning: certificate table (IMAGE_DIRECTORY_ENTRY_SECURITY) of target image is not empty.\n";
+				std::cerr << "Warning: certificate table (IMAGE_DIRECTORY_ENTRY_SECURITY) of target image is not empty.\n";
 
 			// find where to place computed MAC
 			byte mac[] = CRYPTOPP_DUMMY_DLL_MAC;
 			byte *found = std::search(buf.begin(), buf.end(), mac+0, mac+sizeof(mac));
 			if (found == buf.end())
 			{
-				cerr << "MAC placeholder not found. The MAC may already be placed.\n";
+				std::cerr << "MAC placeholder not found. The MAC may already be placed.\n";
 				return 2;
 			}
 			word32 macPos = (unsigned int)(found-buf.begin());
@@ -288,8 +287,8 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			f.PutMessageEnd(buf.begin(), buf.size());
 
 			// place MAC
-			cout << "Placing MAC in file " << fname << ", location " << macPos;
-			cout << " (0x" << std::hex << macPos << std::dec << ").\n";
+			std::cout << "Plastd::cing MAC in file " << fname << ", location " << macPos;
+			std::cout << " (0x" << std::hex << macPos << std::dec << ").\n";
 			dllFile.seekg(macPos, std::ios_base::beg);
 			dllFile.write((char *)mac, sizeof(mac));
 		}
@@ -310,17 +309,17 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			// VC60 workaround: use char array instead of std::string to workaround MSVC's getline bug
 			char passPhrase[MAX_PHRASE_LENGTH], plaintext[1024];
 
-			cout << "Passphrase: ";
-			cin.getline(passPhrase, MAX_PHRASE_LENGTH);
+			std::cout << "Passphrase: ";
+			std::cin.getline(passPhrase, MAX_PHRASE_LENGTH);
 
-			cout << "\nPlaintext: ";
-			cin.getline(plaintext, 1024);
+			std::cout << "\nPlaintext: ";
+			std::cin.getline(plaintext, 1024);
 
-			string ciphertext = EncryptString(plaintext, passPhrase);
-			cout << "\nCiphertext: " << ciphertext << endl;
+			std::string ciphertext = EncryptString(plaintext, passPhrase);
+			std::cout << "\nCiphertext: " << ciphertext << std::endl;
 
-			string decrypted = DecryptString(ciphertext.c_str(), passPhrase);
-			cout << "\nDecrypted: " << decrypted << endl;
+			std::string decrypted = DecryptString(ciphertext.c_str(), passPhrase);
+			std::cout << "\nDecrypted: " << decrypted << std::endl;
 
 			return 0;
 		}
@@ -335,8 +334,8 @@ int CRYPTOPP_API main(int argc, char *argv[])
 		else if (command == "e" || command == "d")
 		{
 			char passPhrase[MAX_PHRASE_LENGTH];
-			cout << "Passphrase: ";
-			cin.getline(passPhrase, MAX_PHRASE_LENGTH);
+			std::cout << "Passphrase: ";
+			std::cin.getline(passPhrase, MAX_PHRASE_LENGTH);
 			if (command == "e")
 				EncryptFile(argv[2], argv[3], passPhrase);
 			else
@@ -345,9 +344,9 @@ int CRYPTOPP_API main(int argc, char *argv[])
 		else if (command == "ss")
 		{
 			char thisSeed[1024];
-			cout << "\nRandom Seed: ";
-			ws(cin);
-			cin.getline(thisSeed, 1024);
+			std::cout << "\nRandom Seed: ";
+			ws(std::cin);
+			std::cin.getline(thisSeed, 1024);
 			SecretShareFile(StringToValue<int, true>(argv[2]), StringToValue<int, true>(argv[3]), argv[4], thisSeed);
 		}
 		else if (command == "sr")
@@ -378,7 +377,7 @@ int CRYPTOPP_API main(int argc, char *argv[])
 				return (*AdhocTest)(argc, argv);
 			else
 			{
-				cerr << "AdhocTest not defined.\n";
+				std::cerr << "AdhocTest not defined.\n";
 				return 1;
 			}
 		}
@@ -388,28 +387,28 @@ int CRYPTOPP_API main(int argc, char *argv[])
 			AES_CTR_Encrypt(argv[2], argv[3], argv[4], argv[5]);
 		else if (command == "h")
 		{
-			FileSource usage(CRYPTOPP_DATA_DIR "TestData/usage.dat", true, new FileSink(cout));
+			FileSource usage(CRYPTOPP_DATA_DIR "TestData/usage.dat", true, new FileSink(std::cout));
 			return 1;
 		}
 		else if (command == "V")
 		{
-			cout << CRYPTOPP_VERSION / 100 << '.' << (CRYPTOPP_VERSION % 100) / 10 << '.' << CRYPTOPP_VERSION % 10 << endl;
+			std::cout << CRYPTOPP_VERSION / 100 << '.' << (CRYPTOPP_VERSION % 100) / 10 << '.' << CRYPTOPP_VERSION % 10 << std::endl;
 		}
 		else
 		{
-			cerr << "Unrecognized command. Run \"cryptest h\" to obtain usage information.\n";
+			std::cerr << "Unrecognized command. Run \"cryptest h\" to obtain usage information.\n";
 			return 1;
 		}
 		return 0;
 	}
 	catch(const CryptoPP::Exception &e)
 	{
-		cout << "\nCryptoPP::Exception caught: " << e.what() << endl;
+		std::cout << "\nCryptoPP::Exception caught: " << e.what() << std::endl;
 		return -1;
 	}
 	catch(const std::exception &e)
 	{
-		cout << "\nstd::exception caught: " << e.what() << endl;
+		std::cout << "\nstd::exception caught: " << e.what() << std::endl;
 		return -2;
 	}
 } // End main()
@@ -423,7 +422,7 @@ void FIPS140_GenerateRandomFiles()
 	for (unsigned int i=0; i<100000; i++)
 		store.TransferTo(FileSink((IntToString(i) + ".rnd").c_str()).Ref(), 20000);
 #else
-	cout << "OS provided RNG not available.\n";
+	std::cout << "OS provided RNG not available.\n";
 	exit(-1);
 #endif
 }
@@ -464,7 +463,7 @@ int StringToValue<int, true>(const std::string& str)
 
 void PrintSeedAndThreads(const std::string& seed)
 {
-	cout << "Using seed: " << seed << endl;
+	std::cout << "Using seed: " << seed << std::endl;
 
 #ifdef _OPENMP
 	int tc = 0;
@@ -501,7 +500,7 @@ void GenerateRSAKey(unsigned int keyLength, const char *privFilename, const char
 	pubFile.MessageEnd();
 }
 
-string RSAEncryptString(const char *pubFilename, const char *seed, const char *message)
+std::string RSAEncryptString(const char *pubFilename, const char *seed, const char *message)
 {
 	FileSource pubFile(pubFilename, true, new HexDecoder);
 	RSAES_OAEP_SHA_Encryptor pub(pubFile);
@@ -509,17 +508,17 @@ string RSAEncryptString(const char *pubFilename, const char *seed, const char *m
 	RandomPool randPool;
 	randPool.IncorporateEntropy((byte *)seed, strlen(seed));
 
-	string result;
+	std::string result;
 	StringSource(message, true, new PK_EncryptorFilter(randPool, pub, new HexEncoder(new StringSink(result))));
 	return result;
 }
 
-string RSADecryptString(const char *privFilename, const char *ciphertext)
+std::string RSADecryptString(const char *privFilename, const char *ciphertext)
 {
 	FileSource privFile(privFilename, true, new HexDecoder);
 	RSAES_OAEP_SHA_Decryptor priv(privFile);
 
-	string result;
+	std::string result;
 	StringSource(ciphertext, true, new HexDecoder(new PK_DecryptorFilter(GlobalRNG(), priv, new StringSink(result))));
 	return result;
 }
@@ -571,12 +570,12 @@ void DigestFile(const char *filename)
 		channelSwitch->AddDefaultRoute(*filters[i]);
 	FileSource(filename, true, channelSwitch.release());
 
-	HexEncoder encoder(new FileSink(cout), false);
+	HexEncoder encoder(new FileSink(std::cout), false);
 	for (i=0; i<filters.size(); i++)
 	{
-		cout << filters[i]->AlgorithmName() << ": ";
+		std::cout << filters[i]->AlgorithmName() << ": ";
 		filters[i]->TransferTo(encoder);
-		cout << "\n";
+		std::cout << "\n";
 	}
 }
 
@@ -585,7 +584,7 @@ void HmacFile(const char *hexKey, const char *file)
 	member_ptr<MessageAuthenticationCode> mac;
 	if (strcmp(hexKey, "selftest") == 0)
 	{
-		cerr << "Computing HMAC/SHA1 value for self test.\n";
+		std::cerr << "Computing HMAC/SHA1 value for self test.\n";
 		mac.reset(NewIntegrityCheckingMAC());
 	}
 	else
@@ -594,7 +593,7 @@ void HmacFile(const char *hexKey, const char *file)
 		StringSource(hexKey, true, new HexDecoder(new StringSink(decodedKey)));
 		mac.reset(new HMAC<SHA1>((const byte *)decodedKey.data(), decodedKey.size()));
 	}
-	FileSource(file, true, new HashFilter(*mac, new HexEncoder(new FileSink(cout))));
+	FileSource(file, true, new HashFilter(*mac, new HexEncoder(new FileSink(std::cout))));
 }
 
 void AES_CTR_Encrypt(const char *hexKey, const char *hexIV, const char *infile, const char *outfile)
@@ -605,9 +604,9 @@ void AES_CTR_Encrypt(const char *hexKey, const char *hexIV, const char *infile, 
 	FileSource(infile, true, new StreamTransformationFilter(aes, new FileSink(outfile)));
 }
 
-string EncryptString(const char *instr, const char *passPhrase)
+std::string EncryptString(const char *instr, const char *passPhrase)
 {
-	string outstr;
+	std::string outstr;
 
 	DefaultEncryptorWithMAC encryptor(passPhrase, new HexEncoder(new StringSink(outstr)));
 	encryptor.Put((byte *)instr, strlen(instr));
@@ -616,9 +615,9 @@ string EncryptString(const char *instr, const char *passPhrase)
 	return outstr;
 }
 
-string DecryptString(const char *instr, const char *passPhrase)
+std::string DecryptString(const char *instr, const char *passPhrase)
 {
-	string outstr;
+	std::string outstr;
 
 	HexDecoder decryptor(new DefaultDecryptorWithMAC(passPhrase, new StringSink(outstr)));
 	decryptor.Put((byte *)instr, strlen(instr));
@@ -650,14 +649,14 @@ void SecretShareFile(int threshold, int nShares, const char *filename, const cha
 	FileSource source(filename, false, new SecretSharing(rng, threshold, nShares, channelSwitch = new ChannelSwitch));
 
 	vector_member_ptrs<FileSink> fileSinks(nShares);
-	string channel;
+	std::string channel;
 	for (int i=0; i<nShares; i++)
 	{
 		char extension[5] = ".000";
 		extension[1]='0'+byte(i/100);
 		extension[2]='0'+byte((i/10)%10);
 		extension[3]='0'+byte(i%10);
-		fileSinks[i].reset(new FileSink((string(filename)+extension).c_str()));
+		fileSinks[i].reset(new FileSink((std::string(filename)+extension).c_str()));
 
 		channel = WordToString<word32>(i);
 		fileSinks[i]->Put((const byte *)channel.data(), 4);
@@ -683,7 +682,7 @@ void SecretRecoverFile(int threshold, const char *outFilename, char *const *inFi
 		fileSources[i].reset(new FileSource(inFilenames[i], false));
 		fileSources[i]->Pump(4);
 		fileSources[i]->Get(channel, 4);
-		fileSources[i]->Attach(new ChannelSwitch(recovery, string((char *)channel.begin(), 4)));
+		fileSources[i]->Attach(new ChannelSwitch(recovery, std::string((char *)channel.begin(), 4)));
 	}
 
 	while (fileSources[0]->Pump(256))
@@ -704,14 +703,14 @@ void InformationDisperseFile(int threshold, int nShares, const char *filename)
 	FileSource source(filename, false, new InformationDispersal(threshold, nShares, channelSwitch = new ChannelSwitch));
 
 	vector_member_ptrs<FileSink> fileSinks(nShares);
-	string channel;
+	std::string channel;
 	for (int i=0; i<nShares; i++)
 	{
 		char extension[5] = ".000";
 		extension[1]='0'+byte(i/100);
 		extension[2]='0'+byte((i/10)%10);
 		extension[3]='0'+byte(i%10);
-		fileSinks[i].reset(new FileSink((string(filename)+extension).c_str()));
+		fileSinks[i].reset(new FileSink((std::string(filename)+extension).c_str()));
 
 		channel = WordToString<word32>(i);
 		fileSinks[i]->Put((const byte *)channel.data(), 4);
@@ -737,7 +736,7 @@ void InformationRecoverFile(int threshold, const char *outFilename, char *const 
 		fileSources[i].reset(new FileSource(inFilenames[i], false));
 		fileSources[i]->Pump(4);
 		fileSources[i]->Get(channel, 4);
-		fileSources[i]->Attach(new ChannelSwitch(recovery, string((char *)channel.begin(), 4)));
+		fileSources[i]->Attach(new ChannelSwitch(recovery, std::string((char *)channel.begin(), 4)));
 	}
 
 	while (fileSources[0]->Pump(256))
@@ -826,18 +825,18 @@ void ForwardTcpPort(const char *sourcePortName, const char *destinationHost, con
 	if(err != 0)
 		throw Socket::Err(sockListen, "setsockopt", sockListen.GetLastError());
 
-	cout << "Listing on port " << sourcePort << ".\n";
+	std::cout << "Listing on port " << sourcePort << ".\n";
 	sockListen.Listen();
 
 	sockListen.Accept(sockSource);
-	cout << "Connection accepted on port " << sourcePort << ".\n";
+	std::cout << "Connection accepted on port " << sourcePort << ".\n";
 	sockListen.CloseSocket();
 
-	cout << "Making connection to " << destinationHost << ", port " << destinationPort << ".\n";
+	std::cout << "Making connection to " << destinationHost << ", port " << destinationPort << ".\n";
 	sockDestination.Create();
 	sockDestination.Connect(destinationHost, destinationPort);
 
-	cout << "Connection made to " << destinationHost << ", starting to forward.\n";
+	std::cout << "Connection made to " << destinationHost << ", starting to forward.\n";
 
 	SocketSource out(sockSource, false, new SocketSink(sockDestination));
 	SocketSource in(sockDestination, false, new SocketSink(sockSource));
@@ -855,22 +854,22 @@ void ForwardTcpPort(const char *sourcePortName, const char *destinationHost, con
 
 		if (!out.SourceExhausted())
 		{
-			cout << "o" << flush;
+			std::cout << "o" << std::flush;
 			out.PumpAll2(false);
 			if (out.SourceExhausted())
-				cout << "EOF received on source socket.\n";
+				std::cout << "EOF received on source socket.\n";
 		}
 
 		if (!in.SourceExhausted())
 		{
-			cout << "i" << flush;
+			std::cout << "i" << std::flush;
 			in.PumpAll2(false);
 			if (in.SourceExhausted())
-				cout << "EOF received on destination socket.\n";
+				std::cout << "EOF received on destination socket.\n";
 		}
 	}
 #else
-	cout << "Socket support was not enabled at compile time.\n";
+	std::cout << "Socket support was not enabled at compile time.\n";
 	exit(-1);
 #endif
 }
@@ -980,13 +979,13 @@ bool Validate(int alg, bool thorough, const char *seedInput)
 	err = asctime_s(timeBuf, sizeof(timeBuf), &localTime);
 	CRYPTOPP_ASSERT(err == 0);
 
-	cout << "\nTest ended at " << timeBuf;
+	std::cout << "\nTest ended at " << timeBuf;
 #else
 	const time_t endTime = time(NULL);
-	cout << "\nTest ended at " << asctime(localtime(&endTime));
+	std::cout << "\nTest ended at " << asctime(localtime(&endTime));
 #endif
 
-	cout << "Seed used was: " << seed << endl;
+	std::cout << "Seed used was: " << seed << std::endl;
 
 	return result;
 }
