@@ -342,23 +342,31 @@ public:
 	{
 		return PutMaybeModifiable(inString, length, messageEnd, blocking, true);
 	}
-	/*! calls ForceNextPut() if hardFlush is true */
+
+	//! \brief Releases buffered data for processing
+	//! \param hardFlush
+	//! \param blocking
+	//! \details IsolatedFlush() calls ForceNextPut() if hardFlush is true
 	bool IsolatedFlush(bool hardFlush, bool blocking);
 
-	/*! The input buffer may contain more than blockSize bytes if lastSize != 0.
-		ForceNextPut() forces a call to NextPut() if this is the case.
-	*/
+	//! \brief Releases buffered data for processing
+	//! \details The input buffer may contain more than blockSize bytes if <tt>lastSize != 0</tt>.
+	//!   ForceNextPut() forces a call to NextPut() if this is the case.
 	void ForceNextPut();
 
 protected:
-	bool DidFirstPut() {return m_firstInputDone;}
+	bool DidFirstPut() const {return m_firstInputDone;}
+	size_t GetFirstPutSize() const {return m_firstSize;}
+	size_t GetBlockPutSize() const {return m_blockSize;}
+	size_t GetLastPutSize() const {return m_lastSize;}
 
 	virtual void InitializeDerivedAndReturnNewSizes(const NameValuePairs &parameters, size_t &firstSize, size_t &blockSize, size_t &lastSize)
 		{CRYPTOPP_UNUSED(parameters); CRYPTOPP_UNUSED(firstSize); CRYPTOPP_UNUSED(blockSize); CRYPTOPP_UNUSED(lastSize); InitializeDerived(parameters);}
 	virtual void InitializeDerived(const NameValuePairs &parameters)
 		{CRYPTOPP_UNUSED(parameters);}
 	// FirstPut() is called if (firstSize != 0 and totalLength >= firstSize)
-	// or (firstSize == 0 and (totalLength > 0 or a MessageEnd() is received))
+	// or (firstSize == 0 and (totalLength > 0 or a MessageEnd() is received)).
+	// inString is m_firstSize in length.
 	virtual void FirstPut(const byte *inString) =0;
 	// NextPut() is called if totalLength >= firstSize+blockSize+lastSize
 	virtual void NextPutSingle(const byte *inString)
