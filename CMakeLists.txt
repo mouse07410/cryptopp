@@ -14,6 +14,7 @@ set(cryptopp_VERSION_PATCH 5)
 
 include(GNUInstallDirs)
 include(TestBigEndian)
+include(CheckCXXCompilerFlag)
 
 #============================================================================
 # Settable options
@@ -112,9 +113,10 @@ if ((NOT CRYPTOPP_CROSS_COMPILE) AND (NOT (WINDOWS OR WINDOWS_STORE OR WINDOWS_P
 	endif()
 endif()
 
-# -march=native for GCC, Clang and ICC on i386 and x86_64.
-if ((NOT CRYPTOPP_CROSS_COMPILE) AND ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel"))
-	if (("${UNAME_MACHINE}" MATCHES "i.86") OR ("${UNAME_MACHINE}" STREQUAL "x86_64") OR ("${UNAME_MACHINE}" STREQUAL "i86pc"))
+# -march=native for GCC, Clang and ICC in any version that does support it.
+if ((NOT CRYPTOPP_CROSS_COMPILE) AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel"))
+	CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_OPT_ARCH_NATIVE_SUPPORTED)
+	if (COMPILER_OPT_ARCH_NATIVE_SUPPORTED AND NOT CMAKE_CXX_FLAGS MATCHES "-march=")
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 	endif()
 endif()
@@ -167,7 +169,7 @@ endif()
 file(GLOB cryptopp_HEADERS *.h)
 
 # Test sources. You can use the GNUmakefile to generate the list: `make sources`.
-file(GLOB cryptopp_SOURCES_TEST test.cpp bench1.cpp bench2.cpp validat1.cpp validat2.cpp validat3.cpp adhoc.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp fipstest.cpp)
+file(GLOB cryptopp_SOURCES_TEST test.cpp bench1.cpp bench2.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp adhoc.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp fipstest.cpp)
 
 # Library sources. You can use the GNUmakefile to generate the list: `make sources`.
 file(GLOB cryptopp_SOURCES *.cpp)
