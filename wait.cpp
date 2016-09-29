@@ -157,10 +157,10 @@ WaitObjectContainer::~WaitObjectContainer()
 			// Enterprise Analysis warning
 #if defined(USE_WINDOWS8_API)
 			DWORD dwResult = ::WaitForMultipleObjectsEx((DWORD)m_threads.size(), threadHandles, TRUE, INFINITE, FALSE);
-			CRYPTOPP_ASSERT((dwResult >= WAIT_OBJECT_0) && (dwResult < (DWORD)m_threads.size()));
+			CRYPTOPP_ASSERT(dwResult < (DWORD)m_threads.size());
 #else
 			DWORD dwResult = ::WaitForMultipleObjects((DWORD)m_threads.size(), threadHandles, TRUE, INFINITE);
-			CRYPTOPP_ASSERT((dwResult >= WAIT_OBJECT_0) && (dwResult < (DWORD)m_threads.size()));
+			CRYPTOPP_ASSERT(dwResult < (DWORD)m_threads.size());
 #endif
 
 			for (i=0; i<m_threads.size(); i++)
@@ -372,7 +372,7 @@ bool WaitObjectContainer::Wait(unsigned long milliseconds)
 			lastTime = timeAfterWait;
 		}
 #endif
-		if (result >= WAIT_OBJECT_0 && result < WAIT_OBJECT_0 + m_handles.size())
+		if (result < WAIT_OBJECT_0 + m_handles.size())
 		{
 			if (result == m_lastResult)
 				m_sameResultCount++;
