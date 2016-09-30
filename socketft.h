@@ -94,7 +94,7 @@ public:
 		{if (result == static_cast<socket_t>(SOCKET_ERROR)) HandleError(operation);}
 #ifdef USE_WINDOWS_STYLE_SOCKETS
 	void CheckAndHandleError(const char *operation, BOOL result) const
-		{CRYPTOPP_ASSERT(result==TRUE || result==FALSE); if (!result) HandleError(operation);}
+		{if (!result) HandleError(operation);}
 	void CheckAndHandleError(const char *operation, bool result) const
 		{if (!result) HandleError(operation);}
 #endif
@@ -144,16 +144,17 @@ public:
 
 private:
 	Socket &m_s;
-	bool m_eofReceived;
 
 #ifdef USE_WINDOWS_STYLE_SOCKETS
 	WindowsHandle m_event;
 	OVERLAPPED m_overlapped;
-	bool m_resultPending;
 	DWORD m_lastResult;
+	bool m_resultPending;
 #else
 	unsigned int m_lastResult;
 #endif
+
+	bool m_eofReceived;
 };
 
 class SocketSender : public NetworkSender
@@ -181,8 +182,8 @@ private:
 #ifdef USE_WINDOWS_STYLE_SOCKETS
 	WindowsHandle m_event;
 	OVERLAPPED m_overlapped;
-	bool m_resultPending;
 	DWORD m_lastResult;
+	bool m_resultPending;
 #else
 	unsigned int m_lastResult;
 #endif
