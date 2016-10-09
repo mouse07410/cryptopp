@@ -9,7 +9,7 @@
 
 #include "config.h"
 
-#if defined(CRYPTOPP_BSD_AVAILABLE) || defined(CRYPTOPP_UNIX_AVAILABLE)
+#if defined(UNIX_SIGNALS_AVAILABLE)
 # include <signal.h>
 #endif
 
@@ -17,7 +17,7 @@ NAMESPACE_BEGIN(CryptoPP)
 
 // ************** Unix and Linux compatibles ***************
 
-#if defined(CRYPTOPP_BSD_AVAILABLE) || defined(CRYPTOPP_UNIX_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if defined(UNIX_SIGNALS_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 //! \brief Signal handler function pointer
 //! \details SignalHandlerFn is provided as a stand alone function pointer with external "C" linkage
@@ -82,12 +82,16 @@ struct SignalHandler
             // Don't step on another's handler if Overwrite=false
             if (m_old.sa_handler != 0 && !O) break;
 
-            // Sun Studio 12.2-12.4 needs the two casts, and they must be C-style casts
-            new_handler.sa_handler = (pfn ? pfn : &NullSignalHandler);
-            new_handler.sa_flags = (pfn ? flags : 0);
-
+#if defined __CYGWIN__
+            // http://github.com/weidai11/cryptopp/issues/315
+            memset(&new_handler, 0x00, sizeof(new_handler));
+#else
             ret = sigemptyset (&new_handler.sa_mask);
             if (ret != 0) break; // Failed
+#endif
+
+            new_handler.sa_handler = (pfn ? pfn : &NullSignalHandler);
+            new_handler.sa_flags = (pfn ? flags : 0);
 
             // Install it
             ret = sigaction (S, &new_handler, 0);
