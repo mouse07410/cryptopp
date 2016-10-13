@@ -66,11 +66,6 @@
 # pragma strict_gs_check (on)
 #endif
 
-// Quiet deprecated warnings intended to benefit users.
-#if CRYPTOPP_MSC_VERSION
-# pragma warning(disable: 4996)
-#endif
-
 #if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
 # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
@@ -124,16 +119,16 @@ void PrintSeedAndThreads(const std::string& seed);
 
 int (*AdhocTest)(int argc, char *argv[]) = NULL;
 
+namespace { OFB_Mode<AES>::Encryption s_globalRNG; }
 RandomNumberGenerator & GlobalRNG()
 {
-	static OFB_Mode<AES>::Encryption s_globalRNG;
 	return dynamic_cast<RandomNumberGenerator&>(s_globalRNG);
 }
 
 // See misc.h and trap.h for comments and usage
 #if CRYPTOPP_DEBUG && (defined(CRYPTOPP_BSD_AVAILABLE) || defined(CRYPTOPP_UNIX_AVAILABLE))
 static const SignalHandler<SIGTRAP, false> s_dummyHandler;
-// static const DebugTrapHandle s_dummyHandler;
+// static const DebugTrapHandler s_dummyHandler;
 #endif
 
 int CRYPTOPP_API main(int argc, char *argv[])
@@ -830,7 +825,8 @@ void ForwardTcpPort(const char *sourcePortName, const char *destinationHost, con
 	sockListen.Create();
 	sockListen.Bind(sourcePort);
 
-	int err = setsockopt(sockListen, IPPROTO_TCP, TCP_NODELAY, "\x01", 1);
+	const int flag = 1;
+	int err = setsockopt(sockListen, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
 	CRYPTOPP_ASSERT(err == 0);
 	if(err != 0)
 		throw Socket::Err(sockListen, "setsockopt", sockListen.GetLastError());

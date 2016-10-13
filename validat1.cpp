@@ -45,6 +45,7 @@
 #include "zdeflate.h"
 #include "smartptr.h"
 #include "channels.h"
+#include "misc.h"
 
 #include <time.h>
 #include <memory>
@@ -56,11 +57,6 @@
 // Aggressive stack checking with VS2005 SP1 and above.
 #if (CRYPTOPP_MSC_VERSION >= 1410)
 # pragma strict_gs_check (on)
-#endif
-
-// Quiet deprecated warnings intended to benefit users.
-#if CRYPTOPP_MSC_VERSION
-# pragma warning(disable: 4996)
 #endif
 
 #if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE

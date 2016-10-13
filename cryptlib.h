@@ -3,7 +3,7 @@
 //! \file cryptlib.h
 //! \brief Abstract base classes that provide a uniform interface to this library.
 
-/*!	\mainpage Crypto++ Library 5.6.5 API Reference
+/*!	\mainpage Crypto++ Library 5.6.6 API Reference
 <dl>
 <dt>Abstract Base Classes<dd>
 	cryptlib.h
@@ -531,19 +531,27 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE SimpleKeyingInterface
 public:
 	virtual ~SimpleKeyingInterface() {}
 
-	//! \brief Returns smallest valid key length in bytes
+	//! \brief Returns smallest valid key length
+	//! \returns the minimum key length, in bytes
 	virtual size_t MinKeyLength() const =0;
-	//! \brief Returns largest valid key length in bytes
+	//! \brief Returns largest valid key length
+	//! \returns the maximum key length, in bytes
 	virtual size_t MaxKeyLength() const =0;
-	//! \brief Returns default (recommended) key length in bytes
+	//! \brief Returns default key length
+	//! \returns the default (recommended) key length, in bytes
 	virtual size_t DefaultKeyLength() const =0;
 
-	//! \brief
-	//! \param n the desired keylength
-	//! \return the smallest valid key length in bytes that is greater than or equal to <tt>min(n, GetMaxKeyLength())</tt>
-	virtual size_t GetValidKeyLength(size_t n) const =0;
+	//! \brief Returns a valid key length for the algorithm
+	//! \param keylength the size of the key, in bytes
+	//! \returns the valid key length, in bytes
+	//! \details keylength is provided in bytes, not bits. If keylength is less than MIN_KEYLENGTH,
+	//!   then the function returns MIN_KEYLENGTH. If keylength is greater than MAX_KEYLENGTH,
+	//!   then the function returns MAX_KEYLENGTH. if If keylength is a multiple of KEYLENGTH_MULTIPLE,
+	//!   then keylength is returned. Otherwise, the function returns a \a lower multiple of
+	//!   KEYLENGTH_MULTIPLE.
+	virtual size_t GetValidKeyLength(size_t keylength) const =0;
 
-	//! \brief Returns whether  keylength is a valid key length
+	//! \brief Returns whether keylength is a valid key length
 	//! \param keylength the requested keylength
 	//! \return true if keylength is valid, false otherwise
 	//! \details Internally the function calls GetValidKeyLength()
@@ -1666,12 +1674,13 @@ public:
 		//! \brief Discard skipMax bytes from the output buffer
 		//! \param skipMax the number of bytes to discard
 		//! \details Skip() discards bytes from the output buffer, which is the AttachedTransformation(), if present.
-		//!   The function always returns skipMax.
+		//!   The function always returns the parameter <tt>skipMax</tt>.
 		//! \details If you want to skip bytes from a Source, then perform the following.
-		//! <pre>StringSource ss(str, false, new Redirector(TheBitBucket()));
-		//! ss.Pump(10);    // Skip 10 bytes from Source
-		//! ss.Detach(new FilterChain(...));
-		//! ss.PumpAll();
+		//! <pre>
+		//!     StringSource ss(str, false, new Redirector(TheBitBucket()));
+		//!     ss.Pump(10);    // Skip 10 bytes from Source
+		//!     ss.Detach(new FilterChain(...));
+		//!     ss.PumpAll();
 		//! </pre>
 		virtual lword Skip(lword skipMax=LWORD_MAX);
 
