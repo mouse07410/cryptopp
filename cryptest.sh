@@ -472,6 +472,18 @@ else
 	fi
 fi
 
+# Cygwin and noisy compiles
+OPT_PIC=
+rm -f "$TMP/adhoc.exe" > /dev/null 2>&1
+if [[ (-z "$HAVE_PIC") ]]; then
+	HAVE_PIC=0
+	PIC_PROBLEMS=$("$CXX" -DCRYPTOPP_ADHOC_MAIN -fPIC adhoc.cpp -o "$TMP/adhoc.exe" 2>&1 | "$EGREP" -ic '(warning|error)')
+	if [[ "$PIC_PROBLEMS" -eq "0" ]]; then
+		HAVE_PIC=1
+		OPT_PIC=-fPIC
+	fi
+fi
+
 # GCC 4.8; Clang 3.4
 rm -f "$TMP/adhoc.exe" > /dev/null 2>&1
 if [[ (-z "$HAVE_UBSAN") ]]; then
@@ -1680,7 +1692,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=i686 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=i686 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1706,7 +1718,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=i686 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=i686 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1735,7 +1747,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=x86-64 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=x86-64 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1761,7 +1773,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=x86-64 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=x86-64 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1795,10 +1807,10 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=i686 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=i686 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static 2>&1 | tee -a "$TEST_RESULTS"
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=native -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=native $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1824,10 +1836,10 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=i686 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=i686 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static 2>&1 | tee -a "$TEST_RESULTS"
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=native -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=native $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1856,10 +1868,10 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=x86-64 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=x86-64 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static 2>&1 | tee -a "$TEST_RESULTS"
 
-		CXXFLAGS="$DEBUG_CXXFLAGS -march=native -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$DEBUG_CXXFLAGS -march=native $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -1885,10 +1897,10 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=x86-64 -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=x86-64 $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static 2>&1 | tee -a "$TEST_RESULTS"
 
-		CXXFLAGS="$RELEASE_CXXFLAGS -march=native -fPIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
+		CXXFLAGS="$RELEASE_CXXFLAGS -march=native $OPT_PIC -pipe ${DEPRECATED_CXXFLAGS[@]}"
 		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
