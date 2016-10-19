@@ -78,7 +78,7 @@ bool ValidateAll(bool thorough)
 	pass=TestRDSEED() && pass;
 #endif
 
-#if CRYPTOPP_DEBUG && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_DEBUG) && !defined(CRYPTOPP_IMPORTS)
 	// http://github.com/weidai11/cryptopp/issues/92
 	pass=TestSecBlock() && pass;
 	// http://github.com/weidai11/cryptopp/issues/64
@@ -173,17 +173,19 @@ bool ValidateAll(bool thorough)
 
 bool TestSettings()
 {
-	// Thanks to IlyaBizyaev and Zireael, http://github.com/weidai11/cryptopp/issues/28
-#if defined(__MINGW32__)
-	using CryptoPP::memcpy_s;
-#endif
-
 	bool pass = true;
 
 	cout << "\nTesting Settings...\n\n";
 
 	word32 w;
-	memcpy_s(&w, sizeof(w), "\x01\x02\x03\x04", 4);
+	const byte s[] = "\x01\x02\x03\x04";
+
+#if (CRYPTOPP_MSC_VERSION >= 1400)
+	std::copy(s, s+4,
+		stdext::make_checked_array_iterator(reinterpret_cast<byte*>(&w), sizeof(w)));
+#else
+	std::copy(s, s+4, reinterpret_cast<byte*>(&w));
+#endif
 
 	if (w == 0x04030201L)
 	{
@@ -212,7 +214,7 @@ bool TestSettings()
 	}
 
 #ifdef CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS
-	// Don't CRYPTOPP_ASSERT the alignment of testvals. That's what this test is for.
+	// Don't assert the alignment of testvals. That's what this test is for.
 	byte testvals[10] = {1,2,2,3,3,3,3,2,2,1};
 	if (*(word32 *)(void *)(testvals+3) == 0x03030303 && *(word64 *)(void *)(testvals+1) == W64LIT(0x0202030303030202))
 		cout << "passed:  Your machine allows unaligned data access.\n";
@@ -330,7 +332,7 @@ bool TestSettings()
 	return pass;
 }
 
-#if CRYPTOPP_DEBUG && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_DEBUG) && !defined(CRYPTOPP_IMPORTS)
 bool TestSecBlock()
 {
 	cout << "\nTesting SecBlock...\n\n";
@@ -1264,7 +1266,7 @@ bool TestSecBlock()
 }
 #endif
 
-#if CRYPTOPP_DEBUG && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_DEBUG) && !defined(CRYPTOPP_IMPORTS)
 bool TestHuffmanCodes()
 {
     cout << "\nTesting Huffman codes...\n\n";

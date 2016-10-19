@@ -38,13 +38,17 @@ public:
 	typedef Point Element;
 	typedef IncompatibleCofactorMultiplication DefaultCofactorOption;
 
-	DL_GroupParameters_EC() : m_compress(false), m_encodeAsOID(false) {}
+#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
+	virtual ~DL_GroupParameters_EC() {}
+#endif
+
+	DL_GroupParameters_EC() : m_compress(false), m_encodeAsOID(true) {}
 	DL_GroupParameters_EC(const OID &oid)
-		: m_compress(false), m_encodeAsOID(false) {Initialize(oid);}
+		: m_compress(false), m_encodeAsOID(true) {Initialize(oid);}
 	DL_GroupParameters_EC(const EllipticCurve &ec, const Point &G, const Integer &n, const Integer &k = Integer::Zero())
-		: m_compress(false), m_encodeAsOID(false) {Initialize(ec, G, n, k);}
+		: m_compress(false), m_encodeAsOID(true) {Initialize(ec, G, n, k);}
 	DL_GroupParameters_EC(BufferedTransformation &bt)
-		: m_compress(false), m_encodeAsOID(false) {BERDecode(bt);}
+		: m_compress(false), m_encodeAsOID(true) {BERDecode(bt);}
 
 	void Initialize(const EllipticCurve &ec, const Point &G, const Integer &n, const Integer &k = Integer::Zero())
 	{
@@ -133,10 +137,6 @@ public:
 	void LoadRecommendedParameters(const OID &oid) {Initialize(oid);}
 #endif
 
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
-	virtual ~DL_GroupParameters_EC() {}
-#endif
-
 protected:
 	unsigned int FieldElementLength() const {return GetCurve().GetField().MaxElementByteLength();}
 	unsigned int ExponentLength() const {return m_n.ByteCount();}
@@ -147,12 +147,18 @@ protected:
 	mutable bool m_compress, m_encodeAsOID;		// presentation details
 };
 
-//! EC public key
+//! \class DL_PublicKey_EC
+//! \brief Elliptic Curve Discrete Log (DL) public key
+//! \tparam EC elliptic curve field
 template <class EC>
 class DL_PublicKey_EC : public DL_PublicKeyImpl<DL_GroupParameters_EC<EC> >
 {
 public:
 	typedef typename EC::Point Element;
+
+#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
+	virtual ~DL_PublicKey_EC() {}
+#endif
 
 	void Initialize(const DL_GroupParameters_EC<EC> &params, const Element &Q)
 		{this->AccessGroupParameters() = params; this->SetPublicElement(Q);}
@@ -162,18 +168,20 @@ public:
 	// X509PublicKey
 	void BERDecodePublicKey(BufferedTransformation &bt, bool parametersPresent, size_t size);
 	void DEREncodePublicKey(BufferedTransformation &bt) const;
-
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
-	virtual ~DL_PublicKey_EC() {}
-#endif
 };
 
-//! EC private key
+//! \class DL_PrivateKey_EC
+//! \brief Elliptic Curve Discrete Log (DL) private key
+//! \tparam EC elliptic curve field
 template <class EC>
 class DL_PrivateKey_EC : public DL_PrivateKeyImpl<DL_GroupParameters_EC<EC> >
 {
 public:
 	typedef typename EC::Point Element;
+
+#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
+	virtual ~DL_PrivateKey_EC() {}
+#endif
 
 	void Initialize(const DL_GroupParameters_EC<EC> &params, const Integer &x)
 		{this->AccessGroupParameters() = params; this->SetPrivateExponent(x);}
@@ -187,13 +195,13 @@ public:
 	// PKCS8PrivateKey
 	void BERDecodePrivateKey(BufferedTransformation &bt, bool parametersPresent, size_t size);
 	void DEREncodePrivateKey(BufferedTransformation &bt) const;
-
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
-	virtual ~DL_PrivateKey_EC() {}
-#endif
 };
 
-//! Elliptic Curve Diffie-Hellman, AKA <a href="http://www.weidai.com/scan-mirror/ka.html#ECDH">ECDH</a>
+//! \class ECDH
+//! \brief Elliptic Curve Diffie-Hellman
+//! \tparam EC elliptic curve field
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+//! \sa <a href="http://www.weidai.com/scan-mirror/ka.html#ECDH">Elliptic Curve Diffie-Hellman, AKA ECDH</a>
 template <class EC, class COFACTOR_OPTION = CPP_TYPENAME DL_GroupParameters_EC<EC>::DefaultCofactorOption>
 struct ECDH
 {
@@ -204,7 +212,11 @@ struct ECDH
 #endif
 };
 
-/// Elliptic Curve Menezes-Qu-Vanstone, AKA <a href="http://www.weidai.com/scan-mirror/ka.html#ECMQV">ECMQV</a>
+//! \class ECMQV
+//! \brief Elliptic Curve Menezes-Qu-Vanstone
+//! \tparam EC elliptic curve field
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+/// \sa <a href="http://www.weidai.com/scan-mirror/ka.html#ECMQV">Elliptic Curve Menezes-Qu-Vanstone, AKA ECMQV</a>
 template <class EC, class COFACTOR_OPTION = CPP_TYPENAME DL_GroupParameters_EC<EC>::DefaultCofactorOption>
 struct ECMQV
 {
@@ -215,7 +227,10 @@ struct ECMQV
 #endif
 };
 
-//! \brief Hashed Menezes-Qu-Vanstone in ECP or EC2N
+//! \class ECHMQV
+//! \brief Hashed Elliptic Curve Menezes-Qu-Vanstone
+//! \tparam EC elliptic curve field
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
 //! \details This implementation follows Hugo Krawczyk's <a href="http://eprint.iacr.org/2005/176">HMQV: A High-Performance
 //!   Secure Diffie-Hellman Protocol</a>. Note: this implements HMQV only. HMQV-C with Key Confirmation is not provided.
 template <class EC, class COFACTOR_OPTION = CPP_TYPENAME DL_GroupParameters_EC<EC>::DefaultCofactorOption, class HASH = SHA256>
@@ -233,7 +248,10 @@ typedef ECHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA256
 typedef ECHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA384 >::Domain ECHMQV384;
 typedef ECHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA512 >::Domain ECHMQV512;
 
-//! \brief Fully Hashed Menezes-Qu-Vanstone in ECP or EC2N
+//! \class ECFHMQV
+//! \brief Fully Hashed Elliptic Curve Menezes-Qu-Vanstone
+//! \tparam EC elliptic curve field
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
 //! \details This implementation follows Augustin P. Sarr and Philippe Elbaz–Vincent, and Jean–Claude Bajard's
 //!   <a href="http://eprint.iacr.org/2009/408">A Secure and Efficient Authenticated Diffie-Hellman Protocol</a>.
 //!   Note: this is FHMQV, Protocol 5, from page 11; and not FHMQV-C.
@@ -252,7 +270,9 @@ typedef ECFHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA25
 typedef ECFHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA384 >::Domain ECFHMQV384;
 typedef ECFHMQV< ECP, DL_GroupParameters_EC< ECP >::DefaultCofactorOption, SHA512 >::Domain ECFHMQV512;
 
-//! EC keys
+//! \class DL_Keys_EC
+//! \brief Elliptic Curve Discrete Log (DL) keys
+//! \tparam EC elliptic curve field
 template <class EC>
 struct DL_Keys_EC
 {
@@ -264,10 +284,13 @@ struct DL_Keys_EC
 #endif
 };
 
+// Forward declaration; documented below
 template <class EC, class H>
 struct ECDSA;
 
-//! ECDSA keys
+//! \class DL_Keys_ECDSA
+//! \brief Elliptic Curve DSA keys
+//! \tparam EC elliptic curve field
 template <class EC>
 struct DL_Keys_ECDSA
 {
@@ -279,7 +302,9 @@ struct DL_Keys_ECDSA
 #endif
 };
 
-//! ECDSA algorithm
+//! \class DL_Algorithm_ECDSA
+//! \brief Elliptic Curve DSA (ECDSA) signature algorithm
+//! \tparam EC elliptic curve field
 template <class EC>
 class DL_Algorithm_ECDSA : public DL_Algorithm_GDSA<typename EC::Point>
 {
@@ -291,7 +316,9 @@ public:
 #endif
 };
 
-//! ECNR algorithm
+//! \class DL_Algorithm_ECNR
+//! \brief Elliptic Curve NR (ECNR) signature algorithm
+//! \tparam EC elliptic curve field
 template <class EC>
 class DL_Algorithm_ECNR : public DL_Algorithm_NR<typename EC::Point>
 {
@@ -303,7 +330,11 @@ public:
 #endif
 };
 
-//! <a href="http://www.weidai.com/scan-mirror/sig.html#ECDSA">ECDSA</a>
+//! \class ECDSA
+//! \brief Elliptic Curve DSA (ECDSA) signature scheme
+//! \tparam EC elliptic curve field
+//! \tparam H HashTransformation derived class
+//! \sa <a href="http://www.weidai.com/scan-mirror/sig.html#ECDSA">ECDSA</a>
 template <class EC, class H>
 struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_SignatureMessageEncodingMethod_DSA, H>
 {
@@ -312,7 +343,10 @@ struct ECDSA : public DL_SS<DL_Keys_ECDSA<EC>, DL_Algorithm_ECDSA<EC>, DL_Signat
 #endif
 };
 
-//! ECNR
+//! \class ECNR
+//! \brief Elliptic Curve NR (ECNR) signature scheme
+//! \tparam EC elliptic curve field
+//! \tparam H HashTransformation derived class
 template <class EC, class H = SHA>
 struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMessageEncodingMethod_NR, H>
 {
@@ -321,17 +355,47 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
 #endif
 };
 
-//! Elliptic Curve Integrated Encryption Scheme, AKA <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">ECIES</a>
-/*! Default to (NoCofactorMultiplication and DHAES_MODE = false) for compatibilty with SEC1 and Crypto++ 4.2.
-	The combination of (IncompatibleCofactorMultiplication and DHAES_MODE = true) is recommended for best
-	efficiency and security. */
-template <class EC, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true>
+//! \class ECIES
+//! \brief Elliptic Curve Integrated Encryption Scheme
+//! \tparam COFACTOR_OPTION \ref CofactorMultiplicationOption "cofactor multiplication option"
+//! \tparam HASH HashTransformation derived class used for key drivation and MAC computation
+//! \tparam DHAES_MODE flag indicating if the MAC includes additional context parameters such as <em>u·V</em>, <em>v·U</em> and label
+//! \tparam LABEL_OCTETS flag indicating if the label size is specified in octets or bits
+//! \details ECIES is an Elliptic Curve based Integrated Encryption Scheme (IES). The scheme combines a Key Encapsulation
+//!   Method (KEM) with a Data Encapsulation Method (DEM) and a MAC tag. The scheme is
+//!   <A HREF="http://en.wikipedia.org/wiki/ciphertext_indistinguishability">IND-CCA2</A>, which is a strong notion of security.
+//!   You should prefer an Integrated Encryption Scheme over homegrown schemes.
+//! \details The library's original implementation is based on an early P1363 draft, which itself appears to be based on an early Certicom
+//!   SEC-1 draft (or an early SEC-1 draft was based on a P1363 draft). Crypto++ 4.2 used the early draft in its Integrated Ecryption
+//!   Schemes with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Crypto++ 4.2 compatibility, then use the ECIES template class with
+//!   <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=false</tt> and <tt>LABEL_OCTETS=true</tt>.
+//! \details If you desire an Integrated Encryption Scheme with Bouncy Castle 1.54 and Botan 1.11 compatibility, then use the ECIES
+//!   template class with <tt>NoCofactorMultiplication</tt>, <tt>DHAES_MODE=true</tt> and <tt>LABEL_OCTETS=false</tt>.
+//! \details The default template parameters ensure compatibility with Bouncy Castle 1.54 and Botan 1.11. The combination of
+//!   <tt>IncompatibleCofactorMultiplication</tt> and <tt>DHAES_MODE=true</tt> is recommended for best efficiency and security.
+//!   SHA1 is used for compatibility reasons, but it can be changed if desired. SHA-256 or another hash will likely improve the
+//!   security provided by the MAC. The hash is also used in the key derivation function as a PRF.
+//! \details Below is an example of constructing a Crypto++ 4.2 compatible ECIES encryptor and decryptor.
+//! <pre>
+//!     AutoSeededRandomPool prng;
+//!     DL_PrivateKey_EC<ECP> key;
+//!     key.Initialize(prng, ASN1::secp160r1());
+//!
+//!     ECIES<ECP,SHA1,NoCofactorMultiplication,true,true>::Decryptor decryptor(key);
+//!     ECIES<ECP,SHA1,NoCofactorMultiplication,true,true>::Encryptor encryptor(decryptor);
+//! </pre>
+//! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>,
+//!   Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic
+//!   Curve Integrated Encryption Schemes</A>
+//! \since Crypto++ 4.0, Crypto++ 5.6.6 for Bouncy Castle and Botan compatibility
+template <class EC, class HASH = SHA1, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
 		DL_Keys_EC<EC>,
 		DL_KeyAgreementAlgorithm_DH<typename EC::Point, COFACTOR_OPTION>,
-		DL_KeyDerivationAlgorithm_P1363<typename EC::Point, DHAES_MODE, P1363_KDF2<SHA1> >,
-		DL_EncryptionAlgorithm_Xor<HMAC<SHA1>, DHAES_MODE>,
+		DL_KeyDerivationAlgorithm_P1363<typename EC::Point, DHAES_MODE, P1363_KDF2<HASH> >,
+		DL_EncryptionAlgorithm_Xor<HMAC<HASH>, DHAES_MODE, LABEL_OCTETS>,
 		ECIES<EC> >
 {
 	static std::string CRYPTOPP_API StaticAlgorithmName() {return "ECIES";}	// TODO: fix this after name is standardized
@@ -339,7 +403,6 @@ struct ECIES
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~ECIES() {}
 #endif
-
 };
 
 NAMESPACE_END

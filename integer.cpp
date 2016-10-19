@@ -412,7 +412,7 @@ S DivideThreeWordsByTwo(S *A, S B0, S B1, D *dummy=NULL)
 {
 	CRYPTOPP_UNUSED(dummy);
 
-	// CRYPTOPP_ASSERT {A[2],A[1]} < {B1,B0}, so quotient can fit in a S
+	// Assert {A[2],A[1]} < {B1,B0}, so quotient can fit in a S
 	CRYPTOPP_ASSERT(A[2] < B1 || (A[2]==B1 && A[1] < B0));
 
 	// estimate the quotient: do a 2 S by 1 S divide.
@@ -2589,7 +2589,7 @@ void HalfMontgomeryReduce(word *R, word *T, const word *X, const word *M, const 
 // do a 3 word by 2 word divide, returns quotient and leaves remainder in A
 static word SubatomicDivide(word *A, word B0, word B1)
 {
-	// CRYPTOPP_ASSERT {A[2],A[1]} < {B1,B0}, so quotient can fit in a word
+	// Assert {A[2],A[1]} < {B1,B0}, so quotient can fit in a word
 	CRYPTOPP_ASSERT(A[2] < B1 || (A[2]==B1 && A[1] < B0));
 
 	// estimate the quotient: do a 2 word by 1 word divide
@@ -2637,7 +2637,7 @@ static inline void AtomicDivide(word *Q, const word *A, const word *B)
 		Q[1] = SubatomicDivide(T+1, B[0], B[1]);
 		Q[0] = SubatomicDivide(T, B[0], B[1]);
 
-#if CRYPTOPP_DEBUG
+#if defined(CRYPTOPP_DEBUG)
 		// multiply quotient and divisor and add remainder, make sure it equals dividend
 		CRYPTOPP_ASSERT(!T[2] && !T[3] && (T[1] < B[1] || (T[1]==B[1] && T[0]<B[0])));
 		word P[4];
@@ -2656,7 +2656,7 @@ static inline void AtomicDivide(word *Q, const word *A, const word *B)
 	Q[0] = q.GetLowHalf();
 	Q[1] = q.GetHighHalf();
 
-#if CRYPTOPP_DEBUG
+#if defined(CRYPTOPP_DEBUG)
 	if (B[0] || B[1])
 	{
 		// multiply quotient and divisor and add remainder, make sure it equals dividend
