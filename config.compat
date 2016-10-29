@@ -364,9 +364,9 @@ NAMESPACE_END
 #endif
 
 // The section attribute attempts to initialize CPU flags to avoid Valgrind findings above -O1
-#if ((__MACH__ >= 1) && ((CRYPTOPP_LLVM_CLANG_VERSION >= 30600) || (CRYPTOPP_APPLE_CLANG_VERSION >= 70100) || (CRYPTOPP_GCC_VERSION >= 40300)))
+#if ((defined(__MACH__) && defined(__APPLE__)) && ((CRYPTOPP_LLVM_CLANG_VERSION >= 30600) || (CRYPTOPP_APPLE_CLANG_VERSION >= 70100) || (CRYPTOPP_GCC_VERSION >= 40300)))
 	#define CRYPTOPP_SECTION_INIT __attribute__((section ("__DATA,__data")))
-#elif ((__ELF__ >= 1) && (CRYPTOPP_GCC_VERSION >= 40300))
+#elif (defined(__ELF__) && (CRYPTOPP_GCC_VERSION >= 40300))
 	#define CRYPTOPP_SECTION_INIT __attribute__((section ("nocommon")))
 #else
 	#define CRYPTOPP_SECTION_INIT
@@ -578,8 +578,8 @@ NAMESPACE_END
 
 // Linux provides X32, which is 32-bit integers, longs and pointers on x86_64 using the full x86_64 register set.
 // Detect via __ILP32__ (http://wiki.debian.org/X32Port). However, __ILP32__ shows up in more places than
-// the System V ABI specs calls out, like on just about any 32-bit system with Clang.
-#if ((__ILP32__ >= 1) || (_ILP32 >= 1)) && defined(__x86_64__)
+// the System V ABI specs calls out, like on some Solaris installations and just about any 32-bit system with Clang.
+#if (defined(__ILP32__) || defined(_ILP32)) && defined(__x86_64__)
 	#define CRYPTOPP_BOOL_X32 1
 #else
 	#define CRYPTOPP_BOOL_X32 0
