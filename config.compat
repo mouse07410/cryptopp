@@ -570,7 +570,7 @@ NAMESPACE_END
 
 // How to declare class constants
 // Use enum for OS X 10.5 ld, http://github.com/weidai11/cryptopp/issues/255
-#if (defined(_MSC_VER) && _MSC_VER <= 1300) || defined(__INTEL_COMPILER) || defined(__BORLANDC__)
+#if (defined(_MSC_VER) && _MSC_VER <= 1300) || defined(__INTEL_COMPILER) || defined(__BORLANDC__) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 #	define CRYPTOPP_CONSTANT(x) enum {x};
 #else
 #	define CRYPTOPP_CONSTANT(x) static const int x;
@@ -920,9 +920,12 @@ NAMESPACE_END
 #  define CRYPTOPP_NO_THROW
 #endif // CRYPTOPP_CXX11_NOEXCEPT
 
+// http://stackoverflow.com/a/13867690/608639
 #if defined(CRYPTOPP_CXX11_CONSTEXPR)
+#  define CRYPTOPP_STATIC_CONSTEXPR static constexpr const
 #  define CRYPTOPP_CONSTEXPR constexpr
 #else
+#  define CRYPTOPP_STATIC_CONSTEXPR static const
 #  define CRYPTOPP_CONSTEXPR
 #endif // CRYPTOPP_CXX11_CONSTEXPR
 
@@ -933,6 +936,7 @@ NAMESPACE_END
 #endif  // CRYPTOPP_CXX11_ALIGNAS
 
 // Hack... CRYPTOPP_CONSTANT is defined earlier, before C++11 constexpr availability is determined
+// http://stackoverflow.com/q/35213098/608639
 #if defined(CRYPTOPP_CXX11_CONSTEXPR)
 # undef CRYPTOPP_CONSTANT
 # define CRYPTOPP_CONSTANT(x) constexpr static int x;
