@@ -9,6 +9,13 @@
 
 #include "config.h"
 
+// Issue 340
+#if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wconversion"
+# pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 // ARM32/ARM64 Headers
 #if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 # if defined(__GNUC__)
@@ -47,12 +54,9 @@
 #if CRYPTOPP_BOOL_AESNI_INTRINSICS_AVAILABLE
 #  include <wmmintrin.h>    // aesenc, aesdec, etc
 #endif // wmmintrin.h
-#if CRYPTOPP_BOOL_AVX_INTRINSICS_AVAILABLE
-#  include <immintrin.h>    // RDRAND, RDSEED and AVX
-#endif
-#if CRYPTOPP_BOOL_AVX2_INTRINSICS_AVAILABLE
-#  include <zmmintrin.h>    // AVX 512-bit extensions
-#endif
+#if CRYPTOPP_BOOL_SSE_SHA_INTRINSICS_AVAILABLE
+#  include <immintrin.h>    // RDRAND, RDSEED, AVX, SHA
+#endif // immintrin.h
 #endif  // X86/X64/X32 Headers
 
 // Applies to both X86/X32/X64 and ARM32/ARM64. And we've got MIPS devices on the way.
@@ -604,5 +608,10 @@ inline int GetCacheLineSize()
 #endif  //  X86/X32/X64
 
 NAMESPACE_END
+
+// Issue 340
+#if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
+# pragma GCC diagnostic pop
+#endif
 
 #endif  // CRYPTOPP_CPU_H

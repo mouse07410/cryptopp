@@ -63,7 +63,7 @@
 // ***************** Less Important Settings ***************
 
 // Library version
-#define CRYPTOPP_VERSION 566
+#define CRYPTOPP_VERSION 570
 
 // Define this if you want to set a prefix for TestData/ and TestVectors/
 //   Be mindful of the trailing slash since its simple concatenation.
@@ -502,11 +502,10 @@ NAMESPACE_END
 	#define CRYPTOPP_BOOL_AESNI_INTRINSICS_AVAILABLE 0
 #endif
 
-// AVX2 in MSC 18.00
-#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_AVX) && !defined(_M_ARM) && ((_MSC_VER >= 1600) || (defined(__RDRND__) || defined(__RDSEED__) || defined(__AVX__)))
-	#define CRYPTOPP_BOOL_AVX_AVAILABLE 1
+#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_SHA) && !defined(_M_ARM) && ((_MSC_VER >= 1900) || defined(__SHA__))
+	#define CRYPTOPP_BOOL_SSE_SHA_INTRINSICS_AVAILABLE 1
 #else
-	#define CRYPTOPP_BOOL_AVX_AVAILABLE 0
+	#define CRYPTOPP_BOOL_SSE_SHA_INTRINSICS_AVAILABLE 0
 #endif
 
 // Requires ARMv7 and ACLE 1.0. Testing shows ARMv7 is really ARMv7a under most toolchains.
@@ -922,10 +921,10 @@ NAMESPACE_END
 
 // http://stackoverflow.com/a/13867690/608639
 #if defined(CRYPTOPP_CXX11_CONSTEXPR)
-#  define CRYPTOPP_STATIC_CONSTEXPR static constexpr const
+#  define CRYPTOPP_STATIC_CONSTEXPR static constexpr
 #  define CRYPTOPP_CONSTEXPR constexpr
 #else
-#  define CRYPTOPP_STATIC_CONSTEXPR static const
+#  define CRYPTOPP_STATIC_CONSTEXPR static
 #  define CRYPTOPP_CONSTEXPR
 #endif // CRYPTOPP_CXX11_CONSTEXPR
 

@@ -309,7 +309,7 @@ template <class EC>
 class DL_Algorithm_ECDSA : public DL_Algorithm_GDSA<typename EC::Point>
 {
 public:
-	CRYPTOPP_STATIC_CONSTEXPR char* const CRYPTOPP_API StaticAlgorithmName() {return "ECDSA";}
+  CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "ECDSA";}
 
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~DL_Algorithm_ECDSA() {}
@@ -323,7 +323,7 @@ template <class EC>
 class DL_Algorithm_ECNR : public DL_Algorithm_NR<typename EC::Point>
 {
 public:
-	CRYPTOPP_STATIC_CONSTEXPR char* const CRYPTOPP_API StaticAlgorithmName() {return "ECNR";}
+  CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "ECNR";}
 
 #ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~DL_Algorithm_ECNR() {}
@@ -388,7 +388,7 @@ struct ECNR : public DL_SS<DL_Keys_EC<EC>, DL_Algorithm_ECNR<EC>, DL_SignatureMe
 //! \sa DLIES, <a href="http://www.weidai.com/scan-mirror/ca.html#ECIES">Elliptic Curve Integrated Encryption Scheme (ECIES)</a>,
 //!   Martínez, Encinas, and Ávila's <A HREF="http://digital.csic.es/bitstream/10261/32671/1/V2-I2-P7-13.pdf">A Survey of the Elliptic
 //!   Curve Integrated Encryption Schemes</A>
-//! \since Crypto++ 4.0, Crypto++ 5.6.6 for Bouncy Castle and Botan compatibility
+//! \since Crypto++ 4.0, Crypto++ 5.7 for Bouncy Castle and Botan compatibility
 template <class EC, class HASH = SHA1, class COFACTOR_OPTION = NoCofactorMultiplication, bool DHAES_MODE = true, bool LABEL_OCTETS = false>
 struct ECIES
 	: public DL_ES<
