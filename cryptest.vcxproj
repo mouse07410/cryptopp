@@ -201,6 +201,7 @@
     <ClCompile Include="fipsalgt.cpp" />
     <ClCompile Include="regtest.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="validat0.cpp" />
     <ClCompile Include="validat1.cpp" />
     <ClCompile Include="validat2.cpp" />
     <ClCompile Include="validat3.cpp" />
@@ -227,6 +228,7 @@
     <None Include="TestVectors\dlies.txt" />
     <None Include="TestVectors\dsa.txt" />
     <None Include="TestVectors\dsa_1363.txt" />
+    <None Include="TestVectors\dsa_rfc6979.txt" />
     <None Include="TestVectors\eax.txt" />
     <None Include="TestVectors\esign.txt" />
     <None Include="TestVectors\gcm.txt" />

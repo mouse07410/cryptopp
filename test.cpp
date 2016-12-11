@@ -152,8 +152,9 @@ int CRYPTOPP_API main(int argc, char *argv[])
 		std::string seed = IntToString(time(NULL));
 		seed.resize(16, ' ');
 
-		OFB_Mode<AES>::Encryption& prng = dynamic_cast<OFB_Mode<AES>::Encryption&>(GlobalRNG());
-		prng.SetKeyWithIV((byte *)seed.data(), 16, (byte *)seed.data());
+		// Fetch the SymmetricCipher interface, not the RandomNumberGenerator interface, to key the underlying cipher
+		OFB_Mode<AES>::Encryption& aesg = dynamic_cast<OFB_Mode<AES>::Encryption&>(GlobalRNG());
+		aesg.SetKeyWithIV((byte *)seed.data(), 16, (byte *)seed.data());
 
 		std::string command, executableName, macFilename;
 
@@ -438,7 +439,7 @@ T StringToValue(const std::string& str) {
 
 	// Arbitrary, but we need to clear a Coverity finding TAINTED_SCALAR
 	if(iss.str().length() > 25)
-		throw InvalidArgument("cryptest.exe: '" + str +"' is tool ong");
+		throw InvalidArgument("cryptest.exe: '" + str +"' is too long");
 
 	T value;
 	iss >> std::noskipws >> value;

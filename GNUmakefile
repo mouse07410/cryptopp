@@ -443,7 +443,7 @@ endif
 OBJS := $(SRCS:.cpp=.o)
 
 # List test.cpp first to tame C++ static initialization problems.
-TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp validat1.cpp validat2.cpp validat3.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp
+TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp datatest.cpp regtest.cpp fipsalgt.cpp dlltest.cpp
 TESTOBJS := $(TESTSRCS:.cpp=.o)
 LIBOBJS := $(filter-out $(TESTOBJS),$(OBJS))
 
@@ -676,7 +676,7 @@ dlltest.exe: cryptopp.dll $(DLLTESTOBJS)
 	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(DLLTESTOBJS) -L. -lcryptopp.dll $(LDFLAGS) $(LDLIBS)
 
 # This recipe prepares the distro files
-TEXT_FILES := *.h *.cpp adhoc.cpp.proto License.txt Readme.txt Install.txt Filelist.txt CMakeLists.txt config.compat Doxyfile cryptest* cryptlib* dlltest* cryptdll* *.sln *.vcxproj *.filters cryptopp.rc TestVectors/*.txt TestData/*.dat TestScripts/*.sh TestScripts/*.pl TestScripts/*.cmd
+TEXT_FILES := *.h *.cpp adhoc.cpp.proto License.txt Readme.txt Install.txt Filelist.txt CMakeLists.txt Doxyfile cryptest* cryptlib* dlltest* cryptdll* *.sln *.vcxproj *.filters cryptopp.rc TestVectors/*.txt TestData/*.dat TestScripts/*.sh TestScripts/*.pl TestScripts/*.cmd
 EXEC_FILES := GNUmakefile GNUmakefile-cross TestData/ TestVectors/ TestScripts/
 
 ifeq ($(wildcard Filelist.txt),Filelist.txt)
@@ -686,10 +686,10 @@ endif
 .PHONY: trim
 trim:
 ifneq ($(IS_DARWIN),0)
-	sed -i '' -e's/[[:space:]]*$$//' *.compat *.sh *.h *.cpp *.sln *.vcxproj GNUmakefile GNUmakefile-cross
+	sed -i '' -e's/[[:space:]]*$$//' *.sh *.h *.cpp *.sln *.vcxproj GNUmakefile GNUmakefile-cross
 	make convert
 else
-	sed -i -e's/[[:space:]]*$$//' *.compat *.sh *.h *.cpp *.sln *.vcxproj GNUmakefile GNUmakefile-cross
+	sed -i -e's/[[:space:]]*$$//' *.sh *.h *.cpp *.sln *.vcxproj GNUmakefile GNUmakefile-cross
 	make convert
 endif
 

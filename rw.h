@@ -19,11 +19,15 @@ NAMESPACE_BEGIN(CryptoPP)
 
 //! \class RWFunction
 //! \brief Rabin-Williams trapdoor function using the public key
+//! \since Crypto++ 2.0, Tweaked roots using <em>e</em> and <em>f</em> since Crypto++ 5.6.4
 class CRYPTOPP_DLL RWFunction : public TrapdoorFunction, public PublicKey
 {
 	typedef RWFunction ThisClass;
 
 public:
+
+	//! \brief Initialize a Rabin-Williams public key
+	//! \param n the modulus
 	void Initialize(const Integer &n)
 		{m_n = n;}
 
@@ -52,16 +56,29 @@ protected:
 
 //! \class InvertibleRWFunction
 //! \brief Rabin-Williams trapdoor function using the private key
-//! \since Tweaked roots using <em>e</em> and <em>f</em> since Crypto++ 5.6.4
+//! \since Crypto++ 2.0, Tweaked roots using <em>e</em> and <em>f</em> since Crypto++ 5.6.4
 class CRYPTOPP_DLL InvertibleRWFunction : public RWFunction, public TrapdoorFunctionInverse, public PrivateKey
 {
 	typedef InvertibleRWFunction ThisClass;
 
 public:
+	//! \brief Construct an InvertibleRWFunction
 	InvertibleRWFunction() : m_precompute(false) {}
 
+	//! \brief Initialize a Rabin-Williams private key
+	//! \param n modulus
+	//! \param p first prime factor
+	//! \param q second prime factor
+	//! \param u q<sup>-1</sup> mod p
+	//! \details This Initialize() function overload initializes a private key from existing parameters.
 	void Initialize(const Integer &n, const Integer &p, const Integer &q, const Integer &u);
-	// generate a random private key
+
+	//! \brief Create a Rabin-Williams private key
+	//! \param rng a RandomNumberGenerator derived class
+	//! \param modulusBits the size of the modulus, in bits
+	//! \details This function overload of Initialize() creates a new private key because it
+	//!   takes a RandomNumberGenerator() as a parameter. If you have an existing keypair,
+	//!   then use one of the other Initialize() overloads.
 	void Initialize(RandomNumberGenerator &rng, unsigned int modulusBits)
 		{GenerateRandomWithKeySize(rng, modulusBits);}
 
@@ -107,19 +124,19 @@ protected:
 	mutable bool m_precompute;
 };
 
-//! \class RW
-//! \brief Rabin-Williams algorithm
+//! \brief Rabin-Williams keys
 struct RW
 {
-	static std::string StaticAlgorithmName() {return "RW";}
+	CRYPTOPP_STATIC_CONSTEXPR const char* StaticAlgorithmName() {return "RW";}
 	typedef RWFunction PublicKey;
 	typedef InvertibleRWFunction PrivateKey;
 };
 
-//! \class RWSS
 //! \brief Rabin-Williams signature scheme
+//! \tparam STANDARD signature standard
+//! \tparam H hash transformation
 template <class STANDARD, class H>
-struct RWSS : public TF_SS<STANDARD, H, RW>
+struct RWSS : public TF_SS<RW, STANDARD, H>
 {
 };
 

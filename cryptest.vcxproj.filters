@@ -54,6 +54,9 @@
     <None Include="TestVectors\dsa_1363.txt">
       <Filter>TestVectors</Filter>
     </None>
+    <None Include="TestVectors\dsa_rfc6979.txt">
+      <Filter>TestVectors</Filter>
+    </None>
     <None Include="TestVectors\eax.txt">
       <Filter>TestVectors</Filter>
     </None>
@@ -339,6 +342,9 @@
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="test.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat0.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="validat1.cpp">

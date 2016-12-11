@@ -21,7 +21,7 @@ Square, TEA, \ref ThreeWay "3-Way", Twofish, XTEA
 <dt>Non-Cryptographic Checksums<dd>
 	CRC32, Adler32
 <dt>Message Authentication Codes<dd>
-	VMAC, HMAC, CBC_MAC, CMAC, DMAC, TTMAC, \ref GCM "GCM (GMAC)", BLAKE2
+	VMAC, HMAC, CBC_MAC, CMAC, DMAC, TTMAC, \ref GCM "GCM (GMAC)", BLAKE2 (BLAKE2b and BLAKE2s), Poly1305
 <dt>Random Number Generators<dd>
 	NullRNG(), LC_RNG, RandomPool, BlockingRng, NonblockingRng, AutoSeededRandomPool, AutoSeededX917RNG,
 	\ref MersenneTwister "MersenneTwister (MT19937 and MT19937-AR)", RDRAND, RDSEED
@@ -45,7 +45,7 @@ Square, TEA, \ref ThreeWay "3-Way", Twofish, XTEA
 <dt>Output Sink Classes<dd>
 	StringSinkTemplate, StringSink, ArraySink, FileSink, SocketSink, WindowsPipeSink, RandomNumberSink
 <dt>Filter Wrappers<dd>
-	StreamTransformationFilter, HashFilter, HashVerificationFilter, SignerFilter, SignatureVerificationFilter
+	StreamTransformationFilter, AuthenticatedEncryptionFilter, AuthenticatedDecryptionFilter, HashFilter, HashVerificationFilter, SignerFilter, SignatureVerificationFilter
 <dt>Binary to Text Encoders and Decoders<dd>
 	HexEncoder, HexDecoder, Base64Encoder, Base64Decoder, Base64URLEncoder, Base64URLDecoder, Base32Encoder, Base32Decoder
 <dt>Wrappers for OS features<dd>
@@ -111,7 +111,7 @@ enum CipherDir {
 const unsigned long INFINITE_TIME = ULONG_MAX;
 
 // VC60 workaround: using enums as template parameters causes problems
-//! \brief Converts a typename to an enumerated value
+//! \brief Converts an enumeration to a type suitable for use as a template parameter
 template <typename ENUM_TYPE, int VALUE>
 struct EnumToType
 {
@@ -159,9 +159,10 @@ public:
 		OTHER_ERROR
 	};
 
+	virtual ~Exception() throw() {}
+
 	//! \brief Construct a new  Exception
 	explicit Exception(ErrorType errorType, const std::string &s) : m_errorType(errorType), m_what(s) {}
-	virtual ~Exception() throw() {}
 
 	//! \brief Retrieves a C-string describing the exception
 	const char *what() const throw() {return (m_what.c_str());}
@@ -218,9 +219,9 @@ public:
 class CRYPTOPP_DLL OS_Error : public Exception
 {
 public:
+	virtual ~OS_Error() throw() {}
 	OS_Error(ErrorType errorType, const std::string &s, const std::string& operation, int errorCode)
 		: Exception(errorType, s), m_operation(operation), m_errorCode(errorCode) {}
-	~OS_Error() throw() {}
 
 	//! \brief Retrieve the operating system API that reported the error
 	const std::string & GetOperation() const {return m_operation;}
@@ -259,9 +260,9 @@ struct CRYPTOPP_DLL DecodingResult
 	//! \brief Recovered message length if isValidCoding is true, undefined otherwise
 	size_t messageLength;
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-	operator size_t() const {return isValidCoding ? messageLength : 0;}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	//operator size_t() const {return isValidCoding ? messageLength : 0;}
+	//#endif
 };
 
 //! \class NameValuePairs
@@ -496,9 +497,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE Algorithm : public Clonable
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~Algorithm() {}
-#endif
 
 	//! \brief Interface for all crypto algorithms
 	//! \param checkSelfTestStatus determines whether the object can proceed if the self
@@ -735,9 +734,7 @@ protected:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE BlockTransformation : public Algorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~BlockTransformation() {}
-#endif
 
 	//! \brief Encrypt or decrypt a block
 	//! \param inBlock the input message before processing
@@ -826,9 +823,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE StreamTransformation : public Algorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~StreamTransformation() {}
-#endif
 
 	//! \brief Provides a reference to this object
 	//! \return A reference to this object
@@ -935,9 +930,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE HashTransformation : public Algorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~HashTransformation() {}
-#endif
 
 	//! \brief Provides a reference to this object
 	//! \return A reference to this object
@@ -1128,9 +1121,7 @@ protected:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE AuthenticatedSymmetricCipher : public MessageAuthenticationCode, public StreamTransformation
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~AuthenticatedSymmetricCipher() {}
-#endif
 
 	//! \brief Exception thrown when the object is in the wrong state for the operation
 	//! \details this indicates that a member function was called in the wrong state, for example trying to encrypt
@@ -1186,9 +1177,9 @@ protected:
 		{CRYPTOPP_UNUSED(headerLength); CRYPTOPP_UNUSED(messageLength); CRYPTOPP_UNUSED(footerLength);}
 };
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-typedef SymmetricCipher StreamCipher;
-#endif
+//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+//typedef SymmetricCipher StreamCipher;
+//#endif
 
 //! \class RandomNumberGenerator
 //! \brief Interface for random number generators
@@ -1197,9 +1188,7 @@ typedef SymmetricCipher StreamCipher;
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE RandomNumberGenerator : public Algorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~RandomNumberGenerator() {}
-#endif
 
 	//! \brief Update RNG state with additional unpredictable values
 	//! \param input the entropy to add to the generator
@@ -1279,13 +1268,13 @@ public:
 			std::iter_swap(begin, begin + GenerateWord32(0, end-begin-1));
 	}
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-	byte GetByte() {return GenerateByte();}
-	unsigned int GetBit() {return GenerateBit();}
-	word32 GetLong(word32 a=0, word32 b=0xffffffffL) {return GenerateWord32(a, b);}
-	word16 GetShort(word16 a=0, word16 b=0xffff) {return (word16)GenerateWord32(a, b);}
-	void GetBlock(byte *output, size_t size) {GenerateBlock(output, size);}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	//byte GetByte() {return GenerateByte();}
+	//unsigned int GetBit() {return GenerateBit();}
+	//word32 GetLong(word32 a=0, word32 b=0xffffffffL) {return GenerateWord32(a, b);}
+	//word16 GetShort(word16 a=0, word16 b=0xffff) {return (word16)GenerateWord32(a, b);}
+	//void GetBlock(byte *output, size_t size) {GenerateBlock(output, size);}
+	//#endif
 
 };
 
@@ -1366,9 +1355,7 @@ public:
 	// placed up here for CW8
 	static const std::string &NULL_CHANNEL;	// same as DEFAULT_CHANNEL, for backwards compatibility
 
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~BufferedTransformation() {}
-#endif
 
 	//! \brief Construct a BufferedTransformation
 	BufferedTransformation() : Algorithm(false) {}
@@ -1579,9 +1566,9 @@ public:
 		virtual int GetAutoSignalPropagation() const {return 0;}
 public:
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-		void Close() {MessageEnd();}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	//void Close() {MessageEnd();}
+	//#endif
 	//@}
 
 	//!	\name RETRIEVAL OF ONE MESSAGE
@@ -1705,9 +1692,9 @@ public:
 		lword CopyRangeTo(BufferedTransformation &target, lword position, lword copyMax=LWORD_MAX, const std::string &channel=DEFAULT_CHANNEL) const
 			{lword i = position; CopyRangeTo2(target, i, i+copyMax, channel); return i-position;}
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-		unsigned long MaxRetrieveable() const {return MaxRetrievable();}
-#endif
+		//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+		//unsigned long MaxRetrieveable() const {return MaxRetrievable();}
+		//#endif
 	//@}
 
 	//!	\name RETRIEVAL OF MULTIPLE MESSAGES
@@ -2055,16 +2042,14 @@ CRYPTOPP_DLL BufferedTransformation & TheBitBucket();
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CryptoMaterial : public NameValuePairs
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
-	virtual ~CryptoMaterial() {}
-#endif
-
 	//! Exception thrown when invalid crypto material is detected
 	class CRYPTOPP_DLL InvalidMaterial : public InvalidDataFormat
 	{
 	public:
 		explicit InvalidMaterial(const std::string &s) : InvalidDataFormat(s) {}
 	};
+
+	virtual ~CryptoMaterial() {}
 
 	//! \brief Assign values to this object
 	//! \details This function can be used to create a public key from a private key.
@@ -2170,9 +2155,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE GeneratableCryptoMaterial : virtual public CryptoMaterial
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~GeneratableCryptoMaterial() {}
-#endif
 
 	//! \brief Generate a random key or crypto parameters
 	//! \param rng a RandomNumberGenerator to produce keying material
@@ -2213,9 +2196,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CryptoParameters : public GeneratableCrypt
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE AsymmetricAlgorithm : public Algorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~AsymmetricAlgorithm() {}
-#endif
 
 	//! \brief Retrieves a reference to CryptoMaterial
 	//! \return a reference to the crypto material
@@ -2242,9 +2223,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PublicKeyAlgorithm : public AsymmetricAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PublicKeyAlgorithm() {}
-#endif
 
 	// VC60 workaround: no co-variant return type
 
@@ -2270,9 +2249,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PrivateKeyAlgorithm : public AsymmetricAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PrivateKeyAlgorithm() {}
-#endif
 
 	//! \brief Retrieves a reference to a Private Key
 	//! \return a reference the private key
@@ -2293,9 +2270,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE KeyAgreementAlgorithm : public AsymmetricAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~KeyAgreementAlgorithm() {}
-#endif
 
 	//! \brief Retrieves a reference to Crypto Parameters
 	//! \return a reference the crypto parameters
@@ -2350,10 +2325,10 @@ public:
 	//!   length, if one exists, otherwise return 0.
 	virtual size_t FixedMaxPlaintextLength() const {return 0;}
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-	size_t MaxPlainTextLength(size_t cipherTextLength) const {return MaxPlaintextLength(cipherTextLength);}
-	size_t CipherTextLength(size_t plainTextLength) const {return CiphertextLength(plainTextLength);}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	//size_t MaxPlainTextLength(size_t cipherTextLength) const {return MaxPlaintextLength(cipherTextLength);}
+	//size_t CipherTextLength(size_t plainTextLength) const {return CiphertextLength(plainTextLength);}
+	//#endif
 };
 
 //! \class PK_Encryptor
@@ -2397,9 +2372,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_Decryptor : public PK_CryptoSystem, public PrivateKeyAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PK_Decryptor() {}
-#endif
 
 	//! \brief Decrypt a byte string
 	//! \param rng a RandomNumberGenerator derived class
@@ -2445,15 +2418,16 @@ public:
 		{return Decrypt(rng, ciphertext, FixedCiphertextLength(), plaintext, parameters);}
 };
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-typedef PK_CryptoSystem PK_FixedLengthCryptoSystem;
-typedef PK_Encryptor PK_FixedLengthEncryptor;
-typedef PK_Decryptor PK_FixedLengthDecryptor;
-#endif
+//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+//typedef PK_CryptoSystem PK_FixedLengthCryptoSystem;
+//typedef PK_Encryptor PK_FixedLengthEncryptor;
+//typedef PK_Decryptor PK_FixedLengthDecryptor;
+//#endif
 
 //! \class PK_SignatureScheme
 //! \brief Interface for public-key signers and verifiers
 //! \details This class provides an interface common to signers and verifiers for querying scheme properties
+//! \sa DL_SignatureSchemeBase, TF_SignatureSchemeBase, DL_SignerBase, TF_SignerBase
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_SignatureScheme
 {
 public:
@@ -2553,9 +2527,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_Signer : public PK_SignatureScheme, public PrivateKeyAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PK_Signer() {}
-#endif
 
 	//! \brief Create a new HashTransformation to accumulate the message to be signed
 	//! \param rng a RandomNumberGenerator derived class
@@ -2620,9 +2592,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_Verifier : public PK_SignatureScheme, public PublicKeyAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PK_Verifier() {}
-#endif
 
 	//! \brief Create a new HashTransformation to accumulate the message to be verified
 	//! \return a pointer to a PK_MessageAccumulator
@@ -2694,9 +2664,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE SimpleKeyAgreementDomain : public KeyAgreementAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~SimpleKeyAgreementDomain() {}
-#endif
 
 	//! \brief Provides the size of the agreed value
 	//! \return size of agreed value produced  in this domain
@@ -2746,10 +2714,10 @@ public:
 	//! \pre <tt>COUNTOF(otherPublicKey) == PublicKeyLength()</tt>
 	virtual bool Agree(byte *agreedValue, const byte *privateKey, const byte *otherPublicKey, bool validateOtherPublicKey=true) const =0;
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-	bool ValidateDomainParameters(RandomNumberGenerator &rng) const
-		{return GetCryptoParameters().Validate(rng, 2);}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	//bool ValidateDomainParameters(RandomNumberGenerator &rng) const
+	//	{return GetCryptoParameters().Validate(rng, 2);}
+	//#endif
 };
 
 //! \brief Interface for domains of authenticated key agreement protocols
@@ -2759,9 +2727,7 @@ public:
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE AuthenticatedKeyAgreementDomain : public KeyAgreementAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~AuthenticatedKeyAgreementDomain() {}
-#endif
 
 	//! \brief Provides the size of the agreed value
 	//! \return size of agreed value produced  in this domain
@@ -2846,10 +2812,10 @@ public:
 		const byte *staticOtherPublicKey, const byte *ephemeralOtherPublicKey,
 		bool validateStaticOtherPublicKey=true) const =0;
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-	bool ValidateDomainParameters(RandomNumberGenerator &rng) const
-		{return GetCryptoParameters().Validate(rng, 2);}
-#endif
+	//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+	// bool ValidateDomainParameters(RandomNumberGenerator &rng) const
+	//	{return GetCryptoParameters().Validate(rng, 2);}
+	//#endif
 };
 
 // interface for password authenticated key agreement protocols, not implemented yet
@@ -2893,8 +2859,9 @@ public:
 		UnexpectedMethodCall(const std::string &s) : Exception(OTHER_ERROR, s) {}
 	};
 
-	ProtocolSession() : m_rng(NULL), m_throwOnProtocolError(true), m_validState(false) {}
 	virtual ~ProtocolSession() {}
+
+	ProtocolSession() : m_rng(NULL), m_throwOnProtocolError(true), m_validState(false) {}
 
 	virtual void InitializeSession(RandomNumberGenerator &rng, const NameValuePairs &parameters) =0;
 
@@ -2924,9 +2891,7 @@ private:
 class KeyAgreementSession : public ProtocolSession
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~KeyAgreementSession() {}
-#endif
 
 	virtual unsigned int GetAgreedValueLength() const =0;
 	virtual void GetAgreedValue(byte *agreedValue) const =0;
@@ -2935,9 +2900,7 @@ public:
 class PasswordAuthenticatedKeyAgreementSession : public KeyAgreementSession
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PasswordAuthenticatedKeyAgreementSession() {}
-#endif
 
 	void InitializePasswordAuthenticatedKeyAgreementSession(RandomNumberGenerator &rng,
 		const byte *myId, unsigned int myIdLength,
@@ -2948,9 +2911,7 @@ public:
 class PasswordAuthenticatedKeyAgreementDomain : public KeyAgreementAlgorithm
 {
 public:
-#ifndef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY_562
 	virtual ~PasswordAuthenticatedKeyAgreementDomain() {}
-#endif
 
 	//! return whether the domain parameters stored in this object are valid
 	virtual bool ValidateDomainParameters(RandomNumberGenerator &rng) const
@@ -3000,11 +2961,11 @@ public:
 	virtual void BEREncode(BufferedTransformation &bt) const {DEREncode(bt);}
 };
 
-#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
-typedef PK_SignatureScheme PK_SignatureSystem;
-typedef SimpleKeyAgreementDomain PK_SimpleKeyAgreementDomain;
-typedef AuthenticatedKeyAgreementDomain PK_AuthenticatedKeyAgreementDomain;
-#endif
+//#ifdef CRYPTOPP_MAINTAIN_BACKWARDS_COMPATIBILITY
+//typedef PK_SignatureScheme PK_SignatureSystem;
+//typedef SimpleKeyAgreementDomain PK_SimpleKeyAgreementDomain;
+//typedef AuthenticatedKeyAgreementDomain PK_AuthenticatedKeyAgreementDomain;
+//#endif
 
 NAMESPACE_END
 
