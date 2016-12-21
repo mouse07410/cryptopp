@@ -39,6 +39,9 @@ fi
 if [[ (-z "$BENCHMARK_RESULTS") ]]; then
 	BENCHMARK_RESULTS=cryptest-bench.txt
 fi
+if [[ (-z "$VECTORIZATION_RESULTS") ]]; then
+	VECTORIZATION_RESULTS=cryptest-vector.txt
+fi
 if [[ (-z "$WARN_RESULTS") ]]; then
 	WARN_RESULTS=cryptest-warn.txt
 fi
@@ -510,6 +513,20 @@ if [[ (-z "$HAVE_BOUNDS_SAN") ]]; then
 		"$TMP/adhoc.exe" > /dev/null 2>&1
 		if [[ ("$?" -eq "0") ]]; then
 			HAVE_BOUNDS_SAN=1
+		fi
+	fi
+fi
+
+# Vectorization opportunities: GCC 4.x; maybe Clang
+#   http://lwn.net/Articles/691932/
+rm -f "$TMP/adhoc.exe" > /dev/null 2>&1
+if [[ (-z "$HAVE_INFO_VEC") ]]; then
+	HAVE_INFO_VEC=0
+	"$CXX" -DCRYPTOPP_ADHOC_MAIN -fopt-info-vec adhoc.cpp -o "$TMP/adhoc.exe" > /dev/null 2>&1
+	if [[ ("$?" -eq "0") ]]; then
+		"$TMP/adhoc.exe" > /dev/null 2>&1
+		if [[ ("$?" -eq "0") ]]; then
+			HAVE_INFO_VEC=1
 		fi
 	fi
 fi
@@ -3232,6 +3249,63 @@ if [[ ("$HAVE_OMP" -ne "0") ]]; then
 fi
 
 ############################################
+# Vectorization opportunities (requires -O3, OPT_O3)
+if [[ ("$HAVE_O3" && "$HAVE_INFO_VEC" -ne "0") ]]; then
+
+	############################################
+	# Debug build
+	echo
+	echo "************************************" | tee -a "$VECTORIZATION_RESULTS"
+	echo "Testing: Debug, vectorization opportunities" | tee -a "$VECTORIZATION_RESULTS"
+	echo
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	CXXFLAGS="$DEBUG_CXXFLAGS -O3 -fopt-info-vec ${PLATFORM_CXXFLAGS[@]} $USER_CXXFLAGS ${DEPRECATED_CXXFLAGS[@]}"
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$VECTORIZATION_RESULTS"
+	else
+		./cryptest.exe v 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$VECTORIZATION_RESULTS"
+		fi
+		./cryptest.exe tv all 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$VECTORIZATION_RESULTS"
+		fi
+	fi
+
+	############################################
+	# Release build
+	echo
+	echo "************************************" | tee -a "$VECTORIZATION_RESULTS"
+	echo "Testing: Release, vectorization opportunities" | tee -a "$VECTORIZATION_RESULTS"
+	echo
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	CXXFLAGS="$RELEASE_CXXFLAGS -O3 -fopt-info-vec ${PLATFORM_CXXFLAGS[@]} $USER_CXXFLAGS ${DEPRECATED_CXXFLAGS[@]}"
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$VECTORIZATION_RESULTS"
+	else
+		./cryptest.exe v 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$VECTORIZATION_RESULTS"
+		fi
+		./cryptest.exe tv all 2>&1 | tee -a "$VECTORIZATION_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$VECTORIZATION_RESULTS"
+		fi
+	fi
+fi
+
+############################################
 # UBSan, c++03
 if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 
@@ -3829,7 +3903,7 @@ fi
 
 ############################################
 # Release build, Bounds Sanitizer, c++17
-if [[ ("$HAVE_CXX14" -ne "0" && "$HAVE_BOUNDS_SAN" -ne "0") ]]; then
+if [[ ("$HAVE_CXX17" -ne "0" && "$HAVE_BOUNDS_SAN" -ne "0") ]]; then
 	echo
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++17, Bounds Sanitizer" | tee -a "$TEST_RESULTS"

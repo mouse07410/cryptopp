@@ -104,9 +104,10 @@ bool ValidateAll(bool thorough)
 	pass=ValidatePanama() && pass;
 	pass=ValidateWhirlpool() && pass;
 
-	pass=ValidatePoly1305() && pass;
 	pass=ValidateBLAKE2s() && pass;
 	pass=ValidateBLAKE2b() && pass;
+	pass=ValidatePoly1305() && pass;
+	pass=ValidateSipHash() && pass;
 
 	pass=ValidateHMAC() && pass;
 	pass=ValidateTTMAC() && pass;
@@ -165,6 +166,7 @@ bool ValidateAll(bool thorough)
 	pass=ValidateECP() && pass;
 	pass=ValidateEC2N() && pass;
 	pass=ValidateECDSA() && pass;
+	pass=ValidateECGDSA() && pass;
 	pass=ValidateESIGN() && pass;
 
 	if (pass)

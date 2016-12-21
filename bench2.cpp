@@ -293,7 +293,6 @@ void BenchmarkAll2(double t, double hertz)
 	BenchMarkSignature<LUCSS<PSSR, SHA> >(CRYPTOPP_DATA_DIR "TestData/luc1024.dat", "LUC 1024", t);
 	BenchMarkSignature<NR<SHA> >(CRYPTOPP_DATA_DIR "TestData/nr1024.dat", "NR 1024", t);
 	BenchMarkSignature<DSA>(CRYPTOPP_DATA_DIR "TestData/dsa1024.dat", "DSA 1024", t);
-	// BenchMarkSignature<DSA_RFC6979>(CRYPTOPP_DATA_DIR "TestData/dsa1024.dat", "DSA-RFC6979 1024", t);
 	BenchMarkSignature<LUC_HMP<SHA> >(CRYPTOPP_DATA_DIR "TestData/lucs512.dat", "LUC-HMP 512", t);
 	BenchMarkSignature<ESIGN<SHA> >(CRYPTOPP_DATA_DIR "TestData/esig1023.dat", "ESIGN 1023", t);
 	BenchMarkSignature<ESIGN<SHA> >(CRYPTOPP_DATA_DIR "TestData/esig1536.dat", "ESIGN 1536", t);
@@ -336,6 +335,8 @@ void BenchmarkAll2(double t, double hertz)
 		ECDSA<ECP, SHA>::Verifier spub(spriv);
 		ECDSA_RFC6979<ECP, SHA>::Signer spriv2(cpriv);
 		ECDSA_RFC6979<ECP, SHA>::Verifier spub2(spriv);
+		ECGDSA<ECP, SHA>::Signer spriv3(GlobalRNG(), ASN1::secp256k1());
+		ECGDSA<ECP, SHA>::Verifier spub3(spriv3);
 		ECDH<ECP>::Domain ecdhc(ASN1::secp256k1());
 		ECMQV<ECP>::Domain ecmqvc(ASN1::secp256k1());
 
@@ -345,6 +346,8 @@ void BenchmarkAll2(double t, double hertz)
 		BenchMarkVerification("ECDSA over GF(p) 256", spriv, spub, t);
 		BenchMarkSigning("ECDSA-RFC6979 over GF(p) 256", spriv2, t);
 		BenchMarkVerification("ECDSA-RFC6979 over GF(p) 256", spriv2, spub2, t);
+		BenchMarkSigning("ECGDSA over GF(p) 256", spriv3, t);
+		BenchMarkVerification("ECGDSA over GF(p) 256", spriv3, spub3, t);
 		BenchMarkKeyGen("ECDHC over GF(p) 256", ecdhc, t);
 		BenchMarkAgreement("ECDHC over GF(p) 256", ecdhc, t);
 		BenchMarkKeyGen("ECMQVC over GF(p) 256", ecmqvc, t);
@@ -359,6 +362,8 @@ void BenchmarkAll2(double t, double hertz)
 		ECDSA<EC2N, SHA>::Verifier spub(spriv);
 		ECDSA_RFC6979<EC2N, SHA>::Signer spriv2(cpriv);
 		ECDSA_RFC6979<EC2N, SHA>::Verifier spub2(spriv);
+		ECGDSA<EC2N, SHA>::Signer spriv3(GlobalRNG(), ASN1::sect233r1());
+		ECGDSA<EC2N, SHA>::Verifier spub3(spriv3);
 		ECDH<EC2N>::Domain ecdhc(ASN1::sect233r1());
 		ECMQV<EC2N>::Domain ecmqvc(ASN1::sect233r1());
 
@@ -368,6 +373,8 @@ void BenchmarkAll2(double t, double hertz)
 		BenchMarkVerification("ECDSA over GF(2^n) 233", spriv, spub, t);
 		BenchMarkSigning("ECDSA-RFC6979 over GF(2^n) 233", spriv2, t);
 		BenchMarkVerification("ECDSA-RFC6979 over GF(2^n) 233", spriv2, spub2, t);
+		BenchMarkSigning("ECGDSA over GF(2^n) 233", spriv3, t);
+		BenchMarkVerification("ECGDSA over GF(2^n) 233", spriv3, spub3, t);
 		BenchMarkKeyGen("ECDHC over GF(2^n) 233", ecdhc, t);
 		BenchMarkAgreement("ECDHC over GF(2^n) 233", ecdhc, t);
 		BenchMarkKeyGen("ECMQVC over GF(2^n) 233", ecmqvc, t);
