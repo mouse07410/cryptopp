@@ -11,7 +11,7 @@
 # See http://www.cryptopp.com/wiki/Android_(Command_Line) for more details
 # ====================================================================
 
-set -eu
+# set -eu
 
 unset IS_CROSS_COMPILE
 
@@ -361,7 +361,7 @@ fi
 
 #####################################################################
 
-COUNT=$(echo -n "$AOSP_STL_LIB" | grep -i -c 'libstdc++')
+COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libstdc\+\+')
 if [[ ("$COUNT" -ne "0") ]]; then
 	echo
 	echo "*******************************************************************************"
@@ -382,7 +382,7 @@ if [[ ("$COUNT" -ne "0") ]]; then
 	echo "*******************************************************************************"
 fi
 
-COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libc++)')
+COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libc\+\+)')
 if [[ ("$COUNT" -ne "0") ]]; then
 	echo
 	echo "*******************************************************************************"
@@ -394,8 +394,9 @@ fi
 
 echo
 echo "*******************************************************************************"
-echo "It looks the the environment is set correctly. Your next step is"
-echo "build the library with 'make -f GNUmakefile-cross'"
+echo "It looks the the environment is set correctly. Your next step is build"
+echo "the library with 'make -f GNUmakefile-cross'. You can create a versioned"
+echo "shared object using 'HAS_SOLIB_VERSION=1 make -f GNUmakefile-cross'"
 echo "*******************************************************************************"
 echo
 
