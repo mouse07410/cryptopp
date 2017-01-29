@@ -1,4 +1,4 @@
-// validat1.cpp - written and placed in the public domain by Wei Dai
+// validat1.cpp - originally written and placed in the public domain by Wei Dai
 
 #include "pch.h"
 
@@ -224,6 +224,18 @@ bool TestSettings()
 		cout << "FAILED:  Your machine is neither big endian nor little endian.\n";
 		pass = false;
 	}
+
+	// App and library versions, http://github.com/weidai11/cryptopp/issues/371
+	const int v1 = LibraryVersion();
+	const int v2 = HeaderVersion();
+	if(v1/10 == v2/10)
+		cout << "passed:  ";
+	else
+	{
+		cout << "FAILED:  ";
+		pass = false;
+	}
+	cout << "Library version (library): " << v1 << ", header version (app): " << v2 << "\n";
 
 #ifdef CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS
 	// Don't assert the alignment of testvals. That's what this test is for.

@@ -1,4 +1,4 @@
-// gfpcrypt.h - written and placed in the public domain by Wei Dai
+// gfpcrypt.h - originally written and placed in the public domain by Wei Dai
 //              RFC6979 deterministic signatures (DL_Algorithm_DSA_RFC6979) added by by Douglas Roark
 //              ECGDSA (DL_Algorithm_GDSA_ISO15946) added by Jeffrey Walton
 
@@ -399,7 +399,7 @@ private:
 //! \tparam T FieldElement type or class
 //! \details The Digital Signature Scheme ECGDSA does not define the algorithm over integers. Rather, the
 //!   signature algorithm is only defined over elliptic curves. However, The library design is such that the
-//!   generic algorithm reside in \header gfpcrypt.h.
+//!   generic algorithm reside in <tt>gfpcrypt.h</tt>.
 //! \sa Erwin Hess, Marcus Schafheutle, and Pascale Serf <A HREF="http://www.teletrust.de/fileadmin/files/oid/ecgdsa_final.pdf">
 //!   The Digital Signature Scheme ECGDSA (October 24, 2006)</A>
 template <class T>
