@@ -57,26 +57,27 @@ public:
 	//! \name CREATORS
 	//@{
 		//! creates the zero polynomial
-		PolynomialOver() {}
+		PolynomialOver() : m_ring(NULL) {}
 
 		//!
 		PolynomialOver(const Ring &ring, unsigned int count)
-			: m_coefficients((size_t)count, ring.Identity()) {}
+			: m_coefficients((size_t)count, ring.Identity()), m_ring(ring) {}
 
 		//! copy constructor
 		PolynomialOver(const PolynomialOver<Ring> &t)
-			: m_coefficients(t.m_coefficients.size()) {*this = t;}
+			: m_coefficients(t.m_coefficients.size()), m_ring(t.m_ring) {*this = t;}
 
 		//! construct constant polynomial
 		PolynomialOver(const CoefficientType &element)
-			: m_coefficients(1, element) {}
+			: m_coefficients(1, element),  m_ring(NULL) {}
 
 		//! construct polynomial with specified coefficients, starting from coefficient of x^0
 		template <typename Iterator> PolynomialOver(Iterator begin, Iterator end)
-			: m_coefficients(begin, end) {}
+			: m_coefficients(begin, end), m_ring(NULL) {}
 
 		//! convert from string
-		PolynomialOver(const char *str, const Ring &ring) {FromStr(str, ring);}
+		PolynomialOver(const char *str, const Ring &ring) : m_ring(ring)
+		{ FromStr(str, ring); }
 
 		//! convert from big-endian byte array
 		PolynomialOver(const byte *encodedPolynomialOver, unsigned int byteCount);
@@ -88,15 +89,21 @@ public:
 		explicit PolynomialOver(BufferedTransformation &bt);
 
 		//! create a random PolynomialOver<T>
-		PolynomialOver(RandomNumberGenerator &rng, const RandomizationParameter &parameter, const Ring &ring)
-			{Randomize(rng, parameter, ring);}
+		PolynomialOver(RandomNumberGenerator &rng,
+		    const RandomizationParameter &parameter,
+		    const Ring &ring) : m_ring(ring)
+			{ Randomize(rng, parameter, ring); }
 	//@}
 
 	//! \name ACCESSORS
 	//@{
 		//! the zero polynomial will return a degree of -1
 		int Degree(const Ring &ring) const {return int(CoefficientCount(ring))-1;}
+		int Degree() const { return this->Degree(this->m_ring); }
 		//!
+		unsigned int CoefficientCount() const {
+		    return this->CoefficientCount(this->m_ring);
+		}
 		unsigned int CoefficientCount(const Ring &ring) const
 		{
 		    unsigned count = m_coefficients.size();
@@ -109,6 +116,9 @@ public:
 		CoefficientType GetCoefficient(unsigned int i, const Ring &ring) const
 		{
 		    return (i < m_coefficients.size()) ? m_coefficients[i] : ring.Identity();
+		}
+		CoefficientType GetCoefficient(unsigned int i) const {
+		    return this->GetCoefficient(i, this->m_ring);
 		}
 	//@}
 
@@ -124,6 +134,9 @@ public:
 		    for (unsigned int i=0; i<m_coefficients.size(); ++i)
 		    	m_coefficients[i] = ring.RandomElement(rng, parameter.m_coefficientParameter);
 		}
+		void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter) {
+		    return this->Randomize(rng, parameter, this->m_ring);
+		}
 
 		//! set the coefficient for x^i to value
 		void SetCoefficient(unsigned int i, const CoefficientType &value, const Ring &ring)
@@ -132,7 +145,9 @@ public:
 		        m_coefficients.resize(i+1, ring.Identity());
 		    m_coefficients[i] = value;
 		}
-
+		void SetCoefficient(unsigned int i, const CoefficientType &value) {
+		    this->SetCoefficient(i, value, this->m_ring);
+		}
 		//!
 		void Negate(const Ring &ring)
 		{
@@ -140,6 +155,7 @@ public:
 		    for (unsigned int i=0; i<count; i++)
 		        m_coefficients[i] = ring.Inverse(m_coefficients[i]);
 		}
+		void Negate() { this->Negate(this->m_ring); }
 
 		//!
 		void swap(PolynomialOver<Ring> &t)
@@ -167,6 +183,10 @@ public:
 		bool IsZero(const Ring &ring) const {
 		    return CoefficientCount(ring)==0;
 		};
+		bool Equals(const PolynomialOver<Ring> &t) const {
+		    return this->Equals(t, this->m_ring);
+		}
+		bool IsZero() const { return this->IsZero(this->m_ring); }
 
 		PolynomialOver<Ring> Plus(const PolynomialOver<Ring>& t, const Ring &ring) const
     	{
@@ -197,6 +217,9 @@ public:
 		        return result;
 		    }
     	}
+		PolynomialOver<Ring> Plus(const PolynomialOver<Ring>& t) const {
+		    return this->Plus(t, this->m_ring);
+		}
 
 		PolynomialOver<Ring> Minus(const PolynomialOver<Ring>& t, const Ring &ring) const
     	{
@@ -227,6 +250,9 @@ public:
 		        return result;
 		    }
     	}
+		PolynomialOver<Ring> Minus(const PolynomialOver<Ring>& t) const {
+		    return this->Minus(t, this->m_ring);
+		}
 
 		PolynomialOver<Ring> Inverse(const Ring &ring) const
     	{
@@ -238,6 +264,7 @@ public:
 
 		    return result;
     	}
+		PolynomialOver<Ring> Inverse() const { return this->Inverse(this->m_ring); }
 
 		PolynomialOver<Ring> Times(const PolynomialOver<Ring>& t, const Ring &ring) const
     	{
@@ -253,6 +280,9 @@ public:
 
 		    return result;
     	}
+		PolynomialOver<Ring> Times(const PolynomialOver<Ring>& t) const {
+		    return this->Times(t, this->m_ring);
+		}
 
 		PolynomialOver<Ring> DividedBy(const PolynomialOver<Ring>& t, const Ring &ring) const
     	{
@@ -260,19 +290,31 @@ public:
 		    Divide(remainder, quotient, *this, t, ring);
 		    return quotient;
     	}
+		PolynomialOver<Ring> DividedBy(const PolynomialOver<Ring>& t) const {
+		    return this->DivideBy(t, this->m_ring);
+		}
 		PolynomialOver<Ring> Modulo(const PolynomialOver<Ring>& t, const Ring &ring) const
     	{
 		    PolynomialOver<T> remainder, quotient;
 		    Divide(remainder, quotient, *this, t, ring);
 		    return remainder;
     	}
+		PolynomialOver<Ring> Modulo(const PolynomialOver<Ring>& t) const {
+		    return this->Modulo(t, this->m_ring);
+		}
 		PolynomialOver<Ring> MultiplicativeInverse(const Ring &ring) const
     	{
 		    return Degree(ring)==0 ? ring.MultiplicativeInverse(m_coefficients[0]) : ring.Identity();
     	}
+		PolynomialOver<Ring> MultiplicativeInverse() const {
+		    return this->MultiplicativeInverse(this->m_ring);
+		}
 		bool IsUnit(const Ring &ring) const
 		{
 		    return Degree(ring)==0 && ring.IsUnit(m_coefficients[0]);
+		}
+		bool IsUnit() const {
+		   return this->IsUnit(this->m_ring);
 		}
 
 		PolynomialOver<Ring>& Accumulate(const PolynomialOver<Ring>& t, const Ring &ring)
@@ -287,6 +329,9 @@ public:
 
 		    return *this;
     	}
+		PolynomialOver<Ring>& Accumulate(const PolynomialOver<Ring>& t) {
+		    return this->Accumulate(t, this->m_ring);
+		}
 
 		PolynomialOver<Ring>& Reduce(const PolynomialOver<Ring>& t, const Ring &ring)
     	{
@@ -300,12 +345,17 @@ public:
 
 		    return *this;
     	}
+		PolynomialOver<Ring>& Reduce(const PolynomialOver<Ring>& t) {
+		    return this->Reduce(t, this->m_ring);
+		}
 		//!
 
 		PolynomialOver<Ring> Doubled(const Ring &ring) const {return Plus(*this, ring);}
+		PolynomialOver<Ring> Doubled() const {return Plus(*this, this->m_ring);}
 		//!
 
 		PolynomialOver<Ring> Squared(const Ring &ring) const {return Times(*this, ring);}
+		PolynomialOver<Ring> Squared() const {return Times(*this, this->m_ring);}
 
 		CoefficientType EvaluateAt(const CoefficientType &x, const Ring &ring) const
 		{
@@ -321,6 +371,9 @@ public:
 		        ring.Accumulate(result, m_coefficients[j]);
 		    }
 		    return result;
+		}
+		CoefficientType EvaluateAt(const CoefficientType &x) const {
+		    return this->EvaluateAt(x, this->m_ring);
 		}
 
 		PolynomialOver<Ring>& ShiftLeft(unsigned int n, const Ring &ring)
@@ -339,6 +392,9 @@ public:
 		    }
 		    return *this;
     	}
+		PolynomialOver<Ring>& ShiftLeft(unsigned int n) {
+		    return this->ShiftLeft(n, this->m_ring);
+		}
 
 		PolynomialOver<Ring>& ShiftRight(unsigned int n, const Ring &ring)
     	{
@@ -353,6 +409,9 @@ public:
 		        m_coefficients.resize(0, ring.Identity());
 		    return *this;
     	}
+		PolynomialOver<Ring>& ShiftRight(unsigned int n) {
+			return this->ShiftRight(n, this->m_ring);
+		}
 
 		//! calculate r and q such that (a == d*q + r) && (0 <= degree of r < degree of d)
 		static void Divide(PolynomialOver<Ring> &r, PolynomialOver<Ring> &q, const PolynomialOver<Ring> &a, const PolynomialOver<Ring> &d, const Ring &ring)
@@ -375,6 +434,10 @@ public:
 		    }
 
 		    r.CoefficientCount(ring);   // resize r.m_coefficients
+		}
+		void Divide(PolynomialOver<Ring> &r, PolynomialOver<Ring> &q, const PolynomialOver<Ring> &a, const PolynomialOver<Ring> &d)
+		{
+		    return Divide(r, q, a, d, this->m_ring);
 		}
 	//@}
 
@@ -410,6 +473,13 @@ public:
 		    *this = PolynomialOver<T>(str, ring);
 
 		    return in;
+		}
+		std::istream& Input(std::istream &in) {
+			return Input(in, this->m_ring);
+		}
+
+		std::ostream& Output(std::ostream &out) const {
+		    return this->Output(out, m_ring);
 		}
 		std::ostream& Output(std::ostream &out, const Ring &ring) const
 		{
@@ -522,8 +592,12 @@ private:
 	        }
 	    }
 	}
+    void fromStr(const char *str) {
+        this->fromStr(str, m_ring);
+    }
 
 	std::vector<CoefficientType> m_coefficients;
+	const Ring m_ring;
 };
 
 
@@ -572,8 +646,14 @@ public:
 		//! create a random PolynomialOverFixedRing
 		PolynomialOverFixedRing(RandomNumberGenerator &rng, const RandomizationParameter &parameter) : B(rng, parameter, ms_fixedRing) {}
 
-		static const ThisType &Zero();
-		static const ThisType &One();
+		static const ThisType &Zero()
+		{
+		    return Singleton<ThisType>().Ref();
+		}
+		static const ThisType &One()
+		{
+		    return Singleton<ThisType, NewOnePolynomial>().Ref();
+		}
 	//@}
 
 	//! \name ACCESSORS
@@ -676,6 +756,7 @@ private:
 		}
 	};
 
+protected:
 	static const Ring ms_fixedRing;
 };
 
@@ -747,17 +828,67 @@ public:
 		InterpolationFailed() : Exception(OTHER_ERROR, "RingOfPolynomialsOver<T>: interpolation failed") {}
 	};
 
-	Element Interpolate(const CoefficientType x[], const CoefficientType y[], unsigned int n) const;
+	Element Interpolate(const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+	{
+	    CRYPTOPP_ASSERT(n > 0);
+
+	    std::vector<CoefficientType> alpha(n);
+	    CalculateAlpha(alpha, x, y, n);
+
+	    std::vector<CoefficientType> coefficients((size_t)n, m_ring.Identity());
+	    coefficients[0] = alpha[n-1];
+
+	    for (int j=n-2; j>=0; --j)
+	    {
+	        for (unsigned int i=n-j-1; i>0; i--)
+	            coefficients[i] = m_ring.Subtract(coefficients[i-1], m_ring.Multiply(coefficients[i], x[j]));
+
+	        coefficients[0] = m_ring.Subtract(alpha[j], m_ring.Multiply(coefficients[0], x[j]));
+	    }
+
+	    return PolynomialOver<T>(coefficients.begin(), coefficients.end());
+	}
 
 	// a faster version of Interpolate(x, y, n).EvaluateAt(position)
-	CoefficientType InterpolateAt(const CoefficientType &position, const CoefficientType x[], const CoefficientType y[], unsigned int n) const;
+	CoefficientType InterpolateAt(const CoefficientType &position, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+	{
+	    CRYPTOPP_ASSERT(n > 0);
+
+	    std::vector<CoefficientType> alpha(n);
+	    CalculateAlpha(alpha, x, y, n);
+
+	    CoefficientType result = alpha[n-1];
+	    for (int j=n-2; j>=0; --j)
+	    {
+	        result = m_ring.Multiply(result, m_ring.Subtract(position, x[j]));
+	        m_ring.Accumulate(result, alpha[j]);
+	    }
+	    return result;
+	}
 /*
 	void PrepareBulkInterpolation(CoefficientType *w, const CoefficientType x[], unsigned int n) const;
 	void PrepareBulkInterpolationAt(CoefficientType *v, const CoefficientType &position, const CoefficientType x[], const CoefficientType w[], unsigned int n) const;
 	CoefficientType BulkInterpolateAt(const CoefficientType y[], const CoefficientType v[], unsigned int n) const;
 */
 protected:
-	void CalculateAlpha(std::vector<CoefficientType> &alpha, const CoefficientType x[], const CoefficientType y[], unsigned int n) const;
+	void CalculateAlpha(std::vector<CoefficientType> &alpha, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+	{
+	    for (unsigned int j=0; j<n; ++j)
+	        alpha[j] = y[j];
+
+	    for (unsigned int k=1; k<n; ++k)
+	    {
+	        for (unsigned int j=n-1; j>=k; --j)
+	        {
+	            m_ring.Reduce(alpha[j], alpha[j-1]);
+
+	            CoefficientType d = m_ring.Subtract(x[j], x[j-k]);
+	            if (!m_ring.IsUnit(d))
+	                throw InterpolationFailed();
+	            alpha[j] = m_ring.Divide(alpha[j], d);
+	        }
+	    }
+	}
 
 	CoefficientRing m_ring;
 };

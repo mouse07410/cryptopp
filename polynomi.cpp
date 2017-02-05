@@ -452,64 +452,64 @@ PolynomialOver<T>&  PolynomialOver<T>::operator=(const PolynomialOver<T>& t)
 // ********************************************************
 
 // helper function for Interpolate() and InterpolateAt()
-template <class T>
-void RingOfPolynomialsOver<T>::CalculateAlpha(std::vector<CoefficientType> &alpha, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
-{
-	for (unsigned int j=0; j<n; ++j)
-		alpha[j] = y[j];
+//template <class T>
+//void RingOfPolynomialsOver<T>::CalculateAlpha(std::vector<CoefficientType> &alpha, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+//{
+//	for (unsigned int j=0; j<n; ++j)
+//		alpha[j] = y[j];
+//
+//	for (unsigned int k=1; k<n; ++k)
+//	{
+//		for (unsigned int j=n-1; j>=k; --j)
+//		{
+//			m_ring.Reduce(alpha[j], alpha[j-1]);
+//
+//			CoefficientType d = m_ring.Subtract(x[j], x[j-k]);
+//			if (!m_ring.IsUnit(d))
+//				throw InterpolationFailed();
+//			alpha[j] = m_ring.Divide(alpha[j], d);
+//		}
+//	}
+//}
 
-	for (unsigned int k=1; k<n; ++k)
-	{
-		for (unsigned int j=n-1; j>=k; --j)
-		{
-			m_ring.Reduce(alpha[j], alpha[j-1]);
+//template <class T>
+//typename RingOfPolynomialsOver<T>::Element RingOfPolynomialsOver<T>::Interpolate(const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+//{
+//	CRYPTOPP_ASSERT(n > 0);
+//
+//	std::vector<CoefficientType> alpha(n);
+//	CalculateAlpha(alpha, x, y, n);
+//
+//	std::vector<CoefficientType> coefficients((size_t)n, m_ring.Identity());
+//	coefficients[0] = alpha[n-1];
+//
+//	for (int j=n-2; j>=0; --j)
+//	{
+//		for (unsigned int i=n-j-1; i>0; i--)
+//			coefficients[i] = m_ring.Subtract(coefficients[i-1], m_ring.Multiply(coefficients[i], x[j]));
+//
+//		coefficients[0] = m_ring.Subtract(alpha[j], m_ring.Multiply(coefficients[0], x[j]));
+//	}
+//
+//	return PolynomialOver<T>(coefficients.begin(), coefficients.end());
+//}
 
-			CoefficientType d = m_ring.Subtract(x[j], x[j-k]);
-			if (!m_ring.IsUnit(d))
-				throw InterpolationFailed();
-			alpha[j] = m_ring.Divide(alpha[j], d);
-		}
-	}
-}
-
-template <class T>
-typename RingOfPolynomialsOver<T>::Element RingOfPolynomialsOver<T>::Interpolate(const CoefficientType x[], const CoefficientType y[], unsigned int n) const
-{
-	CRYPTOPP_ASSERT(n > 0);
-
-	std::vector<CoefficientType> alpha(n);
-	CalculateAlpha(alpha, x, y, n);
-
-	std::vector<CoefficientType> coefficients((size_t)n, m_ring.Identity());
-	coefficients[0] = alpha[n-1];
-
-	for (int j=n-2; j>=0; --j)
-	{
-		for (unsigned int i=n-j-1; i>0; i--)
-			coefficients[i] = m_ring.Subtract(coefficients[i-1], m_ring.Multiply(coefficients[i], x[j]));
-
-		coefficients[0] = m_ring.Subtract(alpha[j], m_ring.Multiply(coefficients[0], x[j]));
-	}
-
-	return PolynomialOver<T>(coefficients.begin(), coefficients.end());
-}
-
-template <class T>
-typename RingOfPolynomialsOver<T>::CoefficientType RingOfPolynomialsOver<T>::InterpolateAt(const CoefficientType &position, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
-{
-	CRYPTOPP_ASSERT(n > 0);
-
-	std::vector<CoefficientType> alpha(n);
-	CalculateAlpha(alpha, x, y, n);
-
-	CoefficientType result = alpha[n-1];
-	for (int j=n-2; j>=0; --j)
-	{
-		result = m_ring.Multiply(result, m_ring.Subtract(position, x[j]));
-		m_ring.Accumulate(result, alpha[j]);
-	}
-	return result;
-}
+//template <class T>
+//typename RingOfPolynomialsOver<T>::CoefficientType RingOfPolynomialsOver<T>::InterpolateAt(const CoefficientType &position, const CoefficientType x[], const CoefficientType y[], unsigned int n) const
+//{
+//	CRYPTOPP_ASSERT(n > 0);
+//
+//	std::vector<CoefficientType> alpha(n);
+//	CalculateAlpha(alpha, x, y, n);
+//
+//	CoefficientType result = alpha[n-1];
+//	for (int j=n-2; j>=0; --j)
+//	{
+//		result = m_ring.Multiply(result, m_ring.Subtract(position, x[j]));
+//		m_ring.Accumulate(result, alpha[j]);
+//	}
+//	return result;
+//}
 
 template <class Ring, class Element>
 void PrepareBulkPolynomialInterpolation(const Ring &ring, Element *w, const Element x[], unsigned int n)
@@ -562,16 +562,16 @@ Element BulkPolynomialInterpolateAt(const Ring &ring, const Element y[], const E
 
 // ********************************************************
 
-template <class T, int instance>
-const PolynomialOverFixedRing<T, instance> &PolynomialOverFixedRing<T, instance>::Zero()
-{
-	return Singleton<ThisType>().Ref();
-}
+//template <class T, int instance>
+//const PolynomialOverFixedRing<T, instance> &PolynomialOverFixedRing<T, instance>::Zero()
+//{
+//	return Singleton<ThisType>().Ref();
+//}
 
-template <class T, int instance>
-const PolynomialOverFixedRing<T, instance> &PolynomialOverFixedRing<T, instance>::One()
-{
-	return Singleton<ThisType, NewOnePolynomial>().Ref();
-}
+//template <class T, int instance>
+//const PolynomialOverFixedRing<T, instance> &PolynomialOverFixedRing<T, instance>::One()
+//{
+//	return Singleton<ThisType, NewOnePolynomial>().Ref();
+//}
 
 NAMESPACE_END
