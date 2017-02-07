@@ -700,6 +700,7 @@ void StreamTransformationFilter::LastPut(const byte *inString, size_t length)
 		break;
 
 	case PKCS_PADDING:
+	case W3C_PADDING:
 	case ONE_AND_ZEROS_PADDING:
 		unsigned int s;
 		s = m_cipher.MandatoryBlockSize();
@@ -712,8 +713,14 @@ void StreamTransformationFilter::LastPut(const byte *inString, size_t length)
 			if (m_padding == PKCS_PADDING)
 			{
 				CRYPTOPP_ASSERT(s < 256);
-				byte pad = byte(s-length);
+				byte pad = static_cast<byte>(s-length);
 				memset(space+length, pad, s-length);
+			}
+			else if (m_padding == W3C_PADDING)
+			{
+				CRYPTOPP_ASSERT(s < 256);
+				memset(space+length, 0, s-length-1);
+				space[s-1] = static_cast<byte>(s-length);
 			}
 			else
 			{
@@ -734,6 +741,13 @@ void StreamTransformationFilter::LastPut(const byte *inString, size_t length)
 				if (pad < 1 || pad > s || std::find_if(space+s-pad, space+s, std::bind2nd(std::not_equal_to<byte>(), pad)) != space+s)
 					throw InvalidCiphertext("StreamTransformationFilter: invalid PKCS #7 block padding found");
 				length = s-pad;
+			}
+			else if (m_padding == W3C_PADDING)
+			{
+				byte pad = space[s - 1];
+				if (pad < 1 || pad > s)
+					throw InvalidCiphertext("StreamTransformationFilter: invalid W3C block padding found");
+				length = s - pad;
 			}
 			else
 			{
