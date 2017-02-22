@@ -4455,7 +4455,7 @@ const Integer& ModularArithmetic::Half(const Integer &a) const
 		return m_result;
 	}
 	else {
-		m_result1 = (a.IsEven() ? (a >> 1) : ((a+m_modulus) >> 1));
+		m_result1 = (a.IsEven() ? (a >> 1) : ((a + m_modulus) >> 1));
         while (m_result1.IsNegative())
             m_result1 += m_modulus;
         while (m_result1 >= m_modulus)
@@ -4616,6 +4616,11 @@ const Integer& MontgomeryRepresentation::Multiply(const Integer &a, const Intege
 	AsymmetricMultiply(T, T+2*N, a.reg, a.reg.size(), b.reg, b.reg.size());
 	SetWords(T+a.reg.size()+b.reg.size(), 0, 2*N-a.reg.size()-b.reg.size());
 	MontgomeryReduce(R, T+2*N, T, m_modulus.reg, m_u.reg, N);
+
+	while (m_result.IsNegative())
+		m_result += m_modulus;
+	while (m_result >= m_modulus)
+		m_result -= m_modulus;
 	return m_result;
 }
 
@@ -4629,6 +4634,11 @@ const Integer& MontgomeryRepresentation::Square(const Integer &a) const
 	CryptoPP::Square(T, T+2*N, a.reg, a.reg.size());
 	SetWords(T+2*a.reg.size(), 0, 2*N-2*a.reg.size());
 	MontgomeryReduce(R, T+2*N, T, m_modulus.reg, m_u.reg, N);
+
+	while (m_result.IsNegative())
+		m_result += m_modulus;
+	while (m_result >= m_modulus)
+		m_result -= m_modulus;
 	return m_result;
 }
 
@@ -4642,6 +4652,11 @@ Integer MontgomeryRepresentation::ConvertOut(const Integer &a) const
 	CopyWords(T, a.reg, a.reg.size());
 	SetWords(T+a.reg.size(), 0, 2*N-a.reg.size());
 	MontgomeryReduce(R, T+2*N, T, m_modulus.reg, m_u.reg, N);
+
+	while (m_result.IsNegative())
+		m_result += m_modulus;
+	while (m_result >= m_modulus)
+		m_result -= m_modulus;
 	return m_result;
 }
 
@@ -4665,6 +4680,10 @@ const Integer& MontgomeryRepresentation::MultiplicativeInverse(const Integer &a)
 	else
 		MultiplyByPower2Mod(R, R, N*WORD_BITS-k, m_modulus.reg, N);
 
+	while (m_result.IsNegative())
+		m_result += m_modulus;
+	while (m_result >= m_modulus)
+		m_result -= m_modulus;
 	return m_result;
 }
 

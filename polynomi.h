@@ -415,10 +415,11 @@ public:
 		    if (degree < 0)
 		        return ring.Identity();
 
+		    CoefficientType x1 = ring.ConvertIn(x);
 		    CoefficientType result = m_coefficients[degree];
 		    for (int j=degree-1; j>=0; j--)
 		    {
-		        result = ring.Multiply(result, x);
+		        result = ring.Multiply(result, x1);
 		        ring.Accumulate(result, m_coefficients[j]);
 		    }
 		    return result;
