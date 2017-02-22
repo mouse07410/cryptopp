@@ -174,7 +174,7 @@ public:
 		//! \param rng RandomNumberGenerator used to generate material
 		//! \param min the minimum value
 		//! \param max the maximum value
-		//! \param rnType RandomNumberType to specify the type
+		//! \param rnType RandomNumberType to specify the type (ANY or PRIME)
 		//! \param equiv the equivalence class based on the parameter \p mod
 		//! \param mod the modulus used to reduce the equivalence class
 		//! \throw RandomNumberNotFound if the set is empty.
