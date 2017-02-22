@@ -561,24 +561,27 @@ public:
 		                }
 		                else
 		                {
-		                    CoefficientType inverse = ring.Inverse(m_coefficients[i]);
-		                    std::ostringstream pstr, nstr;
+//		                    CoefficientType inverse = ring.Inverse(m_coefficients[i]);
+//		                    std::ostringstream pstr, nstr;
+//
+//		                    pstr << m_coefficients[i];
+//		                    nstr << inverse;
 
-		                    pstr << m_coefficients[i];
-		                    nstr << inverse;
-
-		                    if (pstr.str().size() <= nstr.str().size())
-		                    {
-		                        out << " + ";
-		                        if (!i || !ring.Equal(m_coefficients[i], ring.MultiplicativeIdentity()))
-		                            out << m_coefficients[i];
-		                    }
-		                    else
-		                    {
-		                        out << " - ";
-		                        if (!i || !ring.Equal(inverse, ring.MultiplicativeIdentity()))
-		                            out << inverse;
-		                    }
+		                    out << " + ";
+		                    if (!i || !ring.Equal(m_coefficients[i], ring.MultiplicativeIdentity()))
+		                    	out << m_coefficients[i];
+//		                    if (pstr.str().size() <= nstr.str().size())
+//		                    {
+//		                        out << " + ";
+//		                        if (!i || !ring.Equal(m_coefficients[i], ring.MultiplicativeIdentity()))
+//		                            out << m_coefficients[i];
+//		                    }
+//		                    else
+//		                    {
+//		                        out << " - ";
+//		                        if (!i || !ring.Equal(inverse, ring.MultiplicativeIdentity()))
+//		                            out << inverse;
+//		                    }
 		                }
 
 		                switch (i)
