@@ -4463,13 +4463,19 @@ const Integer& ModularArithmetic::Add(const Integer &a, const Integer &b) const
 		{
 			CryptoPP::Subtract(m_result.reg.begin(), m_result.reg, m_modulus.reg, a.reg.size());
 		}
+        while (m_result.IsNegative())
+            m_result += m_modulus;
+        while (m_result >= m_modulus)
+            m_result -= m_modulus;
 		return m_result;
 	}
 	else
 	{
 		m_result1 = a+b;
-		if (m_result1 >= m_modulus)
-			m_result1 -= m_modulus;
+        while (m_result1.IsNegative())
+            m_result1 += m_modulus;
+        while (m_result1 >= m_modulus)
+            m_result1 -= m_modulus;
 		return m_result1;
 	}
 }
@@ -4487,8 +4493,10 @@ Integer& ModularArithmetic::Accumulate(Integer &a, const Integer &b) const
 	else
 	{
 		a+=b;
-		if (a>=m_modulus)
-			a-=m_modulus;
+        while (a.IsNegative())
+            a += m_modulus;
+        while (a >= m_modulus)
+            a -= m_modulus;
 	}
 
 	return a;
@@ -4505,8 +4513,10 @@ const Integer& ModularArithmetic::Subtract(const Integer &a, const Integer &b) c
 	else
 	{
 		m_result1 = a-b;
-		if (m_result1.IsNegative())
-			m_result1 += m_modulus;
+        while (m_result1.IsNegative())
+            m_result1 += m_modulus;
+        while (m_result1 >= m_modulus)
+            m_result1 -= m_modulus;
 		return m_result1;
 	}
 }
@@ -4521,8 +4531,10 @@ Integer& ModularArithmetic::Reduce(Integer &a, const Integer &b) const
 	else
 	{
 		a-=b;
-		if (a.IsNegative())
-			a+=m_modulus;
+        while (a.IsNegative())
+            a += m_modulus;
+        while (a >= m_modulus)
+            a -= m_modulus;
 	}
 
 	return a;
@@ -4537,6 +4549,10 @@ const Integer& ModularArithmetic::Inverse(const Integer &a) const
 	if (CryptoPP::Subtract(m_result.reg.begin(), m_result.reg, a.reg, a.reg.size()))
 		Decrement(m_result.reg.begin()+a.reg.size(), m_modulus.reg.size()-a.reg.size());
 
+    while (m_result.IsNegative())
+        m_result += m_modulus;
+    while (m_result >= m_modulus)
+        m_result -= m_modulus;
 	return m_result;
 }
 
