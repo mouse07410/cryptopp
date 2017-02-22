@@ -137,6 +137,13 @@ public:
 		      throw std::invalid_argument( "Ring was not set!" );
 		  return this->GetCoefficient(i, this->m_ring);
 		}
+
+		//! get ring this polynomial is over
+		const Ring& GetRing() const {
+			if(!this->m_ringSet)
+				throw std::invalid_argument( "Ring was not set!" );
+			return this->m_ring;
+		}
 	//@}
 
 	//! \name MANIPULATORS
