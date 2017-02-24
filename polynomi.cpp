@@ -88,17 +88,17 @@ NAMESPACE_BEGIN(CryptoPP)
 //	return (i < m_coefficients.size()) ? m_coefficients[i] : ring.Identity();
 //}
 
-template <class T>
-PolynomialOver<T>&  PolynomialOver<T>::operator=(const PolynomialOver<T>& t)
-{
-	if (this != &t)
-	{
-		m_coefficients.resize(t.m_coefficients.size());
-		for (unsigned int i=0; i<m_coefficients.size(); i++)
-			m_coefficients[i] = t.m_coefficients[i];
-	}
-	return *this;
-}
+//template <class T>
+//PolynomialOver<T>&  PolynomialOver<T>::operator=(const PolynomialOver<T>& t)
+//{
+//	if (this != &t)
+//	{
+//		m_coefficients.resize(t.m_coefficients.size());
+//		for (unsigned int i=0; i<m_coefficients.size(); i++)
+//			m_coefficients[i] = t.m_coefficients[i];
+//	}
+//	return *this;
+//}
 
 //template <class T>
 //PolynomialOver<T>& PolynomialOver<T>::Accumulate(const PolynomialOver<T>& t, const Ring &ring)

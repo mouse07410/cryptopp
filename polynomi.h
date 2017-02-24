@@ -57,7 +57,8 @@ public:
 	//! \name CREATORS
 	//@{
 		//! creates the zero polynomial
-		PolynomialOver() {}
+		PolynomialOver() : m_coefficients((size_t)0), m_ringSet(false)
+		{}
 
 		//!
 		PolynomialOver(const Ring &ring, unsigned int count)
@@ -67,7 +68,11 @@ public:
 		//! copy constructor
 		PolynomialOver(const PolynomialOver<Ring> &t)
 			: m_coefficients(t.m_coefficients.size()), m_ring(t.m_ring), m_ringSet(true)
-		{ *this = t; }
+		{
+			//std::cout << "Polynomial<>: inside copy-constructor" << std::endl;
+			//std::cout.flush();
+			*this = t;
+		}
 
 		//! construct constant polynomial
 		PolynomialOver(const CoefficientType &element)
@@ -138,6 +143,11 @@ public:
 		  return this->GetCoefficient(i, this->m_ring);
 		}
 
+		//! \brief tells whether Ring was set, without throwing exception
+		const bool isRingSet() const {
+			return m_ringSet;
+		}
+
 		//! get ring this polynomial is over
 		const Ring& GetRing() const {
 			if(!this->m_ringSet)
@@ -148,16 +158,44 @@ public:
 
 	//! \name MANIPULATORS
 	//@{
-		//!
-		PolynomialOver<Ring>&  operator=(const PolynomialOver<Ring>& t);
+		//! assignment operator
+		PolynomialOver<Ring>&  operator=(const PolynomialOver<Ring>& t)
+		{
+			//std::cout << "Polynomial<>: inside operator=..." << std::endl;
+			if (this == &t) return *this;
 
-		//!
+			m_coefficients.resize(t.m_coefficients.size());
+			for (size_t i = 0; i < t.m_coefficients.size(); i++)
+				m_coefficients[i] = t.m_coefficients[i];
+
+			// And the ring, RandomizationParameter, and ringSet flag
+			if (t.isRingSet())
+				m_ring = t.GetRing();
+			m_ringSet = t.isRingSet();
+
+//			std::cout << "Polynomial<> op=: "
+//					<< "size: " << m_coefficients.size()
+//					<< "   ring_set=" << m_ringSet << std::endl;
+//			std::cout.flush();
+
+			return *this;
+		}
+
+		//! \brief assign random values to all the polynomial coefficients
+		//! \param rng Random Number Generator
+		//! \param parameter contains the number of coefficients that the randomized polynomial
+		//! will have, and the value 0
+		//! \param ring ring that this polynomial coefficients belong to
 		void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter, const Ring &ring)
 		{
 		    m_coefficients.resize(parameter.m_coefficientCount);
 		    for (unsigned int i=0; i<m_coefficients.size(); ++i)
 		    	m_coefficients[i] = ring.RandomElement(rng, parameter.m_coefficientParameter);
 		}
+		//! \brief assign random values to all the polynomial coefficients
+		//! \param rng Random Number Generator
+		//! \param parameter contains the number of coefficients that the randomized polynomial
+		//! will have, and the value 0
 		void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter) {
 		  if(!this->m_ringSet)
 		      throw std::invalid_argument( "Ring was not set!" );
@@ -211,18 +249,25 @@ public:
 
 		    return true;
 		}
+		bool Equals(const PolynomialOver<Ring> &t) const {
+			if(!this->m_ringSet) // if no ring - no real polynomial
+				throw std::invalid_argument( "Ring was not set!" );
+			// if rings over different moduli - different polynomials
+			if (m_ring.GetModulus() != t.GetRing().GetModulus())
+				return false;
+			return this->Equals(t, this->m_ring);
+		}
+		bool operator==(const PolynomialOver<Ring> &t) const {
+			return Equals(t);
+		}
+
 		bool IsZero(const Ring &ring) const {
 		    return CoefficientCount(ring)==0;
 		};
-		bool Equals(const PolynomialOver<Ring> &t) const {
-		  if(!this->m_ringSet)
-		      throw std::invalid_argument( "Ring was not set!" );
-		  return this->Equals(t, this->m_ring);
-		}
 		bool IsZero() const {
-		  if(!this->m_ringSet)
-		      throw std::invalid_argument( "Ring was not set!" );
-		  return this->IsZero(this->m_ring);
+			if(!this->m_ringSet)
+				throw std::invalid_argument( "Ring was not set!" );
+			return this->IsZero(this->m_ring);
 		}
 
 		PolynomialOver<Ring> Plus(const PolynomialOver<Ring>& t, const Ring &ring) const {
@@ -683,7 +728,7 @@ private:
     }
 
 	std::vector<CoefficientType> m_coefficients;
-	const Ring& m_ring;
+	Ring m_ring;
 	bool m_ringSet = false;
 };
 
