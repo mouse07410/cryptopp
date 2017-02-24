@@ -250,7 +250,8 @@ public:
 		    return true;
 		}
 		bool Equals(const PolynomialOver<Ring> &t) const {
-			if(!this->m_ringSet) // if no ring - no real polynomial
+			if(!this->m_ringSet
+					|| !(t.isRingSet())) // if no ring - no real polynomial
 				throw std::invalid_argument( "Ring was not set!" );
 			// if rings over different moduli - different polynomials
 			if (m_ring.GetModulus() != t.GetRing().GetModulus())
@@ -259,6 +260,9 @@ public:
 		}
 		bool operator==(const PolynomialOver<Ring> &t) const {
 			return Equals(t);
+		}
+		bool operator!=(const PolynomialOver<Ring> &t) const {
+			return !(Equals(t));
 		}
 
 		bool IsZero(const Ring &ring) const {
