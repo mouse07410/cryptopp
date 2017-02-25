@@ -486,6 +486,31 @@ public:
 		    return this->EvaluateAt(x, this->m_ring);
 		}
 
+		CoefficientType InterpolateAt(const CoefficientType &x, const std::vector<CoefficientType>& x_i, const std::vector<CoefficientType>& y_i) const
+		{
+			if (x_i.size() != m_coefficients.size() || y_i.size() != m_coefficients.size())
+			    throw std::invalid_argument("size of x_i and y_i must be equal to degree+1");
+
+			CoefficientType res = CoefficientType::Zero();
+			for (int i = 0; i < x_i.size(); i++) {
+			    res = m_ring.Add(res, m_ring.Multiply(Lambda_i(i, x, x_i), y_i[i]));
+			}
+			return res;
+		}
+
+		CoefficientType Lambda_i(const int i, const CoefficientType& x, const std::vector<CoefficientType>& x_i) const
+		{
+		    CoefficientType li = CoefficientType::One();
+		    for (int j = 0; j < x_i.size(); j++) {
+		        if (i != j) {
+		        	CoefficientType num = m_ring.Subtract(x, x_i[j]);
+		        	CoefficientType den = m_ring.Subtract(x_i[i], x_i[j]);
+		        	li = m_ring.Multiply(li, m_ring.Divide(num, den));
+		        }
+		    }
+		    return li;
+		}
+
 		PolynomialOver<Ring>& ShiftLeft(unsigned int n, const Ring &ring) {
 		    unsigned int i = CoefficientCount(ring) + n;
 		    m_coefficients.resize(i, ring.Identity());
