@@ -50,6 +50,12 @@ public:
 			friend class PolynomialOver<T>;
 		};
 
+	    class InterpolationFailed : public Exception
+	    {
+	    public:
+	        InterpolationFailed() : Exception(OTHER_ERROR, "PolynomialOver<T>: interpolation failed") {}
+	    };
+
 		typedef T Ring;
 		typedef typename T::Element CoefficientType;
 	//@}
@@ -486,7 +492,13 @@ public:
 		    return this->EvaluateAt(x, this->m_ring);
 		}
 
-		CoefficientType InterpolateAt(const CoefficientType &x, const std::vector<CoefficientType>& x_i, const std::vector<CoefficientType>& y_i) const
+        //! \brief Slower Lagrange Interpolation of polynomial of degree N based on N+1 values
+        //! of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
+        //! \param x value of x that we want P(x) at
+        //! \param x_i vector of known input data points (must have degree+1 of these)
+        //! \param y_i vector of y_i = P(x_i), values of the polynomial at x_i
+        //! \returns value of the polynomial at x
+		CoefficientType LagrangeInterpolateAt(const CoefficientType &x, const std::vector<CoefficientType>& x_i, const std::vector<CoefficientType>& y_i) const
 		{
 			if (x_i.size() != m_coefficients.size() || y_i.size() != m_coefficients.size())
 			    throw std::invalid_argument("size of x_i and y_i must be equal to degree+1");
@@ -510,6 +522,33 @@ public:
 		    }
 		    return li;
 		}
+
+	    // a faster version of Interpolate(x, y, n).EvaluateAt(position)
+		//! \brief Newton Interpolation of polynomial of degree N based on N+1 values
+		//! of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
+		//! \param position value of x that we want P(x) at
+		//! \param x vector of x_i - known input data points (must have degree+1 of these)
+		//! \param y vector of y_i = P(x_i), values of the polynomial at x_i
+		//! \returns value of the polynomial at x=position
+	    CoefficientType InterpolateAt(const CoefficientType &position, const std::vector<CoefficientType>& x, const std::vector<CoefficientType>& y) const
+	    {
+	        unsigned int n = x.size();
+	        CRYPTOPP_ASSERT(n > 0);
+
+	        if (n != m_coefficients.size() || y.size() != n)
+	        	throw std::invalid_argument("size of x and y must be equal to degree+1");
+
+	        std::vector<CoefficientType> alpha(n);
+	        CalculateAlpha(alpha, x, y, n);
+
+	        CoefficientType result = alpha[n-1];
+	        for (int j=n-2; j>=0; --j)
+	        {
+	            result = m_ring.Multiply(result, m_ring.Subtract(position, x[j]));
+	            m_ring.Accumulate(result, alpha[j]);
+	        }
+	        return result;
+	    }
 
 		PolynomialOver<Ring>& ShiftLeft(unsigned int n, const Ring &ring) {
 		    unsigned int i = CoefficientCount(ring) + n;
@@ -698,6 +737,25 @@ public:
 //			return a.Output(out, this->m_Ring);
 //		}
 	//@}
+protected:
+		void CalculateAlpha(std::vector<CoefficientType> &alpha, const std::vector<CoefficientType>& x, const std::vector<CoefficientType>& y, unsigned int n) const
+		{
+			for (unsigned int j=0; j<n; ++j)
+				alpha[j] = y[j];
+
+			for (unsigned int k=1; k<n; ++k)
+			{
+				for (unsigned int j=n-1; j>=k; --j)
+				{
+					m_ring.Reduce(alpha[j], alpha[j-1]);
+
+					CoefficientType d = m_ring.Subtract(x[j], x[j-k]);
+					if (!m_ring.IsUnit(d))
+						throw InterpolationFailed();
+					alpha[j] = m_ring.Divide(alpha[j], d);
+				}
+			}
+		}
 
 private:
 	void FromStr(const char *str, const Ring &ring)
