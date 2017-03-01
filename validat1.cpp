@@ -376,7 +376,7 @@ bool TestOS_RNG()
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		RandomNumberSource test(*rng, UINT_MAX, false, new Deflator(new Redirector(meter)));
 		unsigned long total=0, length=0;
-		time_t t = time(NULL), t1 = 0;
+		time_t t = time(NULLPTR), t1 = 0;
 		CRYPTOPP_UNUSED(length);
 
 		// check that it doesn't take too long to generate a reasonable amount of randomness
@@ -384,7 +384,7 @@ bool TestOS_RNG()
 		{
 			test.Pump(1);
 			total += 1;
-			t1 = time(NULL) - t;
+			t1 = time(NULLPTR) - t;
 		}
 
 		if (total < 16)
@@ -401,8 +401,8 @@ bool TestOS_RNG()
 		{
 			// that was fast, are we really blocking?
 			// first exhaust the extropy reserve
-			t = time(NULL);
-			while (time(NULL) - t < 2)
+			t = time(NULLPTR);
+			while (time(NULLPTR) - t < 2)
 			{
 				test.Pump(1);
 				total += 1;
@@ -410,8 +410,8 @@ bool TestOS_RNG()
 
 			// if it generates too many bytes in a certain amount of time,
 			// something's probably wrong
-			t = time(NULL);
-			while (time(NULL) - t < 2)
+			t = time(NULLPTR);
+			while (time(NULLPTR) - t < 2)
 			{
 				test.Pump(1);
 				total += 1;
@@ -424,7 +424,7 @@ bool TestOS_RNG()
 			}
 			else
 				std::cout << "passed:";
-			std::cout << "  it generated " << length << " bytes in " << long(time(NULL) - t) << " seconds" << std::endl;
+			std::cout << "  it generated " << length << " bytes in " << long(time(NULLPTR) - t) << " seconds" << std::endl;
 		}
 #endif
 
@@ -442,7 +442,7 @@ bool TestOS_RNG()
 	else
 		std::cout << "\nNo operating system provided blocking random number generator, skipping test." << std::endl;
 
-	rng.reset(NULL);
+	rng.reset(NULLPTR);
 #ifdef NONBLOCKING_RNG_AVAILABLE
 	try {rng.reset(new NonblockingRng);}
 	catch (OS_RNG_Err &) {}
@@ -678,7 +678,7 @@ bool TestRDRAND()
 	(void)rdrand.AlgorithmName();
 	(void)rdrand.CanIncorporateEntropy();
 	rdrand.SetRetries(rdrand.GetRetries());
-	rdrand.IncorporateEntropy(NULL, 0);
+	rdrand.IncorporateEntropy(NULLPTR, 0);
 
 	if (!(entropy && compress && discard))
 		std::cout.flush();
@@ -757,7 +757,7 @@ bool TestRDSEED()
 	(void)rdseed.AlgorithmName();
 	(void)rdseed.CanIncorporateEntropy();
 	rdseed.SetRetries(rdseed.GetRetries());
-	rdseed.IncorporateEntropy(NULL, 0);
+	rdseed.IncorporateEntropy(NULLPTR, 0);
 
 	if (!(entropy && compress && discard))
 		std::cout.flush();
@@ -1453,13 +1453,13 @@ bool ValidateCipherModes()
 			0x89, 0x3d, 0x51, 0xec, 0x4b, 0x56, 0x3b, 0x53};
 
 		ECB_Mode_ExternalCipher::Encryption modeE(desE);
-		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeE, NULLPTR, StreamTransformationFilter::NO_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "ECB encryption" << std::endl;
 
 		ECB_Mode_ExternalCipher::Decryption modeD(desD);
-		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeD, NULLPTR, StreamTransformationFilter::NO_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "ECB decryption" << std::endl;
@@ -1472,13 +1472,13 @@ bool ValidateCipherModes()
 			0x68, 0x37, 0x88, 0x49, 0x9A, 0x7C, 0x05, 0xF6};
 
 		CBC_Mode_ExternalCipher::Encryption modeE(desE, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeE, NULLPTR, StreamTransformationFilter::NO_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with no padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::NO_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeD, NULLPTR, StreamTransformationFilter::NO_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with no padding" << std::endl;
@@ -1518,13 +1518,13 @@ bool ValidateCipherModes()
 			0xcf, 0xb7, 0xc7, 0x64, 0x0e, 0x7c, 0xd9, 0xa7};
 
 		CBC_Mode_ExternalCipher::Encryption modeE(desE, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeE, NULLPTR, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
 			plain, sizeof(plain), encrypted, sizeof(encrypted));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with one-and-zeros padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeD, NULLPTR, StreamTransformationFilter::ONE_AND_ZEROS_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain, sizeof(plain));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with one-and-zeros padding" << std::endl;
@@ -1536,13 +1536,13 @@ bool ValidateCipherModes()
 			0x9B, 0x47, 0x57, 0x59, 0xD6, 0x9C, 0xF6, 0xD0};
 
 		CBC_Mode_ExternalCipher::Encryption modeE(desE, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeE, NULL, StreamTransformationFilter::ZEROS_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeE, NULLPTR, StreamTransformationFilter::ZEROS_PADDING).Ref(),
 			plain_1, 1, encrypted, sizeof(encrypted));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC encryption with zeros padding" << std::endl;
 
 		CBC_Mode_ExternalCipher::Decryption modeD(desD, iv);
-		fail = !TestFilter(StreamTransformationFilter(modeD, NULL, StreamTransformationFilter::ZEROS_PADDING).Ref(),
+		fail = !TestFilter(StreamTransformationFilter(modeD, NULLPTR, StreamTransformationFilter::ZEROS_PADDING).Ref(),
 			encrypted, sizeof(encrypted), plain_1, sizeof(plain_1));
 		pass = pass && !fail;
 		std::cout << (fail ? "FAILED   " : "passed   ") << "CBC decryption with zeros padding" << std::endl;
@@ -2430,33 +2430,44 @@ bool ValidateBaseCode()
 	byte data[255];
 	for (unsigned int i=0; i<255; i++)
 		data[i] = byte(i);
-	static const char hexEncoded[] =
-"000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021222324252627"
-"28292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F"
-"505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F7071727374757677"
-"78797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798999A9B9C9D9E9F"
-"A0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8B9BABBBCBDBEBFC0C1C2C3C4C5C6C7"
-"C8C9CACBCCCDCECFD0D1D2D3D4D5D6D7D8D9DADBDCDDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
-"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFE";
-	static const char base32Encoded[] =
-"AAASEA2EAWDAQCAJBIFS2DIQB6IBCESVCSKTNF22DEPBYHA7D2RUAIJCENUCKJTHFAWUWK3NFWZC8NBT"
-"GI3VIPJYG66DUQT5HS8V6R4AIFBEGTCFI3DWSUKKJPGE4VURKBIXEW4WKXMFQYC3MJPX2ZK8M7SGC2VD"
-"NTUYN35IPFXGY5DPP3ZZA6MUQP4HK7VZRB6ZW856RX9H9AEBSKB2JBNGS8EIVCWMTUG27D6SUGJJHFEX"
-"U4M3TGN4VQQJ5HW9WCS4FI7EWYVKRKFJXKX43MPQX82MDNXVYU45PP72ZG7MZRF7Z496BSQC2RCNMTYH"
-"3DE6XU8N3ZHN9WGT4MJ7JXQY49NPVYY55VQ77Z9A6HTQH3HF65V8T4RK7RYQ55ZR8D29F69W8Z5RR8H3"
-"9M7939R8";
-	const char *base64AndHexEncoded =
-"41414543417751464267634943516F4C4441304F4478415245684D554652595847426B6147787764"
-"486838674953496A4A43556D4A7967704B6973734C5334764D4445794D7A51310A4E6A63344F546F"
-"375044302B50304242516B4E4552555A4853456C4B5330784E546B395155564A5456465657563168"
-"5A576C746358563566594746695932526C5A6D646F615770720A6247317562334278636E4E306458"
-"5A3365486C3665337839666E2B4167594B44684957476834694A696F754D6A5936506B4A47536B35"
-"53566C7065596D5A71626E4A32656E3643680A6F714F6B7061616E714B6D717136797472712B7773"
-"624B7A744C573274376935757275387662362F774D484377385446787366497963724C7A4D334F7A"
-"39445230745055316462580A324E6E6132397A6433742F6734654C6A354F586D352B6A7036757673"
-"3765377638504879382F5431397666342B6672372F50332B0A";
 
-	std::cout << "\nBase64, base32 and hex coding validation suite running...\n\n";
+	static const char hexEncoded[] =
+		"000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021222324252627"
+		"28292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F"
+		"505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F7071727374757677"
+		"78797A7B7C7D7E7F808182838485868788898A8B8C8D8E8F909192939495969798999A9B9C9D9E9F"
+		"A0A1A2A3A4A5A6A7A8A9AAABACADAEAFB0B1B2B3B4B5B6B7B8B9BABBBCBDBEBFC0C1C2C3C4C5C6C7"
+		"C8C9CACBCCCDCECFD0D1D2D3D4D5D6D7D8D9DADBDCDDDEDFE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
+		"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFE";
+	static const char base32Encoded[] =
+		"AAASEA2EAWDAQCAJBIFS2DIQB6IBCESVCSKTNF22DEPBYHA7D2RUAIJCENUCKJTHFAWUWK3NFWZC8NBT"
+		"GI3VIPJYG66DUQT5HS8V6R4AIFBEGTCFI3DWSUKKJPGE4VURKBIXEW4WKXMFQYC3MJPX2ZK8M7SGC2VD"
+		"NTUYN35IPFXGY5DPP3ZZA6MUQP4HK7VZRB6ZW856RX9H9AEBSKB2JBNGS8EIVCWMTUG27D6SUGJJHFEX"
+		"U4M3TGN4VQQJ5HW9WCS4FI7EWYVKRKFJXKX43MPQX82MDNXVYU45PP72ZG7MZRF7Z496BSQC2RCNMTYH"
+		"3DE6XU8N3ZHN9WGT4MJ7JXQY49NPVYY55VQ77Z9A6HTQH3HF65V8T4RK7RYQ55ZR8D29F69W8Z5RR8H3"
+		"9M7939R8";
+	static const char base64AndHexEncoded[] =
+		"41414543417751464267634943516F4C4441304F4478415245684D554652595847426B6147787764"
+		"486838674953496A4A43556D4A7967704B6973734C5334764D4445794D7A51310A4E6A63344F546F"
+		"375044302B50304242516B4E4552555A4853456C4B5330784E546B395155564A5456465657563168"
+		"5A576C746358563566594746695932526C5A6D646F615770720A6247317562334278636E4E306458"
+		"5A3365486C3665337839666E2B4167594B44684957476834694A696F754D6A5936506B4A47536B35"
+		"53566C7065596D5A71626E4A32656E3643680A6F714F6B7061616E714B6D717136797472712B7773"
+		"624B7A744C573274376935757275387662362F774D484377385446787366497963724C7A4D334F7A"
+		"39445230745055316462580A324E6E6132397A6433742F6734654C6A354F586D352B6A7036757673"
+		"3765377638504879382F5431397666342B6672372F50332B0A";
+	static const char base64URLAndHexEncoded[] =
+		"41414543417751464267634943516F4C4441304F4478415245684D554652595847426B6147787764"
+		"486838674953496A4A43556D4A7967704B6973734C5334764D4445794D7A51314E6A63344F546F37"
+		"5044302D50304242516B4E4552555A4853456C4B5330784E546B395155564A54564656575631685A"
+		"576C746358563566594746695932526C5A6D646F615770726247317562334278636E4E3064585A33"
+		"65486C3665337839666E2D4167594B44684957476834694A696F754D6A5936506B4A47536B355356"
+		"6C7065596D5A71626E4A32656E3643686F714F6B7061616E714B6D717136797472712D7773624B7A"
+		"744C573274376935757275387662365F774D484377385446787366497963724C7A4D334F7A394452"
+		"3074505531646258324E6E6132397A6433745F6734654C6A354F586D352D6A703675767337653776"
+		"38504879385F5431397666342D6672375F50332D";
+
+	std::cout << "\nBase64, Base64URL, Base32 and Base16 coding validation suite running...\n\n";
 
 	fail = !TestFilter(HexEncoder().Ref(), data, 255, (const byte *)hexEncoded, strlen(hexEncoded));
 	std::cout << (fail ? "FAILED    " : "passed    ");
@@ -2486,6 +2497,16 @@ bool ValidateBaseCode()
 	fail = !TestFilter(HexDecoder(new Base64Decoder).Ref(), (const byte *)base64AndHexEncoded, strlen(base64AndHexEncoded), data, 255);
 	std::cout << (fail ? "FAILED    " : "passed    ");
 	std::cout << "Base64 Decoding\n";
+	pass = pass && !fail;
+
+	fail = !TestFilter(Base64URLEncoder(new HexEncoder).Ref(), data, 255, (const byte *)base64URLAndHexEncoded, strlen(base64URLAndHexEncoded));
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base64 URL Encoding\n";
+	pass = pass && !fail;
+
+	fail = !TestFilter(HexDecoder(new Base64URLDecoder).Ref(), (const byte *)base64URLAndHexEncoded, strlen(base64URLAndHexEncoded), data, 255);
+	std::cout << (fail ? "FAILED    " : "passed    ");
+	std::cout << "Base64 URL Decoding\n";
 	pass = pass && !fail;
 
 	return pass;
