@@ -126,6 +126,13 @@ public:
 			const Ring &ring) : m_ring(ring), m_ringSet(true)
 	{ Randomize(rng, parameter, ring); }
 
+
+	virtual ~PolynomialOver() {
+		this->m_coefficients.clear();
+		this->m_coefficients.shrink_to_fit();
+		this->m_ringSet = false;
+	}
+
 	void setRing(const Ring &ring) {
 		this->m_ring = ring;
 		this->m_ringSet = true;
