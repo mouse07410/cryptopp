@@ -127,9 +127,13 @@ public:
 	{ Randomize(rng, parameter, ring); }
 
 
-	virtual ~PolynomialOver() {
+	virtual void ClearCoefficients() {
 		this->m_coefficients.clear();
 		this->m_coefficients.shrink_to_fit();
+	}
+
+	virtual ~PolynomialOver() {
+		this->ClearCoefficients();
 		this->m_ringSet = false;
 	}
 
