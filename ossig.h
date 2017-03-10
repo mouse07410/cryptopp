@@ -33,7 +33,7 @@ extern "C" {
 //!   external "C++" linkage.
 //! \sa SignalHandler, SignalHandlerFn
 extern "C" {
-	inline void NullSignalHandler(int unused) {CRYPTOPP_UNUSED(unused);}
+    inline void NullSignalHandler(int unused) {CRYPTOPP_UNUSED(unused);}
 };
 
 //! Signal handler for Linux and Unix compatibles
@@ -46,6 +46,10 @@ extern "C" {
 //!   using sigaction flags set to 0. The default handler only returns from the call.
 //! \details Upon destruction the previous signal handler is restored if the former signal handler
 //!   was replaced.
+//! \details On Cygwin systems using Newlib, you need to ensure you define <tt>_XOPEN_SOURCE=700</tt>,
+//!   <tt>_GNU_SOURCE</tt>; or use <tt>-std=gnu++03</tt>, <tt>-std=gnu++11</tt>, or similar. If
+//!   you compile with <tt>-std=c++03</tt>, <tt>-std=c++11</tt> or similar, then define
+//!   <tt>_XOPEN_SOURCE=700</tt>.
 //! \warning Do not use SignalHandler in a code block that uses <tt>setjmp</tt> or <tt>longjmp</tt>
 //!   because the destructor may not run.
 //! \since Crypto++ 5.6.5
@@ -63,6 +67,10 @@ struct SignalHandler
     //!   using sigaction flags set to 0. The default handler only returns from the call.
     //! \details Upon destruction the previous signal handler is restored if the former signal handler
     //!   was overwritten.
+    //! \details On Cygwin systems using Newlib, you need to ensure you define <tt>_XOPEN_SOURCE=700</tt>,
+    //!   <tt>_GNU_SOURCE</tt>; or use <tt>-std=gnu++03</tt>, <tt>-std=gnu++11</tt>, or similar. If
+    //!   you compile with <tt>-std=c++03</tt>, <tt>-std=c++11</tt> or similar, then define
+    //!   <tt>_XOPEN_SOURCE=700</tt>.
     //! \warning Do not use SignalHandler in a code block that uses <tt>setjmp</tt> or <tt>longjmp</tt>
     //!   because the destructor may not run. <tt>setjmp</tt> is why cpu.cpp does not use SignalHandler
     //!   during CPU feature testing.
@@ -82,13 +90,9 @@ struct SignalHandler
             // Don't step on another's handler if Overwrite=false
             if (m_old.sa_handler != 0 && !O) break;
 
-#if defined __CYGWIN__
-            // http://github.com/weidai11/cryptopp/issues/315
-            memset(&new_handler, 0x00, sizeof(new_handler));
-#else
+            // Cygwin/Newlib requires -D_XOPEN_SOURCE=700
             ret = sigemptyset (&new_handler.sa_mask);
             if (ret != 0) break; // Failed
-#endif
 
             new_handler.sa_handler = (pfn ? pfn : &NullSignalHandler);
             new_handler.sa_flags = (pfn ? flags : 0);
