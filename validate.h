@@ -121,25 +121,50 @@ bool TestHuffmanCodes();
 bool TestASN1Parse();
 #endif
 
+#if 0
 // Coverity findings in benchmark and validation routines
 class StreamState
 {
 public:
 	StreamState(std::ostream& out)
-		: m_out(out), m_fmt(out.flags()), m_prec(out.precision())
+		: m_out(out), m_prec(out.precision()), m_width(out.width()), m_fmt(out.flags()), m_fill(out.fill())
 	{
 	}
 
 	~StreamState()
 	{
-		m_out.precision(m_prec);
+		m_out.fill(m_fill);
 		m_out.flags(m_fmt);
+		m_out.width(m_width);
+		m_out.precision(m_prec);
 	}
 
 private:
 	std::ostream& m_out;
-	std::ios_base::fmtflags m_fmt;
 	std::streamsize m_prec;
+	std::streamsize m_width;
+	std::ios_base::fmtflags m_fmt;
+	std::ostream::char_type m_fill;
+};
+#endif
+
+class StreamState
+{
+public:
+	StreamState(std::ostream& out)
+		: m_out(out), m_state(NULLPTR)
+	{
+		m_state.copyfmt(m_out);
+	}
+
+	~StreamState()
+	{
+		m_out.copyfmt(m_state);
+	}
+
+private:
+	std::ostream& m_out;
+	std::ios m_state;
 };
 
 // Safer functions on Windows for C&A, https://github.com/weidai11/cryptopp/issues/55
