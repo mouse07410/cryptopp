@@ -762,6 +762,8 @@ cryptlib.o:
 	$(CXX) $(strip $(CXXFLAGS)) -DMACPORTS_GCC_COMPILER=1 -c cryptlib.cpp
 cpu.o:
 	$(CXX) $(strip $(CXXFLAGS)) -DMACPORTS_GCC_COMPILER=1 -c cpu.cpp
+integer.o:
+	$(CXX) $(strip $(CXXFLAGS)) -DMACPORTS_GCC_COMPILER=1 -c integer.cpp
 endif
 endif
 
