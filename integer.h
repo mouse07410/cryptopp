@@ -40,12 +40,7 @@ typedef SecBlock<word, AllocatorWithCleanup<word, true> > IntegerSecBlock;
 //!   used to track the sign of the Integer.
 //! \since Crypto++ 1.0
 //! \nosubgrouping
-class CRYPTOPP_DLL Integer
-#if HAVE_GCC_INIT_PRIORITY || HAVE_MSC_INIT_PRIORITY
-		: private InitializeInteger, public ASN1Object
-#else
-		: public ASN1Object
-#endif
+class CRYPTOPP_DLL Integer : public ASN1Object
 {
 public:
 	//! \name ENUMS, EXCEPTIONS, and TYPEDEFS
