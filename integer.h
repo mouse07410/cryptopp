@@ -42,9 +42,9 @@ typedef SecBlock<word, AllocatorWithCleanup<word, true> > IntegerSecBlock;
 //! \nosubgrouping
 class CRYPTOPP_DLL Integer
 #if HAVE_GCC_INIT_PRIORITY || HAVE_MSC_INIT_PRIORITY
-		: private InitializeInteger, public ASN1Object
-#else
 		: public ASN1Object
+#else
+		: private InitializeInteger, public ASN1Object
 #endif
 {
 public:
