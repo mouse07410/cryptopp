@@ -90,7 +90,7 @@ matrix:
       env: BUILD_MODE="cross-arm64"
 
 install:
-   - make install
+   - sudo make install
 #  - ./src/scripts/ci/travis/install.sh
 
 #script:
