@@ -48,9 +48,9 @@ matrix:
     #- os: linux
     #  env: BUILD_MODE="sonarqube"
 
- # exclude:
+  exclude:
     # Skip GCC on OS X entirely
-  #  - os: osx
+   # - os: osx
   #    compiler: gcc
 
     # Run docs, lint, bsi, nist, coverage, valgrind, sonarqube, sanitizer,
@@ -64,16 +64,16 @@ matrix:
       env: BUILD_MODE="docs"
     - compiler: clang
       env: BUILD_MODE="coverage"
-    #- compiler: clang
-    #  env: BUILD_MODE="sonarqube"
     - compiler: clang
-      env: BUILD_MODE="sanitizer"
+      env: BUILD_MODE="sonarqube"
+    #- compiler: clang
+    #  env: BUILD_MODE="sanitizer"
+    #- compiler: clang
+    #  env: BUILD_MODE="valgrind"
     - compiler: clang
-      env: BUILD_MODE="valgrind"
-    #- compiler: clang
-    #  env: BUILD_MODE="mini-shared"
-    #- compiler: clang
-    #  env: BUILD_MODE="mini-static"
+      env: BUILD_MODE="mini-shared"
+    - compiler: clang
+      env: BUILD_MODE="mini-static"
     - compiler: clang
       env: BUILD_MODE="cross-win32"
     - compiler: clang
