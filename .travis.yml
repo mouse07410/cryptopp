@@ -27,13 +27,10 @@ env:
     - BUILD_MODE="lint"
     - BUILD_MODE="shared"
     - BUILD_MODE="static"
-    - BUILD_MODE="sanitizer"
+#    - BUILD_MODE="sanitizer"
     - BUILD_MODE="coverage"
-    - BUILD_MODE="cross-arm32"
-    - BUILD_MODE="cross-arm64"
-    - BUILD_MODE="cross-win32"
-    - BUILD_MODE="cross-ppc32"
-    - BUILD_MODE="cross-ppc64"
+    - BUILD_MODE="asan"
+    - BUILD_MODE="ubsan"
     - BUILD_MODE="valgrind"
 
 #after_success:
@@ -47,10 +44,10 @@ branches:
 notifications:
   email: uri@mit.edu
 
-  webhooks:
-    #urls:
-    #  - https://webhooks.gitter.im/e/9caf8eaa06913b69443f
-    on_start: never
+#  webhooks:
+#    #urls:
+#    #  - https://webhooks.gitter.im/e/9caf8eaa06913b69443f
+#    on_start: never
 
 git:
   depth: 5
@@ -67,7 +64,6 @@ addons:
     project:
       name: "mouse07410/cryptopp"
     notification_email: uri@mit.edu
-    #build_command_prepend: "./configure.py --no-optimizations --with-zlib"
     build_command: "make -j4"
     branch_pattern: coverity_scan
 
