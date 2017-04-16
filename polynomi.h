@@ -151,13 +151,13 @@ public:
 	}
 	int Degree() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Degree(this->m_ring);
 	}
 	//!
 	unsigned int CoefficientCount() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->CoefficientCount(this->m_ring);
 	}
 	unsigned int CoefficientCount(const Ring &ring) const
@@ -175,7 +175,7 @@ public:
 	}
 	CoefficientType GetCoefficient(unsigned int i) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->GetCoefficient(i, this->m_ring);
 	}
 
@@ -187,7 +187,7 @@ public:
 	//! get ring this polynomial is over
 	const Ring& GetRing() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->m_ring;
 	}
 	//@}
@@ -234,7 +234,7 @@ public:
 	//! will have, and the value 0
 	void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Randomize(rng, parameter, this->m_ring);
 	}
 
@@ -247,7 +247,7 @@ public:
 	}
 	void SetCoefficient(unsigned int i, const CoefficientType &value) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		this->SetCoefficient(i, value, this->m_ring);
 	}
 	//!
@@ -259,7 +259,7 @@ public:
 	}
 	void Negate() {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		this->Negate(this->m_ring);
 	}
 
@@ -288,7 +288,7 @@ public:
 	bool Equals(const PolynomialOver<Ring> &t) const {
 		if(!this->m_ringSet
 				|| !(t.isRingSet())) // if no ring - no real polynomial
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		// if rings over different moduli - different polynomials
 		if (m_ring.GetModulus() != t.GetRing().GetModulus())
 			return false;
@@ -306,7 +306,7 @@ public:
 	};
 	bool IsZero() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->IsZero(this->m_ring);
 	}
 
@@ -340,7 +340,7 @@ public:
 	}
 	PolynomialOver<Ring> Plus(const PolynomialOver<Ring>& t) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Plus(t, this->m_ring);
 	}
 
@@ -374,7 +374,7 @@ public:
 	}
 	PolynomialOver<Ring> Minus(const PolynomialOver<Ring>& t) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Minus(t, this->m_ring);
 	}
 
@@ -389,7 +389,7 @@ public:
 	}
 	PolynomialOver<Ring> Inverse() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Inverse(this->m_ring);
 	}
 
@@ -408,7 +408,7 @@ public:
 	}
 	PolynomialOver<Ring> Times(const PolynomialOver<Ring>& t) const {
 		if(this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Times(t, this->m_ring);
 	}
 
@@ -419,7 +419,7 @@ public:
 	}
 	PolynomialOver<Ring> DividedBy(const PolynomialOver<Ring>& t) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->DivideBy(t, this->m_ring);
 	}
 	PolynomialOver<Ring> Modulo(const PolynomialOver<Ring>& t, const Ring &ring) const {
@@ -429,7 +429,7 @@ public:
 	}
 	PolynomialOver<Ring> Modulo(const PolynomialOver<Ring>& t) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Modulo(t, this->m_ring);
 	}
 	PolynomialOver<Ring> MultiplicativeInverse(const Ring &ring) const  {
@@ -437,7 +437,7 @@ public:
 	}
 	PolynomialOver<Ring> MultiplicativeInverse() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->MultiplicativeInverse(this->m_ring);
 	}
 	bool IsUnit(const Ring &ring) const
@@ -446,7 +446,7 @@ public:
 	}
 	bool IsUnit() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->IsUnit(this->m_ring);
 	}
 
@@ -463,7 +463,7 @@ public:
 	}
 	PolynomialOver<Ring>& Accumulate(const PolynomialOver<Ring>& t) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Accumulate(t, this->m_ring);
 	}
 
@@ -480,7 +480,7 @@ public:
 	}
 	PolynomialOver<Ring>& Reduce(const PolynomialOver<Ring>& t) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Reduce(t, this->m_ring);
 	}
 	//!
@@ -488,7 +488,7 @@ public:
 	PolynomialOver<Ring> Doubled(const Ring &ring) const {return Plus(*this, ring);}
 	PolynomialOver<Ring> Doubled() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return Plus(*this, this->m_ring);
 	}
 	//!
@@ -496,7 +496,7 @@ public:
 	PolynomialOver<Ring> Squared(const Ring &ring) const {return Times(*this, ring);}
 	PolynomialOver<Ring> Squared() const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return Times(*this, this->m_ring);
 	}
 
@@ -518,7 +518,7 @@ public:
 	}
 	CoefficientType EvaluateAt(const CoefficientType &x) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->EvaluateAt(x, this->m_ring);
 	}
 
@@ -531,7 +531,7 @@ public:
 	CoefficientType LagrangeInterpolateAt(const CoefficientType &x, const std::vector<CoefficientType>& x_i, const std::vector<CoefficientType>& y_i) const
 	{
 		if (x_i.size() != m_coefficients.size() || y_i.size() != m_coefficients.size())
-			throw std::invalid_argument("size of x_i and y_i must be equal to degree+1");
+			throw InvalidArgument("size of x_i and y_i must be equal to degree+1");
 
 		CoefficientType res = CoefficientType::Zero();
 		for (int i = 0; i < x_i.size(); i++) {
@@ -566,7 +566,7 @@ public:
 		CRYPTOPP_ASSERT(n > 0);
 
 		if (n != m_coefficients.size() || y.size() != n)
-			throw std::invalid_argument("number of provided x[] and y[] must be equal to polynomial degree+1");
+			throw InvalidArgument("number of provided x[] and y[] must be equal to polynomial degree+1");
 
 		std::vector<CoefficientType> alpha(n);
 		CalculateAlpha(alpha, x, y, n);
@@ -586,7 +586,7 @@ public:
 		CRYPTOPP_ASSERT(n > 0);
 
 		if (n != m_coefficients.size())
-			throw std::invalid_argument("number of provided x-y pairs must be equal to polynomial degree + 1");
+			throw InvalidArgument("number of provided x-y pairs must be equal to polynomial degree + 1");
 
 		std::vector<CoefficientType> alpha(n);
 		CalculateAlpha(alpha, xy, n);
@@ -617,7 +617,7 @@ public:
 	}
 	PolynomialOver<Ring>& ShiftLeft(unsigned int n) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->ShiftLeft(n, this->m_ring);
 	}
 
@@ -635,7 +635,7 @@ public:
 	}
 	PolynomialOver<Ring>& ShiftRight(unsigned int n) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->ShiftRight(n, this->m_ring);
 	}
 
@@ -664,7 +664,7 @@ public:
 	void Divide(PolynomialOver<Ring> &r, PolynomialOver<Ring> &q, const PolynomialOver<Ring> &a, const PolynomialOver<Ring> &d)
 	{
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return Divide(r, q, a, d, this->m_ring);
 	}
 	//@}
@@ -704,13 +704,13 @@ public:
 	}
 	std::istream& Input(std::istream &in) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return Input(in, this->m_ring);
 	}
 
 	std::ostream& Output(std::ostream &out) const {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		return this->Output(out, m_ring);
 	}
 	std::ostream& Output(std::ostream &out, const Ring &ring) const
@@ -878,7 +878,7 @@ public:
 	}
 	void fromStr(const char *str) {
 		if(!this->m_ringSet)
-			throw std::invalid_argument( "Ring was not set!" );
+			throw InvalidArgument( "Ring was not set!" );
 		this->fromStr(str, m_ring);
 	}
 

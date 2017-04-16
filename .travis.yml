@@ -89,7 +89,8 @@ matrix:
       compiler: clang
       env: BUILD_MODE="cross-arm64"
 
-#install:
+install:
+   - make install
 #  - ./src/scripts/ci/travis/install.sh
 
 #script:
