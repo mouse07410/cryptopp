@@ -191,6 +191,13 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
 
+  <!-- Target for Appvoyer                           -->
+  <!-- The rule copies cryptest.exe to the project   -->
+  <!-- root directory so it can be executed in place -->
+  <Target Name="CopyCryptestToRoot">
+    <Exec Command="copy $(Platform)\Output\$(Configuration)\cryptest.exe ."/>
+  </Target>
+
   <!-- Source Files -->
   <ItemGroup>
     <ClCompile Include="adhoc.cpp" />
@@ -249,6 +256,7 @@
     <None Include="TestVectors\seal.txt" />
     <None Include="TestVectors\seed.txt" />
     <None Include="TestVectors\sha.txt" />
+    <None Include="TestVectors\sha2.txt" />
     <None Include="TestVectors\sha3.txt" />
     <None Include="TestVectors\shacal2.txt" />
     <None Include="TestVectors\siphash.txt" />
