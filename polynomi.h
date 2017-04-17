@@ -92,7 +92,7 @@ public:
 
 	//! copy constructor
 	PolynomialOver(const PolynomialOver<Ring> &t)
-	: m_coefficients(t.m_coefficients.size()), m_ring(t.m_ring), m_ringSet(true)
+	  : m_coefficients(t.m_coefficients.size()), m_ring(t.m_ring), m_ringSet(t.isRingSet())
 	{
 		//std::cout << "Polynomial<>: inside copy-constructor" << std::endl;
 		//std::cout.flush();
@@ -101,11 +101,11 @@ public:
 
 	//! construct constant polynomial
 	PolynomialOver(const CoefficientType &element)
-	: m_coefficients(1, element) {}
+	  : m_coefficients(1, element), m_ringSet(false) {}
 
 	//! construct polynomial with specified coefficients, starting from coefficient of x^0
 	template <typename Iterator> PolynomialOver(Iterator begin, Iterator end)
-					: m_coefficients(begin, end) {}
+	  : m_coefficients(begin, end), m_ringSet(false) {}
 
 	//! convert from string
 	PolynomialOver(const char *str, const Ring &ring) : m_ring(ring), m_ringSet(true)
@@ -884,7 +884,12 @@ public:
 
 	std::vector<CoefficientType> m_coefficients;
 	Ring m_ring;
-	bool m_ringSet = false;
+#if __cplusplus >= 201103L
+	bool m_ringSet = false; // Depends on C++11 compiler support
+#else
+	bool m_ringSet; // Since C++11 feature may not work for earlier versions of C++ standard
+        // in which case just leave it uninitialized and hope that the constructor will do the job.
+#endif /* C++11 or higher */
 };
 
 
