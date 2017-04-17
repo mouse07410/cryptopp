@@ -5,8 +5,16 @@ os:
   - osx
 
 dist: trusty
-sudo: required
-osx_image: xcode8.3
+sudo: false
+
+# OS X only supports one image. Us the latest.
+osx_image:
+  - xcode8.3
+#  - xcode7.3
+#  - xcode6.4
+
+git:
+  depth: 3
 
 compiler:
   - clang
@@ -14,29 +22,32 @@ compiler:
 
 env:
   global:
-    - CCACHE_SIZE=50M
-    - CCACHE_COMPRESS=1
     - BUILD_JOBS=2
-    # SONAR_TOKEN for accessing the SonarQube server
-    - secure: "VezRbHFg6kllV5WG06M3tG3aHJaC3xrMylJ6RCVbL+uz2JeralVCqV7eIk4fVb9cu83Li+weEa0AJj0wkxpIUJ+vUh5F65L6gSWSbgHP7muOSVsmnEc6KvX4n3av/ZGe4geSmsxqh2pd/2xI1h7KioGRhKeqaZIdjVgWgGJW2iQ="
-    # GITHUB_TOKEN for posting found issues as comments in the PR that's beeing analyzed by SonarQube
-    - secure: "Th0mBSkUCDqu+EA6F7zA6DCSDZBNunfndANyq06BwaFlj71daWWjthwYFsfg3T5N2ZmI+PsULQQpOirCnJt1lbNHhMVJwZPkW0JnjoxbSNpSI2+nHv7+GO9X9WjK0LRFawiQu8WxmLMQDA+0oR0BERSFKc3gmbuav9fDfla0dXg="
 
   matrix:
-    - BUILD_MODE="docs"
-    - BUILD_MODE="lint"
     - BUILD_MODE="shared"
     - BUILD_MODE="static"
-#    - BUILD_MODE="sanitizer"
-    - BUILD_MODE="coverage"
+    - BUILD_MODE="no-asm"
     - BUILD_MODE="asan"
     - BUILD_MODE="ubsan"
     - BUILD_MODE="valgrind"
 
-#after_success:
-#  - ./src/scripts/ci/travis/after_success.sh
+  exclude:
+    # Skip GCC on OS X entirely
+    - os: osx
+      compiler: gcc
 
-# whitelist branches to avoid testing feature branches twice (as branch and as pull request)
+    # The sanitizer builds under Clang run the tests very
+    # slowly and cause CI timeouts.
+
+    - compiler: clang
+      env: BUILD_MODE="asan"
+    - compiler: clang
+      env: BUILD_MODE="ubsan"
+    - compiler: clang
+      env: BUILD_MODE="valgrind"
+
+# whitelist branches to avoid testing feature branches twice
 branches:
   only:
     - master
@@ -44,26 +55,6 @@ branches:
 notifications:
   email: uri@mit.edu
 
-#  webhooks:
-#    #urls:
-#    #  - https://webhooks.gitter.im/e/9caf8eaa06913b69443f
-#    on_start: never
-
 git:
   depth: 5
-
-cache:
-  ccache: true
-  directories:
-    - $HOME/.sonar/cache
-
-addons:
-  sonarqube: true
-
-  coverity_scan:
-    project:
-      name: "mouse07410/cryptopp"
-    notification_email: uri@mit.edu
-    build_command: "make -j4"
-    branch_pattern: coverity_scan
 
