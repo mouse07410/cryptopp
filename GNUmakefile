@@ -21,6 +21,8 @@ IS_X64 := $(shell uname -m | $(EGREP) -i -c "(_64|d64)")
 IS_PPC := $(shell uname -m | $(EGREP) -i -c "ppc|power")
 IS_ARM32 := $(shell uname -m | $(EGREP) -i -c "arm")
 IS_ARM64 := $(shell uname -m | $(EGREP) -i -c "aarch64")
+IS_SPARC := $(shell uname -m | $(EGREP) -i -c "sparc")
+IS_SPARC64 := $(shell uname -m | $(EGREP) -i -c "sparc64")
 
 IS_SUN := $(shell uname | $(EGREP) -i -c "SunOS")
 IS_LINUX := $(shell $(CXX) -dumpmachine 2>&1 | $(EGREP) -i -c "Linux")
@@ -146,6 +148,7 @@ ifneq ($(HAVE_GAS),0)
   GAS210_OR_LATER := $(shell $(CXX) -xc -c /dev/null -Wa,-v -o/dev/null 2>&1 | $(EGREP) -c "GNU assembler version (2\.[1-9][0-9]|[3-9])")
   GAS217_OR_LATER := $(shell $(CXX) -xc -c /dev/null -Wa,-v -o/dev/null 2>&1 | $(EGREP) -c "GNU assembler version (2\.1[7-9]|2\.[2-9]|[3-9])")
   GAS219_OR_LATER := $(shell $(CXX) -xc -c /dev/null -Wa,-v -o/dev/null 2>&1 | $(EGREP) -c "GNU assembler version (2\.19|2\.[2-9]|[3-9])")
+  GAS223_OR_LATER := $(shell $(CXX) -xc -c /dev/null -Wa,-v -o/dev/null 2>&1 | $(EGREP) -c "GNU assembler version (2\.2[3-9]|2\.[3-9]|[3-9])")
 endif
 
 ICC111_OR_LATER := $(shell $(CXX) --version 2>&1 | $(EGREP) -c "\(ICC\) ([2-9][0-9]|1[2-9]|11\.[1-9])")
@@ -170,6 +173,11 @@ else
 ifeq ($(HAVE_GAS)$(GAS219_OR_LATER),10)
 CXXFLAGS += -DCRYPTOPP_DISABLE_AESNI
 DISABLE_NATIVE_ARCH := 1
+else
+ifeq ($(HAVE_GAS)$(GAS223_OR_LATER),10)
+CXXFLAGS += -DCRYPTOPP_DISABLE_SHA
+DISABLE_NATIVE_ARCH := 1
+endif
 endif
 endif
 endif
@@ -346,6 +354,10 @@ CXXFLAGS += -KPIC
 endif
 # Add to all Solaris
 CXXFLAGS += -template=no%extdef
+# http://github.com/weidai11/cryptopp/issues/403
+ifneq ($(IS_SPARC)$(IS_SPARC64),00)
+CXXFLAGS += -xmemalign=4i
+endif
 SUN_CC10_BUGGY := $(shell $(CXX) -V 2>&1 | $(EGREP) -c "CC: Sun .* 5\.10 .* (2009|2010/0[1-4])")
 ifneq ($(SUN_CC10_BUGGY),0)
 # -DCRYPTOPP_INCLUDE_VECTOR_CC is needed for Sun Studio 12u1 Sun C++ 5.10 SunOS_i386 128229-02 2009/09/21 and was fixed in May 2010

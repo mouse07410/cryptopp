@@ -40,7 +40,21 @@ typedef void (CRYPTOPP_FASTCALL *pfnSHAHashBlocks)(word32 *state, const word32 *
 // start of Steve Reid's code //
 ////////////////////////////////
 
-#define blk0(i) (W[i] = data[i])
+
+template <typename T>
+inline T BLK0_TEMPLATE(const T* y, const int i)
+{
+    T t;
+    memcpy(&t, y+i, sizeof(t));
+    return t;
+}
+
+#if defined(__SUNPRO_CC)
+#  define blk0(i) (W[i] = BLK0_TEMPLATE(data,i))
+#else
+#  define blk0(i) (W[i] = data[i])
+#endif
+
 #define blk1(i) (W[i&15] = rotlFixed(W[(i+13)&15]^W[(i+8)&15]^W[(i+2)&15]^W[i&15],1))
 
 #define f1(x,y,z) (z^(x&(y^z)))
@@ -108,17 +122,11 @@ static void SHA1_SSE_SHA_Transform(word32 *state, const word32 *data)
     __m128i ABCD, ABCD_SAVE, E0, E0_SAVE, E1;
     __m128i MASK, MSG0, MSG1, MSG2, MSG3;
 
-    // IteratedHashBase<T> has code to perform this step before HashEndianCorrectedBlock()
-    //  is called, but the design does not lend itself to optional hardware components
-    //  where SHA1 needs reversing, but SHA256 does not.
-    word32* dataBuf = const_cast<word32*>(data);
-    ByteReverse(dataBuf, dataBuf, 64);
-
     // Load initial values
     ABCD = _mm_loadu_si128((__m128i*) state);
     E0 = _mm_set_epi32(state[4], 0, 0, 0);
     ABCD = _mm_shuffle_epi32(ABCD, 0x1B);
-    MASK = _mm_set_epi64x(W64LIT(0x0001020304050607), W64LIT(0x08090a0b0c0d0e0f));
+    MASK = _mm_set_epi8(3,2,1,0, 7,6,5,4, 11,10,9,8, 15,14,13,12);
 
     // Save current hash
     ABCD_SAVE = ABCD;
