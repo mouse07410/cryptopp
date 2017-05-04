@@ -42,6 +42,29 @@ class FixedBlockSize
 public:
 	//! \brief The block size of the algorithm provided as a constant.
 	CRYPTOPP_CONSTANT(BLOCKSIZE = N)
+	//! \brief The default blocksize for the algorithm provided as a constant.
+	CRYPTOPP_CONSTANT(DEFAULT_BLOCKSIZE = N)
+	//! \brief The minimum blocksize for the algorithm provided as a constant.
+	CRYPTOPP_CONSTANT(MIN_BLOCKSIZE = N)
+	//! \brief The maximum blocksize for the algorithm provided as a constant.
+	CRYPTOPP_CONSTANT(MAX_BLOCKSIZE = N)
+	//! \brief The default block size for the algorithm provided by a static function.
+	//! \param blocksize the block size, in bytes
+	//! \details The default implementation returns BLOCKSIZE. blocksize is unused
+	//!   in the default implementation.
+	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t blocksize)
+	{
+		return CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(BLOCKSIZE);
+	}
+	//! \brief The default block size under a key provided by a static function.
+	//! \param keylength the size of the key, in bytes
+	//! \param blocksize the block size, in bytes
+	//! \details The default implementation returns BLOCKSIZE. blocksize is unused
+	//!   in the default implementation.
+	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t keylength, size_t blocksize)
+	{
+		return CRYPTOPP_UNUSED(keylength), CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(BLOCKSIZE);
+	}
 };
 
 // ************** rounds ***************
@@ -125,21 +148,27 @@ class VariableBlockSize
 {
 public:
 	//! \brief The default blocksize for the algorithm provided as a constant.
-	CRYPTOPP_CONSTANT(BLOCKSIZE = D)
-	//! \brief The default blocksize for the algorithm provided as a constant.
 	CRYPTOPP_CONSTANT(DEFAULT_BLOCKSIZE = D)
 	//! \brief The minimum blocksize for the algorithm provided as a constant.
 	CRYPTOPP_CONSTANT(MIN_BLOCKSIZE = N)
 	//! \brief The maximum blocksize for the algorithm provided as a constant.
 	CRYPTOPP_CONSTANT(MAX_BLOCKSIZE = M)
-	//! \brief The default blocksize for the algorithm based on key length
-	//!   provided by a static function.
-	//! \param keylength the size of the key, in bytes
-	//! \details keylength is unused in the default implementation.
-	CRYPTOPP_STATIC_CONSTEXPR unsigned int StaticGetDefaultBlockSize(size_t keylength)
+	//! \brief The default block size for the algorithm provided by a static function.
+	//! \param blocksize the block size, in bytes
+	//! \details The default implementation returns BLOCKSIZE. blocksize is unused
+	//!   in the default implementation.
+	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t blocksize)
 	{
-		return (keylength >= MAX_BLOCKSIZE) ? MAX_BLOCKSIZE :
-			(keylength >= DEFAULT_BLOCKSIZE) ? DEFAULT_BLOCKSIZE : MIN_BLOCKSIZE;
+		return CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(DEFAULT_BLOCKSIZE);
+	}
+	//! \brief The default block size under a key provided by a static function.
+	//! \param keylength the size of the key, in bytes
+	//! \param blocksize the block size, in bytes
+	//! \details The default implementation returns BLOCKSIZE. blocksize is unused
+	//!   in the default implementation.
+	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t keylength, size_t blocksize)
+	{
+		return CRYPTOPP_UNUSED(keylength), CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(DEFAULT_BLOCKSIZE);
 	}
 
 protected:
@@ -438,13 +467,14 @@ template <class INFO, class BASE = BlockCipher>
 class CRYPTOPP_NO_VTABLE VariableBlockCipherImpl : public AlgorithmImpl<SimpleKeyingInterfaceImpl<TwoBases<BASE, INFO> > >
 {
 public:
-	VariableBlockCipherImpl() : m_blocksize(0) {}
-	VariableBlockCipherImpl(unsigned int blocksize) : m_blocksize(blocksize) {}
+	VariableBlockCipherImpl() : m_blocksize(0), m_ivlength(0) {}
+	VariableBlockCipherImpl(unsigned int blockSize) : m_blocksize(blockSize), m_ivlength(blockSize) {}
+	VariableBlockCipherImpl(unsigned int blockSize, unsigned int ivLength) : m_blocksize(blockSize), m_ivlength(ivLength) {}
 
 	//! Provides the block size of the algorithm
 	//! \returns the block size, in bytes
 	unsigned int BlockSize() const {
-		return m_blocksize ? m_blocksize : this->BLOCKSIZE;
+		return m_blocksize ? m_blocksize : this->DEFAULT_BLOCKSIZE;
 	}
 
 	//! Provides the initialization vector length of the algorithm
@@ -452,11 +482,11 @@ public:
 	unsigned int IVSize() const {
 		if (!this->IsResynchronizable())
 			throw NotImplemented(this->GetAlgorithm().AlgorithmName() + ": this object doesn't support resynchronization");
-		return m_blocksize ? m_blocksize : this->IV_LENGTH;
+		return m_ivlength ? m_ivlength : this->IV_LENGTH;
 	}
 
 protected:
-	unsigned int m_blocksize;
+	unsigned int m_blocksize, m_ivlength;
 };
 
 //! \class BlockCipherFinal
