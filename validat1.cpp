@@ -78,7 +78,7 @@ bool ValidateAll(bool thorough)
 	pass=TestRDSEED() && pass;
 #endif
 
-#if defined(CRYPTOPP_DEBUG) && !defined(CRYPTOPP_IMPORTS)
+#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
 	// http://github.com/weidai11/cryptopp/issues/92
 	pass=TestSecBlock() && pass;
 	// http://github.com/weidai11/cryptopp/issues/336
@@ -93,6 +93,14 @@ bool ValidateAll(bool thorough)
 	pass=TestASN1Parse() && pass;
 	// Enable during debug for code coverage
 	pass=ValidateBaseCode() && pass;
+    // Additional tests due to no coverage
+	pass=TestGzip() && pass;
+	pass=TestZinflate() && pass;
+	pass=TestMersenne() && pass;
+	pass=TestDefaultEncryptor() && pass;
+	pass=TestDefaultEncryptorWithMAC() && pass;
+	pass=TestLegacyEncryptor() && pass;
+	pass=TestLegacyEncryptorWithMAC() && pass;
 #endif
 
 	pass=ValidateCRC32() && pass;
@@ -229,7 +237,7 @@ bool TestSettings()
 		pass = false;
 	}
 
-#if defined(CRYPTOPP_DEBUG) && !defined(CRYPTOPP_IMPORTS)
+#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
 	// App and library versions, http://github.com/weidai11/cryptopp/issues/371
 	const int v1 = LibraryVersion();
 	const int v2 = HeaderVersion();
