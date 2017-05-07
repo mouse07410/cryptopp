@@ -107,7 +107,12 @@ bool ValidateESIGN();
 bool ValidateHashDRBG();
 bool ValidateHmacDRBG();
 
+// If CRYPTOPP_DEBUG or CRYPTOPP_COVERAGE is in effect, then perform additional tests
 #if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
+# define CRYPTOPP_EXTENDED_VALIDATION 1
+#endif
+
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
 // http://github.com/weidai11/cryptopp/issues/92
 bool TestSecBlock();
 // http://github.com/weidai11/cryptopp/issues/64
@@ -121,13 +126,9 @@ bool TestHuffmanCodes();
 // http://github.com/weidai11/cryptopp/issues/346
 bool TestASN1Parse();
 // Additional tests due to no coverage
-bool TestGzip();
-bool TestZinflate();
+bool TestCompressors();
+bool TestEncryptors();
 bool TestMersenne();
-bool TestDefaultEncryptor();
-bool TestDefaultEncryptorWithMAC();
-bool TestLegacyEncryptor();
-bool TestLegacyEncryptorWithMAC();
 #endif
 
 #if 1

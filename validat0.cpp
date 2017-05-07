@@ -27,11 +27,11 @@
 NAMESPACE_BEGIN(CryptoPP)
 NAMESPACE_BEGIN(Test)
 
-#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
-bool TestGzip()
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
+bool TestCompressors()
 {
-    std::cout << "\nTesting Gzip and Gunzip...\n\n";
-    bool fail = false;
+    std::cout << "\nTesting Compressors and Decompressors...\n\n";
+    bool fail1 = false, fail2 = false;
 
     try
     {
@@ -46,27 +46,53 @@ bool TestGzip()
             StringSource(src, true, new Gzip(new StringSink(dest)));
             StringSource(dest, true, new Gunzip(new StringSink(rec)));
             if (src != rec)
-                throw Exception(Exception::OTHER_ERROR, "Gzip failed a self test");
+                throw Exception(Exception::OTHER_ERROR, "Gzip failed to decompress stream");
+
+            // Tamper
+            try {
+                StringSource(dest.substr(0, len-2), true, new Gunzip(new StringSink(rec)));
+                throw Exception(Exception::OTHER_ERROR, "Gzip failed to detect a truncated stream");
+            } catch(const Exception&) {}
         }
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail1 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    // **************************************************************
+
+    // Unzip random data. See if we can induce a crash
+    for (unsigned int i=0; i<128; i++)
+    {
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32() & 0xffff;
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+        src[0] = 0x1f; src[1] = 0x8b;  // magic Header
+        src[2] = 0x00;  // extra flags
+        src[3] = src[3] & (2|4|8|16|32);  // flags
+
+        // Don't allow ENCRYPTED|CONTINUED to over-run tests
+        if (src[3] & (2|32)) {
+            if (i%3 == 0) {src[3] &= ~2;}
+            if (i%3 == 1) {src[3] &= ~32;}
+        }
+        // The remainder are extra headers and the payload
+
+        try {
+            StringSource(src, true, new Gunzip(new StringSink(dest)));
+        } catch(const Exception&) {    }
+    }
+
+    if (!fail1)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 zip and unzip" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 zips and unzips" << std::endl;
 
-    return !fail;
-}
-
-bool TestZinflate()
-{
-    std::cout << "\nTesting Deflate and Inflate...\n\n";
-    bool fail = false;
+    // **************************************************************
 
     try
     {
@@ -81,32 +107,75 @@ bool TestZinflate()
             StringSource(src, true, new Deflator(new StringSink(dest)));
             StringSource(dest, true, new Inflator(new StringSink(rec)));
             if (src != rec)
-                throw Exception(Exception::OTHER_ERROR, "Inflate failed a self test");
+                throw Exception(Exception::OTHER_ERROR, "Deflate failed to decompress stream");
+
+            // Tamper
+            try {
+                StringSource(dest.substr(0, len-2), true, new Inflator(new StringSink(rec)));
+                std::cout << "Deflate failed to detect a truncated stream\n";
+                fail2 = true;
+            } catch(const Exception& ex) { }
         }
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail2 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    // **************************************************************
+
+    for (unsigned int i=0; i<128; i++)
+    {
+        // See if we can induce a crash
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32() & 0xffff;
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+
+        try {
+            StringSource(src, true, new Inflator(new StringSink(dest)));
+        } catch(const Exception&) {}
+    }
+
+    // Inflate random data. See if we can induce a crash
+    for (unsigned int i=0; i<128; i++)
+    {
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32() & 0xffff;
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+        src[0] = 0x1f; src[1] = 0x8b;  // magic Header
+        src[2] = 0x00;  // extra flags
+        src[3] = src[3] & (2|4|8|16|32);  // flags
+
+        // Don't allow ENCRYPTED|CONTINUED to over-run tests
+        if (src[3] & (2|32)) {
+            if (i%3 == 0) {src[3] &= ~2;}
+            if (i%3 == 1) {src[3] &= ~32;}
+        }
+        // The remainder are extra headers and the payload
+
+        try {
+            StringSource(src, true, new Inflator(new StringSink(dest)));
+        } catch(const Exception&) {    }
+    }
+
+    if (!fail2)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 deflate and inflate" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 deflates and inflates\n";
 
-    return !fail;
+    std::cout.flush();
+    return !fail1 && !fail2;
 }
 
-bool TestMersenne()
+bool TestEncryptors()
 {
-    return true;
-}
-
-bool TestDefaultEncryptor()
-{
-    std::cout << "\nTesting DefaultEncryptor...\n\n";
-    bool fail = false;
+    std::cout << "\nTesting Default Encryptors and Decryptors...\n\n";
+    bool fail1 = false, fail2 = false, fail3 = false, fail4 = false;
 
     try
     {
@@ -130,22 +199,16 @@ bool TestDefaultEncryptor()
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail1 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    if (!fail1)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 default encryptions and decryptions" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 default encryptions and decryptions" << std::endl;
 
-    return !fail;
-}
-
-bool TestDefaultEncryptorWithMAC()
-{
-    std::cout << "\nTesting DefaultEncryptorWithMAC...\n\n";
-    bool fail = false;
+    // **************************************************************
 
     try
     {
@@ -165,26 +228,52 @@ bool TestDefaultEncryptorWithMAC()
             StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
             if (src != rec)
                 throw Exception(Exception::OTHER_ERROR, "DefaultEncryptorWithMAC failed a self test");
+
+            // Tamper with the stream. Data format is [SALT][KEYCHECK][ENCRYPTED DATA].
+            try {
+                StringSource(dest.substr(0, len-2), true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a truncated stream\n";
+                fail2 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // tamper salt
+                dest[DefaultDecryptorWithMAC::SALTLENGTH/2] ^= 0x01;
+                StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered salt\n";
+                fail2 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // undo previous tamper
+                dest[DefaultDecryptorWithMAC::SALTLENGTH/2] ^= 0x01;
+                // tamper keycheck
+                dest[DefaultDecryptorWithMAC::SALTLENGTH+DefaultDecryptorWithMAC::KEYLENGTH/2] ^= 0x01;
+                StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered keycheck\n";
+                fail2 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // undo previous tamper
+                dest[DefaultDecryptorWithMAC::SALTLENGTH+DefaultDecryptorWithMAC::KEYLENGTH/2] ^= 0x01;
+                // tamper encrypted data
+                dest[dest.length()-2] ^= 0x01;
+                StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered data\n";
+                fail2 = true;
+            } catch(const Exception& ex) { }
         }
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail2 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    if (!fail2)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 default encryptions and decryptions with MAC" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 default encryptions and decryptions with MAC" << std::endl;
 
-    return !fail;
-}
-
-bool TestLegacyEncryptor()
-{
-    std::cout << "\nTesting LegacyEncryptor...\n\n";
-    bool fail = false;
+    // **************************************************************
 
     try
     {
@@ -208,22 +297,16 @@ bool TestLegacyEncryptor()
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail3 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    if (!fail3)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 legacy encryptions and decryptions" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 legacy encryptions and decryptions" << std::endl;
 
-    return !fail;
-}
-
-bool TestLegacyEncryptorWithMAC()
-{
-    std::cout << "\nTesting LegacyEncryptorWithMAC...\n\n";
-    bool fail = false;
+    // **************************************************************
 
     try
     {
@@ -243,20 +326,52 @@ bool TestLegacyEncryptorWithMAC()
             StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
             if (src != rec)
                 throw Exception(Exception::OTHER_ERROR, "LegacyEncryptorWithMAC failed a self test");
+
+            // Tamper with the stream. Data format is [SALT][KEYCHECK][ENCRYPTED DATA].
+            try {
+                StringSource(dest.substr(0, len-2), true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a truncated stream\n";
+                fail4 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // tamper salt
+                dest[LegacyEncryptorWithMAC::SALTLENGTH/2] ^= 0x01;
+                StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered salt\n";
+                fail4 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // undo previous tamper
+                dest[LegacyEncryptorWithMAC::SALTLENGTH/2] ^= 0x01;
+                // tamper keycheck
+                dest[LegacyEncryptorWithMAC::SALTLENGTH+LegacyEncryptorWithMAC::KEYLENGTH/2] ^= 0x01;
+                StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered keycheck\n";
+                fail4 = true;
+            } catch(const Exception& ex) { }
+            try {
+                // undo previous tamper
+                dest[LegacyEncryptorWithMAC::SALTLENGTH+LegacyEncryptorWithMAC::KEYLENGTH/2] ^= 0x01;
+                // tamper encrypted data
+                dest[dest.length()-2] ^= 0x01;
+                StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
+                std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered data\n";
+                fail4 = true;
+            } catch(const Exception& ex) { }
         }
     }
     catch(const Exception&)
     {
-        fail = true;
+        fail4 = true;
     }
 
-    if (!fail)
-       std::cout << "passed:   ";
+    if (!fail4)
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "128 legacy encryptions and decryptions with MAC" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  128 legacy encryptions and decryptions with MAC" << std::endl;
 
-    return !fail;
+    return !fail1 && !fail2 && !fail3 && !fail4;
 }
 
 bool TestRounding()
@@ -277,7 +392,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, no overflow\n";
 
     try
     {
@@ -291,7 +406,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, no overflow\n";
 
     try
     {
@@ -305,7 +420,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, no overflow\n";
 
     try
     {
@@ -319,7 +434,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, no overflow\n";
 
     try
     {
@@ -333,7 +448,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, no overflow\n";
 
     try
     {
@@ -348,7 +463,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, byte, overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, byte, overflow\n";
 
     // ********** word16 **********//
     try
@@ -363,7 +478,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, no overflow\n";
 
     try
     {
@@ -377,7 +492,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, no overflow\n";
 
     try
     {
@@ -391,7 +506,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, no overflow\n";
 
     try
     {
@@ -405,7 +520,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, no overflow\n";
 
     try
     {
@@ -419,7 +534,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, no overflow\n";
 
     try
     {
@@ -434,7 +549,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word16, overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word16, overflow\n";
 
     // ********** word32 **********//
     try
@@ -449,7 +564,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, no overflow\n";
 
     try
     {
@@ -463,7 +578,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, no overflow\n";
 
     try
     {
@@ -477,7 +592,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, no overflow\n";
 
     try
     {
@@ -491,7 +606,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, no overflow\n";
 
     try
     {
@@ -505,7 +620,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, no overflow\n";
 
     try
     {
@@ -520,7 +635,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word32, overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word32, overflow\n";
 
     // ********** word64 **********//
     try
@@ -535,7 +650,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, no overflow\n";
 
     try
     {
@@ -549,7 +664,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, no overflow\n";
 
     try
     {
@@ -563,7 +678,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, no overflow\n";
 
     try
     {
@@ -577,7 +692,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, no overflow\n";
 
     try
     {
@@ -591,7 +706,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, no overflow\n";
 
     try
     {
@@ -606,7 +721,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word64, overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word64, overflow\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     // ********** word128 **********//
@@ -622,7 +737,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, no overflow\n";
 
     try
     {
@@ -636,7 +751,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, no overflow\n";
 
     try
     {
@@ -650,7 +765,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, no overflow\n";
 
     try
     {
@@ -666,7 +781,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, no overflow\n";
 
     try
     {
@@ -681,7 +796,7 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, no overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, no overflow\n";
 
     try
     {
@@ -697,14 +812,15 @@ bool TestRounding()
     }
 
     pass = !fail && pass;
-    std::cout << (fail ? "FAILED:  " : "passed:  ") << "RoundUpToMultipleOf, word128, overflow\n";
+    std::cout << (fail ? "FAILED:" : "passed:") << "  RoundUpToMultipleOf, word128, overflow\n";
 #endif
 
+    std::cout.flush();
     return pass;
 }
 #endif
 
-#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
 struct ASN1_TestTuple
 {
     int disposition;
@@ -773,11 +889,12 @@ bool RunASN1TestSet(const ASN1_TestTuple asnTuples[], size_t count)
             fail = !(thisTest.disposition == REJECT);
         }
 
-        std::cout << (fail ? "FAILED:   " : "passed:   ") << (thisTest.disposition == ACCEPT ? "accept " : "reject ");
+        std::cout << (fail ? "FAILED:" : "passed:") << (thisTest.disposition == ACCEPT ? "  accept " : "  reject ");
         std::cout << asnTuples[i].name << " " << val << "\n";
         pass = !fail && pass;
     }
 
+    std::cout.flush();
     return pass;
 }
 
@@ -951,11 +1068,12 @@ bool TestASN1Parse()
 
     pass = RunASN1TestSet(integerValues, COUNTOF(integerValues)) && pass;
 
+    std::cout.flush();
     return pass;
 }
 #endif
 
-#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
 bool TestSecBlock()
 {
     std::cout << "\nTesting SecBlock...\n\n";
@@ -986,10 +1104,10 @@ bool TestSecBlock()
 
         pass1 &= temp;
         if (!temp)
-            std::cout << "FAILED:   ";
+            std::cout << "FAILED:";
         else
-            std::cout << "passed:   ";
-        std::cout << "Zeroized byte array" << std::endl;
+            std::cout << "passed:";
+        std::cout << "  Zeroized byte array\n";
 
         SecBlock<word32> z2(NULLPTR, 256);
         temp = true;
@@ -999,10 +1117,10 @@ bool TestSecBlock()
 
         pass1 &= temp;
         if (!temp)
-            std::cout << "FAILED:   ";
+            std::cout << "FAILED:";
         else
-            std::cout << "passed:   ";
-        std::cout << "Zeroized word32 array" << std::endl;
+            std::cout << "passed:";
+        std::cout << "  Zeroized word32 array\n";
 
         SecBlock<word64> z3(NULLPTR, 256);
         temp = true;
@@ -1012,10 +1130,10 @@ bool TestSecBlock()
 
         pass1 &= temp;
         if (!temp)
-            std::cout << "FAILED:   ";
+            std::cout << "FAILED:";
         else
-            std::cout << "passed:   ";
-        std::cout << "Zeroized word64 array" << std::endl;
+            std::cout << "passed:";
+        std::cout << "  Zeroized word64 array\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
         SecBlock<word128> z4(NULLPTR, 256);
@@ -1026,10 +1144,10 @@ bool TestSecBlock()
 
         pass1 &= temp;
         if (!temp)
-            std::cout << "FAILED:   ";
+            std::cout << "FAILED:";
         else
-            std::cout << "passed:   ";
-        std::cout << "Zeroized word128 array" << std::endl;
+            std::cout << "passed:";
+        std::cout << "  Zeroized word128 array\n";
 #endif
     }
 
@@ -1081,10 +1199,10 @@ bool TestSecBlock()
 
     pass2 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Assign byte" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Assign byte\n";
 
     try
     {
@@ -1116,10 +1234,10 @@ bool TestSecBlock()
 
     pass2 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Assign word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Assign word32\n";
 
     try
     {
@@ -1151,10 +1269,10 @@ bool TestSecBlock()
 
     pass2 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Assign word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Assign word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     try
@@ -1187,10 +1305,10 @@ bool TestSecBlock()
 
     pass2 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Assign word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Assign word128\n";
 #endif
 
     //********** Append **********//
@@ -1233,10 +1351,10 @@ bool TestSecBlock()
 
     pass3 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Append byte" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Append byte\n";
 
     try
     {
@@ -1278,10 +1396,10 @@ bool TestSecBlock()
 
     pass3 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Append word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Append word32\n";
 
     try
     {
@@ -1323,10 +1441,10 @@ bool TestSecBlock()
 
     pass3 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Append word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Append word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     try
@@ -1369,10 +1487,10 @@ bool TestSecBlock()
 
     pass3 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Append word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Append word128\n";
 #endif
 
     //********** Concatenate **********//
@@ -1408,10 +1526,10 @@ bool TestSecBlock()
 
     pass4 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Concatenate byte" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Concatenate byte\n";
 
     // word32
     try
@@ -1446,10 +1564,10 @@ bool TestSecBlock()
 
     pass4 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Concatenate word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Concatenate word32\n";
 
     // word64
     try
@@ -1484,10 +1602,10 @@ bool TestSecBlock()
 
     pass4 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Concatenate word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Concatenate word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     try
@@ -1522,10 +1640,10 @@ bool TestSecBlock()
 
     pass4 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Concatenate word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Concatenate word128\n";
 #endif
 
     //********** Equality **********//
@@ -1563,10 +1681,10 @@ bool TestSecBlock()
 
     pass5 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Equality byte" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Equality byte\n";
 
     // word32
     try
@@ -1601,10 +1719,10 @@ bool TestSecBlock()
 
     pass5 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Equality word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Equality word32\n";
 
     // word64
     try
@@ -1639,10 +1757,10 @@ bool TestSecBlock()
 
     pass5 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Equality word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Equality word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     // word128
@@ -1678,10 +1796,10 @@ bool TestSecBlock()
 
     pass5 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Equality word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Equality word128\n";
 #endif
 
     //********** Allocator Size/Overflow **********//
@@ -1705,10 +1823,10 @@ bool TestSecBlock()
 
     pass6 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Overflow word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Overflow word32\n";
 
     try
     {
@@ -1729,10 +1847,10 @@ bool TestSecBlock()
 
     pass6 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Overflow word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Overflow word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     try
@@ -1754,10 +1872,10 @@ bool TestSecBlock()
 
     pass6 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "Overflow word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  Overflow word128\n";
 #endif
 
     //********** FixedSizeAllocatorWithCleanup and Grow **********//
@@ -1794,10 +1912,10 @@ bool TestSecBlock()
 
     pass7 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "FixedSizeAllocator Grow with byte" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  FixedSizeAllocator Grow with byte\n";
 
     // word32
     try
@@ -1832,10 +1950,10 @@ bool TestSecBlock()
 
     pass7 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "FixedSizeAllocator Grow with word32" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  FixedSizeAllocator Grow with word32\n";
 
     // word64
     try
@@ -1870,10 +1988,10 @@ bool TestSecBlock()
 
     pass7 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "FixedSizeAllocator Grow with word64" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  FixedSizeAllocator Grow with word64\n";
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
     // word128
@@ -1909,17 +2027,18 @@ bool TestSecBlock()
 
     pass7 &= temp;
     if (!temp)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "FixedSizeAllocator Grow with word128" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  FixedSizeAllocator Grow with word128\n";
 #endif
 
+    std::cout.flush();
     return pass1 && pass2 && pass3 && pass4 && pass5 && pass6 && pass7;
 }
 #endif
 
-#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
 bool TestHuffmanCodes()
 {
     std::cout << "\nTesting Huffman codes...\n\n";
@@ -1948,20 +2067,63 @@ bool TestHuffmanCodes()
     }
 
     if (!pass)
-        std::cout << "FAILED:   ";
+        std::cout << "FAILED:";
     else
-        std::cout << "passed:   ";
-    std::cout << "GenerateCodeLengths" << std::endl;
+        std::cout << "passed:";
+    std::cout << "  GenerateCodeLengths" << std::endl;
 
     return pass;
 }
 #endif
 
-#if (defined(CRYPTOPP_DEBUG) || defined(CRYPTOPP_COVERAGE)) && !defined(CRYPTOPP_IMPORTS)
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
 bool TestIntegerBitops()
 {
-    std::cout << "\nTesting Integer bitops...\n\n";
+    std::cout << "\nTesting Integer operations...\n\n";
+    bool pass;
 
+    // Integer is missing a couple of tests...
+    try {
+        Integer x = Integer::Two().Power2(128) / Integer::Zero();
+        pass=false;
+    } catch (const Exception&) {
+        pass=true;
+    }
+
+    if (pass)
+        std::cout << "passed:";
+    else
+        std::cout << "FAILED:";
+    std::cout << "  Integer DivideByZero\n";
+
+    // Integer is missing a couple of tests...
+    try {
+        // All in range [90, 96] are composite
+        Integer x = Integer(GlobalRNG(), 90, 96, Integer::PRIME);
+        pass=false;
+    } catch (const Exception&) {
+        pass=true;
+    }
+
+    if (pass)
+        std::cout << "passed:";
+    else
+        std::cout << "FAILED:";
+    std::cout << "  Integer RandomNumberNotFound\n";
+
+    // Integer is missing a couple of tests...
+    try {
+        // All in range [90, 96] are composite
+        Integer x = Integer::One().Doubled();
+        pass=(x == Integer::Two());
+    } catch (const Exception&) {
+        pass=false;
+    }
+
+    if (!pass)
+        std::cout << "FAILED:  Integer Doubled\n";
+
+    // Now onto the meat and potatoes...
     struct Bitops_TestTuple
     {
         // m,n are operands; a,o,x are and,or,xor results
@@ -2537,10 +2699,10 @@ bool TestIntegerBitops()
     }
 
     if (opa)
-       std::cout << "passed:   ";
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "Bitwise AND over 32-bits to 1024-bits" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  Bitwise AND over 32-bits to 1024-bits\n";
 
     //////////////////// OR ////////////////////
 
@@ -2563,10 +2725,10 @@ bool TestIntegerBitops()
     }
 
     if (opo)
-       std::cout << "passed:   ";
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "Bitwise OR over 32-bits to 1024-bits" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  Bitwise OR over 32-bits to 1024-bits\n";
 
     //////////////////// XOR ////////////////////
 
@@ -2589,11 +2751,12 @@ bool TestIntegerBitops()
     }
 
     if (opx)
-       std::cout << "passed:   ";
+       std::cout << "passed:";
     else
-       std::cout << "FAILED:   ";
-    std::cout << "Bitwise XOR over 32-bits to 1024-bits" << std::endl;
+       std::cout << "FAILED:";
+    std::cout << "  Bitwise XOR over 32-bits to 1024-bits\n";
 
+    std::cout.flush();
     return opa && opo && opx;
 }
 #endif
