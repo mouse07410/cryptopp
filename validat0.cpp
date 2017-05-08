@@ -11,6 +11,7 @@
 #include "default.h"
 #include "zinflate.h"
 #include "gzip.h"
+#include "zlib.h"
 #include "hex.h"
 #include "asn.h"
 
@@ -31,7 +32,7 @@ NAMESPACE_BEGIN(Test)
 bool TestCompressors()
 {
     std::cout << "\nTesting Compressors and Decompressors...\n\n";
-    bool fail1 = false, fail2 = false;
+    bool fail1 = false, fail2 = false, fail3 = false;
 
     try
     {
@@ -70,7 +71,7 @@ bool TestCompressors()
 
         src.resize(len);
         GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
-        src[0] = 0x1f; src[1] = 0x8b;  // magic Header
+        src[0] = (byte)0x1f; src[1] = (byte)0x8b;  // magic header
         src[2] = 0x00;  // extra flags
         src[3] = src[3] & (2|4|8|16|32);  // flags
 
@@ -114,7 +115,7 @@ bool TestCompressors()
                 StringSource(dest.substr(0, len-2), true, new Inflator(new StringSink(rec)));
                 std::cout << "Deflate failed to detect a truncated stream\n";
                 fail2 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
         }
     }
     catch(const Exception&)
@@ -146,7 +147,7 @@ bool TestCompressors()
 
         src.resize(len);
         GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
-        src[0] = 0x1f; src[1] = 0x8b;  // magic Header
+        src[0] = (byte)0x1f; src[1] = (byte)0x8b;  // magic Header
         src[2] = 0x00;  // extra flags
         src[3] = src[3] & (2|4|8|16|32);  // flags
 
@@ -168,8 +169,61 @@ bool TestCompressors()
        std::cout << "FAILED:";
     std::cout << "  128 deflates and inflates\n";
 
+    // **************************************************************
+
+    try
+    {
+        for (unsigned int i=0; i<128; ++i)
+        {
+            std::string src, dest, rec;
+            unsigned int len = GlobalRNG().GenerateWord32() & 0xffff;
+
+            src.resize(len);
+            GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+
+            StringSource(src, true, new ZlibCompressor(new StringSink(dest)));
+            StringSource(dest, true, new ZlibDecompressor (new StringSink(rec)));
+            if (src != rec)
+                throw Exception(Exception::OTHER_ERROR, "ZlibCompressor failed to decompress stream");
+
+            // Tamper
+            try {
+                StringSource(dest.substr(0, len-2), true, new ZlibDecompressor (new StringSink(rec)));
+                throw Exception(Exception::OTHER_ERROR, "ZlibCompressor failed to detect a truncated stream");
+            } catch(const Exception&) {}
+        }
+    }
+    catch(const Exception&)
+    {
+        fail3 = true;
+    }
+
+    // **************************************************************
+
+    // Unzip random data. See if we can induce a crash
+    for (unsigned int i=0; i<128; i++)
+    {
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32() & 0xffff;
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+
+        try {
+            StringSource(src, true, new ZlibDecompressor(new StringSink(dest)));
+        } catch(const Exception&) {    }
+    }
+
+    if (!fail3)
+       std::cout << "passed:";
+    else
+       std::cout << "FAILED:";
+    std::cout << "  128 zlib decompress and compress" << std::endl;
+
+    // **************************************************************
+
     std::cout.flush();
-    return !fail1 && !fail2;
+    return !fail1 && !fail2 && !fail3;
 }
 
 bool TestEncryptors()
@@ -234,14 +288,14 @@ bool TestEncryptors()
                 StringSource(dest.substr(0, len-2), true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a truncated stream\n";
                 fail2 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // tamper salt
                 dest[DefaultDecryptorWithMAC::SALTLENGTH/2] ^= 0x01;
                 StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered salt\n";
                 fail2 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // undo previous tamper
                 dest[DefaultDecryptorWithMAC::SALTLENGTH/2] ^= 0x01;
@@ -250,7 +304,7 @@ bool TestEncryptors()
                 StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered keycheck\n";
                 fail2 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // undo previous tamper
                 dest[DefaultDecryptorWithMAC::SALTLENGTH+DefaultDecryptorWithMAC::KEYLENGTH/2] ^= 0x01;
@@ -259,7 +313,7 @@ bool TestEncryptors()
                 StringSource(dest, true, new DefaultDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  DefaultDecryptorWithMAC failed to detect a tampered data\n";
                 fail2 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
         }
     }
     catch(const Exception&)
@@ -332,14 +386,14 @@ bool TestEncryptors()
                 StringSource(dest.substr(0, len-2), true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a truncated stream\n";
                 fail4 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // tamper salt
                 dest[LegacyEncryptorWithMAC::SALTLENGTH/2] ^= 0x01;
                 StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered salt\n";
                 fail4 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // undo previous tamper
                 dest[LegacyEncryptorWithMAC::SALTLENGTH/2] ^= 0x01;
@@ -348,7 +402,7 @@ bool TestEncryptors()
                 StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered keycheck\n";
                 fail4 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
             try {
                 // undo previous tamper
                 dest[LegacyEncryptorWithMAC::SALTLENGTH+LegacyEncryptorWithMAC::KEYLENGTH/2] ^= 0x01;
@@ -357,7 +411,7 @@ bool TestEncryptors()
                 StringSource(dest, true, new LegacyDecryptorWithMAC(pwd.c_str(), new StringSink(rec)));
                 std::cout << "FAILED:  LegacyEncryptorWithMAC failed to detect a tampered data\n";
                 fail4 = true;
-            } catch(const Exception& ex) { }
+            } catch(const Exception&) { }
         }
     }
     catch(const Exception&)
@@ -2098,8 +2152,8 @@ bool TestIntegerBitops()
 
     // Integer is missing a couple of tests...
     try {
-        // All in range [90, 96] are composite
-        Integer x = Integer(GlobalRNG(), 90, 96, Integer::PRIME);
+        // A run of 71 composites; see http://en.wikipedia.org/wiki/Prime_gap
+        Integer x = Integer(GlobalRNG(), 31398, 31468, Integer::PRIME);
         pass=false;
     } catch (const Exception&) {
         pass=true;
