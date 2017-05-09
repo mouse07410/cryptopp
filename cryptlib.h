@@ -716,7 +716,7 @@ protected:
 
 	//! \brief Validates the IV length
 	//! \param length the size of an IV, in bytes
-	//! \throws InvalidArgument if the number of rounds are invalid
+	//! \throws InvalidArgument if the IV length is invalid
 	size_t ThrowIfInvalidIVLength(int length);
 
 	//! \brief Retrieves and validates the IV
@@ -1265,7 +1265,7 @@ public:
 	{
 		// TODO: What happens if there are more than 2^32 elements?
 		for (; begin != end; ++begin)
-			std::iter_swap(begin, begin + GenerateWord32(0, end-begin-1));
+			std::iter_swap(begin, begin + GenerateWord32(0, static_cast<word32>(end-begin-1)));
 	}
 };
 
