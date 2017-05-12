@@ -60,7 +60,7 @@
 #include "validate.h"
 
 // Aggressive stack checking with VS2005 SP1 and above.
-#if (CRYPTOPP_MSC_VERSION >= 1410)
+#if (_MSC_FULL_VER >= 140050727)
 # pragma strict_gs_check (on)
 #endif
 
@@ -209,7 +209,7 @@ bool TestSettings()
 	word32 w;
 	const byte s[] = "\x01\x02\x03\x04";
 
-#if (CRYPTOPP_MSC_VERSION >= 1410)
+#if (_MSC_FULL_VER >= 140050727)
 	std::copy(s, s+4,
 		stdext::make_checked_array_iterator(reinterpret_cast<byte*>(&w), sizeof(w)));
 #else
@@ -623,7 +623,7 @@ bool TestRandomPool()
 			std::cout << "FAILED:";
 		else
 			std::cout << "passed:";
-		std::cout << "  GenerateWord32 and Crop\n";	
+		std::cout << "  GenerateWord32 and Crop\n";
 	}
 
 #if !defined(NO_OS_DEPENDENCE)
@@ -711,7 +711,7 @@ bool TestRandomPool()
 			std::cout << "FAILED:";
 		else
 			std::cout << "passed:";
-		std::cout << "  GenerateWord32 and Crop\n";	
+		std::cout << "  GenerateWord32 and Crop\n";
 	}
 #endif
 
@@ -808,7 +808,7 @@ bool TestAutoSeededX917()
 		std::cout << "FAILED:";
 	else
 		std::cout << "passed:";
-	std::cout << "  GenerateWord32 and Crop\n";	
+	std::cout << "  GenerateWord32 and Crop\n";
 
 	std::cout.flush();
 	return pass;

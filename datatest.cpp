@@ -20,7 +20,7 @@
 #include <iostream>
 
 // Aggressive stack checking with VS2005 SP1 and above.
-#if (CRYPTOPP_MSC_VERSION >= 1410)
+#if (_MSC_FULL_VER >= 140050727)
 # pragma strict_gs_check (on)
 #endif
 
@@ -363,7 +363,7 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 	TestDataNameValuePairs testDataPairs(v);
 	CombinedNameValuePairs pairs(overrideParameters, testDataPairs);
 
-	if (test == "Encrypt" || test == "EncryptBlockSize" || test == "EncryptXorDigest" || test == "Resync" || test == "EncryptionMCT" || test == "DecryptionMCT")
+	if (test == "Encrypt" || test == "EncryptXorDigest" || test == "Resync" || test == "EncryptionMCT" || test == "DecryptionMCT")
 	{
 		static member_ptr<SymmetricCipher> encryptor, decryptor;
 		static std::string lastName;
@@ -375,9 +375,14 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			lastName = name;
 		}
 
-		int blockSize = 0;
-		if (test == "EncryptBlockSize" && !pairs.GetValue(Name::BlockSize(), blockSize))
-			SignalTestFailure();
+		// Most block ciphers don't specify BlockSize. Kalyna and Threefish use it.
+		int blockSize = pairs.GetIntValueWithDefault(Name::BlockSize(), 0);
+
+		// Most block ciphers don't specify BlockPaddingScheme. Kalyna uses it in test vectors.
+		// 0 is NoPadding, 1 is ZerosPadding, 2 is PkcsPadding, 3 is OneAndZerosPadding, etc
+		// Note: The machinery is wired such that paddingScheme is effectively latched. An
+		//   old paddingScheme may be unintentionally used in a subsequent test.
+		int paddingScheme = pairs.GetIntValueWithDefault(Name::BlockPaddingScheme(), 0);
 
 		ConstByteArrayParameter iv;
 		if (pairs.GetValue(Name::IV(), iv) && iv.size() != encryptor->IVSize() && (int)iv.size() != blockSize)
@@ -440,13 +445,15 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			return;
 		}
 
-		StreamTransformationFilter encFilter(*encryptor, new StringSink(encrypted), StreamTransformationFilter::NO_PADDING);
+		StreamTransformationFilter encFilter(*encryptor, new StringSink(encrypted),
+				static_cast<BlockPaddingSchemeDef::BlockPaddingScheme>(paddingScheme));
 		RandomizedTransfer(StringStore(plaintext).Ref(), encFilter, true);
 		encFilter.MessageEnd();
 		/*{
 			std::string z;
 			encryptor->Seek(seek);
-			StringSource ss(plaintext, false, new StreamTransformationFilter(*encryptor, new StringSink(z), StreamTransformationFilter::NO_PADDING));
+			StringSource ss(plaintext, false, new StreamTransformationFilter(*encryptor, new StringSink(z),
+					static_cast<BlockPaddingSchemeDef::BlockPaddingScheme>(paddingScheme)));
 			while (ss.Pump(64)) {}
 			ss.PumpAll();
 			for (int i=0; i<z.length(); i++)
@@ -470,7 +477,8 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			SignalTestFailure();
 		}
 		std::string decrypted;
-		StreamTransformationFilter decFilter(*decryptor, new StringSink(decrypted), StreamTransformationFilter::NO_PADDING);
+		StreamTransformationFilter decFilter(*decryptor, new StringSink(decrypted),
+				static_cast<BlockPaddingSchemeDef::BlockPaddingScheme>(paddingScheme));
 		RandomizedTransfer(StringStore(encrypted).Ref(), decFilter, true);
 		decFilter.MessageEnd();
 		if (decrypted != plaintext)
@@ -677,10 +685,21 @@ bool GetField(std::istream &is, std::string &name, std::string &value)
 
 	do
 	{
+		continueLine = false;
 		do
 		{
 			is.get(buffer, sizeof(buffer));
-			value += buffer;
+
+			// Eat leading whispace on line continuation
+			if (continueLine == true)
+			{
+				size_t pos = 0;
+				while (buffer[pos] != '\0' && buffer[pos] != ' ')
+					pos++;
+				value += &buffer[pos];
+			}
+			else
+				value += buffer;
 			if (buffer[0] == ' ')
 				space = true;
 		}

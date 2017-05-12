@@ -13,6 +13,7 @@
 #include "zinflate.h"
 #include "channels.h"
 #include "files.h"
+#include "gf2n.h"
 #include "gzip.h"
 #include "zlib.h"
 #include "ida.h"
@@ -21,16 +22,131 @@
 
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 #include "validate.h"
 
 // Aggressive stack checking with VS2005 SP1 and above.
-#if (CRYPTOPP_MSC_VERSION >= 1410)
+#if (_MSC_FULL_VER >= 140050727)
 # pragma strict_gs_check (on)
 #endif
 
 NAMESPACE_BEGIN(CryptoPP)
 NAMESPACE_BEGIN(Test)
+
+#if defined(CRYPTOPP_EXTENDED_VALIDATION)
+// Issue 64: "PolynomialMod2::operator<<=", http://github.com/weidai11/cryptopp/issues/64
+bool TestPolynomialMod2()
+{
+    bool pass1 = true, pass2 = true, pass3 = true;
+
+    std::cout << "\nTesting PolynomialMod2 bit operations...\n\n";
+
+    static const unsigned int start = 0;
+    static const unsigned int stop = 4 * WORD_BITS + 1;
+
+    for (unsigned int i = start; i < stop; i++)
+    {
+        PolynomialMod2 p(1);
+        p <<= i;
+
+        Integer n(Integer::One());
+        n <<= i;
+
+        std::ostringstream oss1;
+        oss1 << p;
+
+        std::string str1, str2;
+
+        // str1 needs the commas removed used for grouping
+        str1 = oss1.str();
+        str1.erase(std::remove(str1.begin(), str1.end(), ','), str1.end());
+
+        // str1 needs the trailing 'b' removed
+        str1.erase(str1.end() - 1);
+
+        // str2 is fine as-is
+        str2 = IntToString(n, 2);
+
+        pass1 &= (str1 == str2);
+    }
+
+    for (unsigned int i = start; i < stop; i++)
+    {
+        const word w((word)SIZE_MAX);
+
+        PolynomialMod2 p(w);
+        p <<= i;
+
+        Integer n(Integer::POSITIVE, static_cast<lword>(w));
+        n <<= i;
+
+        std::ostringstream oss1;
+        oss1 << p;
+
+        std::string str1, str2;
+
+        // str1 needs the commas removed used for grouping
+        str1 = oss1.str();
+        str1.erase(std::remove(str1.begin(), str1.end(), ','), str1.end());
+
+        // str1 needs the trailing 'b' removed
+        str1.erase(str1.end() - 1);
+
+        // str2 is fine as-is
+        str2 = IntToString(n, 2);
+
+        pass2 &= (str1 == str2);
+    }
+
+    RandomNumberGenerator& prng = GlobalRNG();
+    for (unsigned int i = start; i < stop; i++)
+    {
+        word w;     // Cast to lword due to Visual Studio
+        prng.GenerateBlock((byte*)&w, sizeof(w));
+
+        PolynomialMod2 p(w);
+        p <<= i;
+
+        Integer n(Integer::POSITIVE, static_cast<lword>(w));
+        n <<= i;
+
+        std::ostringstream oss1;
+        oss1 << p;
+
+        std::string str1, str2;
+
+        // str1 needs the commas removed used for grouping
+        str1 = oss1.str();
+        str1.erase(std::remove(str1.begin(), str1.end(), ','), str1.end());
+
+        // str1 needs the trailing 'b' removed
+        str1.erase(str1.end() - 1);
+
+        // str2 is fine as-is
+        str2 = IntToString(n, 2);
+
+        if (str1 != str2)
+        {
+            std::cout << "  Oops..." << "\n";
+            std::cout << "     random: " << std::hex << n << std::dec << "\n";
+            std::cout << "     str1: " << str1 << "\n";
+            std::cout << "     str2: " << str2 << "\n";
+        }
+
+        pass3 &= (str1 == str2);
+    }
+
+    std::cout << (!pass1 ? "FAILED" : "passed") << ":  " << "1 shifted over range [" << std::dec << start << "," << stop << "]" << "\n";
+    std::cout << (!pass2 ? "FAILED" : "passed") << ":  " << "0x" << std::hex << word(SIZE_MAX) << std::dec << " shifted over range [" << start << "," << stop << "]" << "\n";
+    std::cout << (!pass3 ? "FAILED" : "passed") << ":  " << "random values shifted over range [" << std::dec << start << "," << stop << "]" << "\n";
+
+    if (!(pass1 && pass2 && pass3))
+        std::cout.flush();
+
+    return pass1 && pass2 && pass3;
+}
+#endif
 
 #if defined(CRYPTOPP_EXTENDED_VALIDATION)
 bool TestCompressors()
@@ -40,10 +156,10 @@ bool TestCompressors()
 
     try
     {
-        for (unsigned int i=0; i<128; ++i)
+        for (unsigned int i = 0; i<128; ++i)
         {
             std::string src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(0, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -55,56 +171,75 @@ bool TestCompressors()
 
             // Tamper
             try {
-                StringSource(dest.substr(0, len-2), true, new Gunzip(new StringSink(rec)));
-                throw Exception(Exception::OTHER_ERROR, "Gzip failed to detect a truncated stream");
-            } catch(const Exception&) {}
+                StringSource(dest.substr(0, len - 2), true, new Gunzip(new StringSink(rec)));
+                std::cout << "FAILED:   Gzip failed to detect a truncated stream\n";
+                fail1 = true;
+            }
+            catch (const Exception&) {}
         }
     }
-    catch(const Exception&)
+    catch (const Exception& ex)
     {
+        std::cout << "FAILED:   " << ex.what() << "\n";
         fail1 = true;
     }
 
     // **************************************************************
 
     // Unzip random data. See if we can induce a crash
-    for (unsigned int i=0; i<128; i++)
+    for (unsigned int i = 0; i<128; i++)
     {
         std::string src, dest;
-        unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+        unsigned int len = GlobalRNG().GenerateWord32(8, 0xfff);
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+
+        try {
+            StringSource(src, true, new Gunzip(new StringSink(dest)));
+        }
+        catch (const Exception&) {}
+    }
+
+    // Unzip random data. See if we can induce a crash
+    for (unsigned int i = 0; i<128; i++)
+    {
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32(8, 0xfff);
 
         src.resize(len);
         GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
         src[0] = (byte)0x1f; src[1] = (byte)0x8b;  // magic header
         src[2] = 0x00;  // extra flags
-        src[3] = src[3] & (2|4|8|16|32);  // flags
+        src[3] = src[3] & (2 | 4 | 8 | 16 | 32);   // flags
 
         // Don't allow ENCRYPTED|CONTINUED to over-run tests
-        if (src[3] & (2|32)) {
-            if (i%3 == 0) {src[3] &= ~2;}
-            if (i%3 == 1) {src[3] &= ~32;}
+        if (src[3] & (2 | 32)) {
+            if (i % 3 == 0) { src[3] &= ~2; }
+            if (i % 3 == 1) { src[3] &= ~32; }
         }
         // The remainder are extra headers and the payload
 
         try {
             StringSource(src, true, new Gunzip(new StringSink(dest)));
-        } catch(const Exception&) {    }
+        }
+        catch (const Exception&) {}
     }
 
     if (!fail1)
-       std::cout << "passed:";
+        std::cout << "passed:";
     else
-       std::cout << "FAILED:";
+        std::cout << "FAILED:";
     std::cout << "  128 zips and unzips" << std::endl;
 
     // **************************************************************
 
     try
     {
-        for (unsigned int i=0; i<128; ++i)
+        for (unsigned int i = 0; i<128; ++i)
         {
             std::string src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(0, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -112,116 +247,135 @@ bool TestCompressors()
             StringSource(src, true, new Deflator(new StringSink(dest)));
             StringSource(dest, true, new Inflator(new StringSink(rec)));
             if (src != rec)
-                throw Exception(Exception::OTHER_ERROR, "Deflate failed to decompress stream");
+                throw Exception(Exception::OTHER_ERROR, "Inflate failed to decompress stream");
 
             // Tamper
             try {
-                StringSource(dest.substr(0, len-2), true, new Inflator(new StringSink(rec)));
-                std::cout << "Deflate failed to detect a truncated stream\n";
+                StringSource(dest.substr(0, len - 2), true, new Gunzip(new StringSink(rec)));
+                std::cout << "FAILED:   Inflate failed to detect a truncated stream\n";
                 fail2 = true;
-            } catch(const Exception&) { }
+            }
+            catch (const Exception&) {}
         }
     }
-    catch(const Exception&)
+    catch (const Exception& ex)
     {
+        std::cout << "FAILED:   " << ex.what() << "\n";
         fail2 = true;
     }
 
     // **************************************************************
 
-    for (unsigned int i=0; i<128; i++)
-    {
-        // See if we can induce a crash
-        std::string src, dest;
-        unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
-
-        src.resize(len);
-        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
-
-        try {
-            StringSource(src, true, new Inflator(new StringSink(dest)));
-        } catch(const Exception&) {}
-    }
-
     // Inflate random data. See if we can induce a crash
-    for (unsigned int i=0; i<128; i++)
+    for (unsigned int i = 0; i<128; i++)
     {
         std::string src, dest;
-        unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+        unsigned int len = GlobalRNG().GenerateWord32(8, 0xfff);
 
         src.resize(len);
         GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
         src[0] = (byte)0x1f; src[1] = (byte)0x8b;  // magic Header
         src[2] = 0x00;  // extra flags
-        src[3] = src[3] & (2|4|8|16|32);  // flags
+        src[3] = src[3] & (2 | 4 | 8 | 16 | 32);   // flags
 
         // Don't allow ENCRYPTED|CONTINUED to over-run tests
-        if (src[3] & (2|32)) {
-            if (i%3 == 0) {src[3] &= ~2;}
-            if (i%3 == 1) {src[3] &= ~32;}
+        if (src[3] & (2 | 32)) {
+            if (i % 3 == 0) { src[3] &= ~2; }
+            if (i % 3 == 1) { src[3] &= ~32; }
         }
+
         // The remainder are extra headers and the payload
 
         try {
             StringSource(src, true, new Inflator(new StringSink(dest)));
-        } catch(const Exception&) {    }
+        }
+        catch (const Exception&) {}
+    }
+
+    // Inflate random data. See if we can induce a crash
+    for (unsigned int i = 0; i<128; i++)
+    {
+        std::string src, dest;
+        unsigned int len = GlobalRNG().GenerateWord32(8, 0xfff);
+
+        src.resize(len);
+        GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
+
+        try {
+            StringSource(src, true, new Inflator(new StringSink(dest)));
+        }
+        catch (const Exception&) {}
     }
 
     if (!fail2)
-       std::cout << "passed:";
+        std::cout << "passed:";
     else
-       std::cout << "FAILED:";
+        std::cout << "FAILED:";
     std::cout << "  128 deflates and inflates\n";
 
     // **************************************************************
 
     try
     {
-        for (unsigned int i=0; i<128; ++i)
+        for (unsigned int i = 0; i<128; ++i)
         {
             std::string src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(0, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
 
             StringSource(src, true, new ZlibCompressor(new StringSink(dest)));
-            StringSource(dest, true, new ZlibDecompressor (new StringSink(rec)));
+            StringSource(dest, true, new ZlibDecompressor(new StringSink(rec)));
             if (src != rec)
-                throw Exception(Exception::OTHER_ERROR, "ZlibCompressor failed to decompress stream");
+                throw Exception(Exception::OTHER_ERROR, "Zlib failed to decompress stream");
 
             // Tamper
             try {
-                StringSource(dest.substr(0, len-2), true, new ZlibDecompressor (new StringSink(rec)));
-                throw Exception(Exception::OTHER_ERROR, "ZlibCompressor failed to detect a truncated stream");
-            } catch(const Exception&) {}
+                StringSource(dest.substr(0, len - 2), true, new Gunzip(new StringSink(rec)));
+                std::cout << "FAILED:   Zlib failed to detect a truncated stream\n";
+                fail3 = true;
+            }
+            catch (const Exception&) {}
         }
     }
-    catch(const Exception&)
+    catch (const Exception& ex)
     {
+        std::cout << "FAILED:   " << ex.what() << "\n";
         fail3 = true;
     }
 
     // **************************************************************
 
-    // Unzip random data. See if we can induce a crash
-    for (unsigned int i=0; i<128; i++)
+    // Decompress random data. See if we can induce a crash
+    for (unsigned int i = 0; i<128; i++)
     {
         std::string src, dest;
-        unsigned int len = GlobalRNG().GenerateWord32(0, 0xffff);
+        unsigned int len = GlobalRNG().GenerateWord32(8, 0xfff);
 
         src.resize(len);
         GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
 
+        // CMF byte
+        src[0] = (byte)(GlobalRNG().GenerateWord32(0, 14) << 4);
+        src[0] |= (byte)(GlobalRNG().GenerateWord32(0, 7));
+
+        // FLG byte
+        src[1] = (byte)(GlobalRNG().GenerateWord32(0, 7) << 5);
+        src[1] |= (byte)(31 - (src[0] * 256 + src[1]) % 31);
+
+        // The remainder are the payload, but missing Adler32
+
         try {
             StringSource(src, true, new ZlibDecompressor(new StringSink(dest)));
-        } catch(const Exception&) {    }
+        }
+        catch (const Exception&) {}
     }
 
     if (!fail3)
-       std::cout << "passed:";
+        std::cout << "passed:";
     else
-       std::cout << "FAILED:";
+        std::cout << "FAILED:";
     std::cout << "  128 zlib decompress and compress" << std::endl;
 
     // **************************************************************
@@ -241,7 +395,7 @@ bool TestEncryptors()
         for (unsigned int i=0; i<ENCRYPT_COUNT; ++i)
         {
             std::string pwd, src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(16, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(16, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -274,7 +428,7 @@ bool TestEncryptors()
         for (unsigned int i=0; i<ENCRYPT_MAC_COUNT; ++i)
         {
             std::string pwd, src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(16, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(16, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -339,7 +493,7 @@ bool TestEncryptors()
         for (unsigned int i=0; i<ENCRYPT_COUNT; ++i)
         {
             std::string pwd, src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(16, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(16, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -372,7 +526,7 @@ bool TestEncryptors()
         for (unsigned int i=0; i<ENCRYPT_MAC_COUNT; ++i)
         {
             std::string pwd, src, dest, rec;
-            unsigned int len = GlobalRNG().GenerateWord32(16, 0xffff);
+            unsigned int len = GlobalRNG().GenerateWord32(16, 0xfff);
 
             src.resize(len);
             GlobalRNG().GenerateBlock(reinterpret_cast<byte*>(&src[0]), src.size());
@@ -2280,6 +2434,32 @@ bool TestHuffmanCodes()
     else
         std::cout << "passed:";
     std::cout << "  GenerateCodeLengths" << std::endl;
+
+    // Try to crash the HuffmanDecoder
+    for (unsigned int i=0; i<128; ++i)
+    {
+        try
+        {
+            byte data1[0xfff];  // Place on stack, avoid new
+            unsigned int data2[0xff];
+
+            unsigned int len1 = GlobalRNG().GenerateWord32(0, 0xfff);
+            GlobalRNG().GenerateBlock(data1, len1);
+            unsigned int len2 = GlobalRNG().GenerateWord32(0, 0xff);
+            GlobalRNG().GenerateBlock((byte*)data2, len2*sizeof(unsigned int));
+
+            ArraySource source(data1, len1, false);
+            HuffmanDecoder decoder(data2, len2);
+
+            LowFirstBitReader reader(source);
+            unsigned int val;
+            for (unsigned int j=0; !source.AnyRetrievable(); ++j)
+                decoder.Decode(reader, val);
+        }
+        catch (const Exception&) {}
+    }
+
+    std::cout << "passed:  HuffmanDecoder decode" << std::endl;
 
     return pass;
 }
