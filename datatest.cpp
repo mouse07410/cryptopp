@@ -111,12 +111,11 @@ void PutDecodedDatumInto(const TestData &data, const char *name, BufferedTransfo
 		int repeat = 1;
 		if (s1[0] == 'r')
 		{
-			repeat = atoi(s1.c_str()+1);
+			repeat = ::atoi(s1.c_str()+1);
 			s1 = s1.substr(s1.find(' ')+1);
 		}
 
-		s2 = ""; // MSVC 6 doesn't have clear();
-
+		s2.clear();
 		if (s1[0] == '\"')
 		{
 			s2 = s1.substr(1, s1.find('\"', 1)-1);
@@ -657,8 +656,13 @@ void TestKeyDerivationFunction(TestData &v)
 		SignalTestFailure();
 }
 
+// GetField parses the name/value pairs. The tricky part is the insertion operator
+// because Unix&Linux uses LF, OS X uses CR, and Windows uses CRLF. If this function
+// is modified, then run 'cryptest.exe tv rsa_pkcs1_1_5' as a test. Its the parser
+// file from hell. If it can be parsed without error, then things are likely OK.
 bool GetField(std::istream &is, std::string &name, std::string &value)
 {
+	// ***** Name *****
 	name.clear();
 	is >> name;
 
@@ -678,67 +682,67 @@ bool GetField(std::istream &is, std::string &name, std::string &value)
 	while (is.peek() == ' ')
 		is.ignore(1);
 
-	// VC60 workaround: getline bug
-	char buffer[128];
+	// ***** Value *****
 	value.clear();
-	bool continueLine, space = false;
+	std::string line;
+	bool continueLine = true;
 
-	do
+	while (continueLine && std::getline(is, line))
 	{
+		// Unix and Linux may have a stray \r because of Windows
+		if (!line.empty() && (line[line.size() - 1] == '\r' || line[line.size() - 1] == '\n')) {
+			line.erase(line.size()-1);
+		}
+
 		continueLine = false;
-		do
+		if (!line.empty())
 		{
-			is.get(buffer, sizeof(buffer));
-
-			// Eat leading whispace on line continuation
-			if (continueLine == true)
-			{
-				size_t pos = 0;
-				while (buffer[pos] != '\0' && buffer[pos] != ' ')
-					pos++;
-				value += &buffer[pos];
+			// Early out for immediate line continuation
+			if (line[0] == '\\') {
+				continueLine = true;
+				continue;
 			}
-			else
-				value += buffer;
-			if (buffer[0] == ' ')
-				space = true;
+			// Check end of line. It must be last character
+			if (line[line.size() - 1] == '\\') {
+				continueLine = true;
+			}
 		}
-		while (buffer[0] != 0 && !is.eof());
-		is.clear();
-		is.ignore();
 
-		if (!value.empty() && value[value.size()-1] == '\r')
-			value.resize(value.size()-1);
+		// Leading, trailing and temp position. The leading position moves right, and
+		// trailing position moves left. The sub-string in the middle is the value for
+		// the name. We leave one space when line continuation is in effect, (and if
+		// present). The value can be an empty string. One Plaintext value is often
+		// empty for algorithm testing.
+		std::string::size_type l, t, p;
+		const std::string whitespace = " \r\n\t\v\f";
 
-		if (!value.empty() && value[value.size()-1] == '\\')
+		l = line.find_first_not_of(whitespace);
+		if (l == std::string::npos) { l = 0; }
+		t = line.find_last_not_of(whitespace+"\\");
+		if (l == std::string::npos) { t = line.size(); }
+
+		// Chop comment. Perform after setting continueLine
+		p = line.find('#', l);
+		if (p < t) {
+			t = p;
+			if (t) t--;
+		}
+
+		// Leave one whitespace if line continuation is in effect
+		if (continueLine)
 		{
-			value.resize(value.size()-1);
-			continueLine = true;
-		}
-		else
-			continueLine = false;
-
-		std::string::size_type i = value.find('#');
-		if (i != std::string::npos)
-			value.erase(i);
-	}
-	while (continueLine);
-
-	// Strip intermediate spaces for some values.
-	if (space && (name == "Modulus" || name == "SubgroupOrder" || name == "SubgroupGenerator" ||
-		name == "PublicElement" || name == "PrivateExponent" || name == "Signature"))
-	{
-		std::string temp;
-		temp.reserve(value.size());
-
-		std::string::const_iterator it;
-		for(it = value.begin(); it != value.end(); it++)
-		{
-			if(*it != ' ')
-				temp.push_back(*it);
+			if (l > 0 && ::isspace(line[l - 1]))
+			{
+				l--;
+			}
+			else if (t < line.size()-1 && ::isspace(line[t + 1]))
+			{
+				t++;
+			}
 		}
 
-		std::swap(temp, value);
+		CRYPTOPP_ASSERT(t >= l);
+		value += line.substr(l, t - l + 1);
 	}
 
 	return true;
@@ -787,6 +791,7 @@ void TestDataFile(std::string filename, const NameValuePairs &overrideParameters
 	std::ifstream file(filename.c_str());
 	if (!file.good())
 		throw Exception(Exception::OTHER_ERROR, "Can not open file " + filename + " for reading");
+
 	TestData v;
 	s_currentTestData = &v;
 	std::string name, value, lastAlgName;
@@ -801,6 +806,9 @@ void TestDataFile(std::string filename, const NameValuePairs &overrideParameters
 
 		if (!GetField(file, name, value))
 			break;
+
+		// Can't assert value. Plaintext is sometimes empty.
+		// CRYPTOPP_ASSERT(!value.empty());
 		v[name] = value;
 
 		if (name == "Test" && (s_thorough || v["SlowTest"] != "1"))
