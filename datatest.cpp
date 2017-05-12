@@ -703,7 +703,7 @@ bool GetField(std::istream &is, std::string &name, std::string &value)
 			if (buffer[0] == ' ')
 				space = true;
 		}
-		while (buffer[0] != 0);
+		while (buffer[0] != 0 && !is.eof());
 		is.clear();
 		is.ignore();
 
