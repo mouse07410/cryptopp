@@ -488,6 +488,14 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			std::cout << "\n";
 			SignalTestFailure();
 		}
+
+		// If BlockSize or BlockPaddingScheme was set for a test, then it becomes latched
+		// in testDataPairs. The old value is used in subsequent tests, and it could cause a
+		// self test failure in the next test. The behavior surfaced under Kalyna, where the
+		// official test vectors use NO_PADDING for all tests excpet one. For BlockSize or
+		// BlockPaddingScheme, unlatch them now. Also note we only unlatch from testDataPairs.
+		// If overrideParameters are specified, then the caller is responsible.
+		v.erase("BlockSize"); v.erase("BlockPaddingScheme");
 	}
 	else
 	{
@@ -706,43 +714,32 @@ bool GetField(std::istream &is, std::string &name, std::string &value)
 			if (line[line.size() - 1] == '\\') {
 				continueLine = true;
 			}
+			// Check for comment. It can be first character
+			if (line[0] == '#') {
+				continue;
+			}
 		}
 
-		// Leading, trailing and temp position. The leading position moves right, and
-		// trailing position moves left. The sub-string in the middle is the value for
-		// the name. We leave one space when line continuation is in effect, (and if
-		// present). The value can be an empty string. One Plaintext value is often
-		// empty for algorithm testing.
-		std::string::size_type l, t, p;
-		const std::string whitespace = " \r\n\t\v\f";
+		// Leading and trailing position. The leading position moves right, and
+		// trailing position moves left. The sub-string in the middle is the value
+		// for the name. We leave one space when line continuation is in effect.
+		// The value can be an empty string. One Plaintext value is often empty
+		// for algorithm testing.
+		std::string::size_type l=0, t=std::string::npos;
+		const std::string whitespace = "\t \r\n";
 
-		l = line.find_first_not_of(whitespace);
+		l = line.find_first_not_of(whitespace, l);
 		if (l == std::string::npos) { l = 0; }
-		t = line.find_last_not_of(whitespace+"\\");
-		if (l == std::string::npos) { t = line.size(); }
-
-		// Chop comment. Perform after setting continueLine
-		p = line.find('#', l);
-		if (p < t) {
-			t = p;
-			if (t) t--;
-		}
-
-		// Leave one whitespace if line continuation is in effect
-		if (continueLine)
-		{
-			if (l > 0 && ::isspace(line[l - 1]))
-			{
-				l--;
-			}
-			else if (t < line.size()-1 && ::isspace(line[t + 1]))
-			{
-				t++;
-			}
-		}
+		t = line.find('#', l);
+		if (t != std::string::npos) { t--; }
+		t = line.find_last_not_of(whitespace+"\\", t);
+		if (t != std::string::npos) { t++; }
 
 		CRYPTOPP_ASSERT(t >= l);
-		value += line.substr(l, t - l + 1);
+		value += line.substr(l, t - l);
+
+		if (continueLine)
+			value += ' ';
 	}
 
 	return true;
