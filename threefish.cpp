@@ -276,8 +276,8 @@ void Threefish::Base::UncheckedSetKey(const byte *key, unsigned int keylen, cons
     if (params.GetValue(Name::Tweak(), t))
     {
         CRYPTOPP_ASSERT(t.size() == 16);
-        ::memcpy(m_tweak.begin(), t.begin(), 16);
-        m_tweak[2] = m_tweak[0] + m_tweak[1];
+        GetUserKey(LITTLE_ENDIAN_ORDER, m_tweak.begin(), 2, t.begin(), 16);
+        m_tweak[2] = m_tweak[0] ^ m_tweak[1];
     }
     else
     {

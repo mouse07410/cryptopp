@@ -18,6 +18,7 @@
 #include "hkdf.h"
 #include "stdcpp.h"
 #include <iostream>
+#include <sstream>
 
 // Aggressive stack checking with VS2005 SP1 and above.
 #if (_MSC_FULL_VER >= 140050727)
@@ -113,6 +114,20 @@ void PutDecodedDatumInto(const TestData &data, const char *name, BufferedTransfo
 		{
 			repeat = ::atoi(s1.c_str()+1);
 			s1 = s1.substr(s1.find(' ')+1);
+		}
+
+		// Convert endian order. Use it with 64-bit words like this:
+		//   Key: cvt BC2560EFC6BBA2B1 E3361F162238EB40 FB8631EE0ABBD175 7B9479D4C5479ED1
+		// BC2560EFC6BBA2B1 will be processed into B1A2BBC6EF6025BC.
+		if (s1.length() >= 3 && s1.substr(0,3) == "cvt")
+		{
+			word64 value;
+			std::istringstream iss(s1.substr(3));
+			while (iss >> std::hex >> value)
+				q.Put((const byte *)&value, 8);
+
+			s1.clear(); s2.clear();
+			goto end;
 		}
 
 		s2.clear();
@@ -405,6 +420,16 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			decryptor->Seek(seek);
 		}
 
+		// If a per-test vector parameter was set for a test, like BlockPadding, BlockSize or Tweak,
+		// then it becomes latched in testDataPairs. The old value is used in subsequent tests, and
+		// it could cause a self test failure in the next test. The behavior surfaced under Kalyna
+		// and Threefish. The Kalyna test vectors use NO_PADDING for all tests excpet one. For
+		// Threefish, using (and not using) a Tweak caused problems as we marched through test
+		// vectors. For BlockPadding, BlockSize or Tweak, unlatch them now, after the key has been
+		// set and NameValuePairs have been processed. Also note we only unlatch from testDataPairs.
+		// If overrideParameters are specified, the caller is responsible for managing the parameter.
+		v.erase("Tweak"); v.erase("BlockSize"); v.erase("BlockPaddingScheme");
+
 		std::string encrypted, xorDigest, ciphertext, ciphertextXorDigest;
 		if (test == "EncryptionMCT" || test == "DecryptionMCT")
 		{
@@ -488,14 +513,6 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			std::cout << "\n";
 			SignalTestFailure();
 		}
-
-		// If BlockSize or BlockPaddingScheme was set for a test, then it becomes latched
-		// in testDataPairs. The old value is used in subsequent tests, and it could cause a
-		// self test failure in the next test. The behavior surfaced under Kalyna, where the
-		// official test vectors use NO_PADDING for all tests excpet one. For BlockSize or
-		// BlockPaddingScheme, unlatch them now. Also note we only unlatch from testDataPairs.
-		// If overrideParameters are specified, then the caller is responsible.
-		v.erase("BlockSize"); v.erase("BlockPaddingScheme");
 	}
 	else
 	{
