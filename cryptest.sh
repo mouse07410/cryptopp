@@ -823,8 +823,8 @@ CPU_COUNT=1
 MEM_SIZE=512
 
 if [[ (-e "/proc/cpuinfo") && (-e "/proc/meminfo") ]]; then
-	CPU_COUNT=$(cat /proc/cpuinfo | "$GREP" -c '^processor')
-	MEM_SIZE=$(cat /proc/meminfo | "$GREP" "MemTotal" | "$AWK" '{print $2}')
+	CPU_COUNT=$(cat /proc/cpuinfo 2>&1 | "$GREP" -c '^processor')
+	MEM_SIZE=$(cat /proc/meminfo 2>&1 | "$GREP" "MemTotal" | "$AWK" '{print $2}')
 	MEM_SIZE=$(($MEM_SIZE/1024))
 elif [[ "$IS_DARWIN" -ne "0" ]]; then
 	CPU_COUNT=$(sysctl -a 2>&1 | "$GREP" 'hw.availcpu' | "$AWK" '{print $3; exit}')
@@ -841,7 +841,7 @@ if [[ (-e "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq") ]]; then
 	CPU_FREQ=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq)
 	CPU_FREQ=$("$AWK" "BEGIN {print $CPU_FREQ/1024/1024}")
 elif [[ (-e "/proc/cpuinfo") ]]; then
-	CPU_FREQ=$(cat /proc/cpuinfo | "$GREP" 'MHz' | "$AWK" '{print $4; exit}')
+	CPU_FREQ=$(cat /proc/cpuinfo 2>&1 | "$GREP" 'MHz' | "$AWK" '{print $4; exit}')
 	if [[ -z "$CPU_FREQ" ]]; then CPU_FREQ=512; fi
 	CPU_FREQ=$("$AWK" "BEGIN {print $CPU_FREQ/1024}")
 elif [[ "$IS_DARWIN" -ne "0" ]]; then
@@ -857,7 +857,7 @@ fi
 HAVE_SWAP=1
 if [[ "$IS_LINUX" -ne "0" ]]; then
 	if [[ (-e "/proc/meminfo") ]]; then
-		SWAP_SIZE=$(cat /proc/meminfo | "$GREP" "SwapTotal" | "$AWK" '{print $2}')
+		SWAP_SIZE=$(cat /proc/meminfo 2>&1 | "$GREP" "SwapTotal" | "$AWK" '{print $2}')
 		if [[ "$SWAP_SIZE" -eq "0" ]]; then
 			HAVE_SWAP=0
 		fi
@@ -1752,7 +1752,7 @@ if [[ ("$IS_FEDORA" -ne "0") ]]; then
 	# https://kojipkgs.fedoraproject.org//packages/cryptopp/5.6.3/8.fc27/data/logs/x86_64/build.log
 	if [[ ("$IS_X86" -ne "0") ]]; then
 		MARCH_OPT=(-m32 -march=i686)
-	else
+	elif [[ ("$IS_X64" -ne "0") ]]; then
 		MARCH_OPT=(-m64 -mtune=generic)
 	fi
 
@@ -5566,7 +5566,7 @@ if (( "$ECOUNT" == "0" )); then
 else
 	echo "$ECOUNT errors detected. See $TEST_RESULTS for details" | tee -a "$TEST_RESULTS"
 	if (( "$ECOUNT" < 16 )); then
-		"$EGREP" -n '(Error|ERROR|error|FAILED|Illegal|Conditional|CryptoPP::Exception)' "$TEST_RESULTS" | "$EGREP" -v '( 0 errors|suppressed errors|error detector)'
+		"$EGREP" -n '(Error|ERROR|error|FAILED|Illegal|Conditional|CryptoPP::Exception)' "$TEST_RESULTS" | "$EGREP" -v '( 0 errors|suppressed errors|error detector|Assertion|format-security)'
 	fi
 fi
 
