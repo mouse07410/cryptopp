@@ -72,7 +72,7 @@
 //   Be mindful of the trailing slash since its simple concatenation.
 //   g++ ... -DCRYPTOPP_DATA_DIR='"/tmp/cryptopp_test/share/"'
 #ifndef CRYPTOPP_DATA_DIR
-# define CRYPTOPP_DATA_DIR ""
+# define CRYPTOPP_DATA_DIR "/opt/local/share/cryptopp/"
 #endif
 
 // Define this if you want or need the library's memcpy_s and memmove_s.

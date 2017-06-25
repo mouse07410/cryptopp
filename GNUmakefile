@@ -588,6 +588,14 @@ valgrind: libcryptopp.a cryptest.exe
 
 .PHONY: test check
 test check: cryptest.exe
+	sudo $(MKDIR) -p $(DESTDIR)$(DATADIR)/cryptopp
+	sudo $(CP) -r TestData $(DESTDIR)$(DATADIR)/cryptopp
+	sudo $(CP) -r TestVectors $(DESTDIR)$(DATADIR)/cryptopp
+	sudo $(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp
+	sudo $(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp/TestData
+	sudo $(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
+	sudo $(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestData/*.dat
+	sudo $(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors/*.txt
 	./cryptest.exe v
 
 # Used to generate list of source files for Autotools, CMakeList, Android.mk, etc
