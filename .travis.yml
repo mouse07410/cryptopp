@@ -5,7 +5,7 @@ os:
   - osx
   
 dist: trusty
-sudo: false
+sudo: required
 
 # OS X only supports one image. Use the latest.
 osx_image: xcode8.3
