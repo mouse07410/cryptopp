@@ -575,7 +575,7 @@ lcov coverage: libcryptopp.a cryptest.exe
 
 # Travis CI and CodeCov rule
 .PHONY: gcov codecov
-gcov codecov: libcryptopp.a cryptest.exe
+gcov codecov: libcryptopp.a cryptest.exe test
 	@-$(RM) -r ./TestCoverage/
 	./cryptest.exe v
 	./cryptest.exe tv all
@@ -583,7 +583,7 @@ gcov codecov: libcryptopp.a cryptest.exe
 
 # Should use CXXFLAGS="-g3 -O1"
 .PHONY: valgrind
-valgrind: libcryptopp.a cryptest.exe
+valgrind: libcryptopp.a cryptest.exe test
 	valgrind ./cryptest.exe v
 
 .PHONY: test check
