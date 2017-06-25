@@ -91,7 +91,7 @@ endif
 
 # Default prefix for make install
 ifeq ($(PREFIX),)
-PREFIX = /usr/local
+PREFIX = /opt/local
 endif
 
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
