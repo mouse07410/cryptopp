@@ -3,7 +3,8 @@
 #  I have to admit its a bit complex and I don't fully understand it.
 
 version: 1.0.{build}
-clone_depth: 3
+clone_depth: 1
+skip_tags: true
 
 configuration:
 
@@ -13,7 +14,7 @@ configuration:
 platform:
 
 - Win32
-- Win64
+- x64
 
 image:
 
@@ -21,15 +22,23 @@ image:
 - Visual Studio 2015
 - Visual Studio 2013
 
-build:
+build: off
 
-  project: cryptest.sln
-  verbosity: minimal
-  parallel: true
+#  project: cryptest.sln
+#  verbosity: minimal
+#  parallel: true
 
 test_script:
 
 - cmd: >-
+
+    copy /y TestScripts\cryptlib.vcxproj .
+
+    copy /y TestScripts\cryptest.vcxproj .
+
+    msbuild /t:Build /p:platform=%platform%;configuration=%configuration% cryptlib.vcxproj
+
+    msbuild /t:Build /p:platform=%platform%;configuration=%configuration% cryptest.vcxproj
 
     msbuild /t:CopyCryptestToRoot cryptest.vcxproj
 
@@ -40,21 +49,10 @@ test_script:
 # Right now, we have a few failures that we don't know how to workaround.
 #  - https://stackoverflow.com/questions/43441273/how-to-run-vcupgrade-before-appveyor-build
 #  - https://stackoverflow.com/questions/43423761/cant-perform-64-bit-testing-under-appveyor
-# Appveyor also complains that it can't find VS2010 tools even though the docs state they are there.
-matrix:
-#  allow_failures:
-
-  exclude:
-    - platform: Win64
-      configuration: Debug
-    - platform: Win64
-      configuration: Release
-    - image: Visual Studio 2010
-    - image: Visual Studio 2017
 
 notifications:
-  email:
-    recipients:
-      - cryptopp-build@googlegroups.com
-    on_success: always # default: change
-    on_failure: always # default: always
+    - provider: Email
+      to:
+        - cryptopp-build@googlegroups.com
+      on_build_success: true
+      on_build_failure: true
