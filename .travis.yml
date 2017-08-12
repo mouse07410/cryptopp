@@ -52,8 +52,6 @@ matrix:
     # Ignore problems with old toolchains
     - env: BUILD_MODE="ubsan"
     - env: BUILD_MODE="asan"
-    - env: BUILD_MODE="ios-arm"
-    - env: BUILD_MODE="ios-arm64"
     
 script:
   - |
@@ -67,10 +65,10 @@ script:
         make -f GNUmakefile-cross
     else
         make "$BUILD_MODE"
-	mkdir -p /opt/local/share
-	mkdir -p /opt/local/lib
-	mkdir -p /opt/local/bin
-	make install PREFIX=/opt/local
+        mkdir -p /opt/local/share
+        mkdir -p /opt/local/lib
+        mkdir -p /opt/local/bin
+        make install PREFIX=/opt/local
         ./cryptest.exe v
         ./cryptest.exe tv all
     fi
