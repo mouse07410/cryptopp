@@ -65,10 +65,10 @@ script:
         make -f GNUmakefile-cross
     else
         make "$BUILD_MODE"
-        mkdir -p /opt/local/share
-        mkdir -p /opt/local/lib
-        mkdir -p /opt/local/bin
-        make install PREFIX=/opt/local
+        sudo mkdir -p /opt/local/share
+        sudo mkdir -p /opt/local/lib
+        sudo mkdir -p /opt/local/bin
+        sudo make install PREFIX=/opt/local
         ./cryptest.exe v
         ./cryptest.exe tv all
     fi
