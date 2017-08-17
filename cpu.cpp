@@ -11,11 +11,7 @@
 
 #include "cpu.h"
 #include "misc.h"
-#include "stdcpp.h"
-
-#if CRYPTOPP_BOOL_NEON_INTRINSICS_AVAILABLE
-# include <arm_neon.h>
-#endif
+#include <algorithm>
 
 #ifndef CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
 #include <signal.h>
