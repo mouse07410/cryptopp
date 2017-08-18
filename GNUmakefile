@@ -2,6 +2,14 @@
 #####        System Attributes and Programs           #####
 ###########################################################
 
+# Must use Bash
+SHELL = bash
+# If needed
+TMPDIR ?= /tmp
+# Used for ARMv7 and NEON.
+FP_ABI ?= hard
+
+# Command ard arguments
 AR ?= ar
 ARFLAGS ?= -cr # ar needs the dash on OpenBSD
 RANLIB ?= ranlib
@@ -19,8 +27,10 @@ UNAME := $(shell uname)
 IS_X86 := $(shell uname -m | $(EGREP) -v "x86_64" | $(EGREP) -i -c "i.86|x86|i86")
 IS_X64 := $(shell uname -m | $(EGREP) -i -c "(_64|d64)")
 IS_PPC := $(shell uname -m | $(EGREP) -i -c "ppc|power")
-IS_ARM32 := $(shell uname -m | $(EGREP) -i -c "arm")
+IS_ARM32 := $(shell uname -m | $(EGREP) -v "arm64" | $(EGREP) -i -c "arm")
 IS_ARM64 := $(shell uname -m | $(EGREP) -i -c "aarch64")
+IS_ARMV8 ?= $(shell uname -m | $(EGREP) -i -c 'aarch32|aarch64')
+IS_NEON ?= $(shell uname -m | $(EGREP) -i -c 'armv7|armv8|aarch32|aarch64')
 IS_SPARC := $(shell uname -m | $(EGREP) -i -c "sparc")
 IS_SPARC64 := $(shell uname -m | $(EGREP) -i -c "sparc64")
 
@@ -67,8 +77,8 @@ endif
 
 # Fixup SunOS
 ifeq ($(IS_SUN),1)
-IS_X86 := $(shell isainfo -k 2>/dev/null | grep -i -c "i386")
-IS_X64 := $(shell isainfo -k 2>/dev/null | grep -i -c "amd64")
+IS_X86 := $(shell isainfo -k 2>/dev/null | $(EGREP) -i -c "i386")
+IS_X64 := $(shell isainfo -k 2>/dev/null | $(EGREP) -i -c "amd64")
 endif
 
 # Newlib needs _XOPEN_SOURCE=700 for signals
@@ -191,6 +201,37 @@ endif  # -DCRYPTOPP_DISABLE_SSSE3
 endif  # -DCRYPTOPP_DISABLE_ASM
 endif  # CXXFLAGS
 
+ifeq ($(findstring -DCRYPTOPP_DISABLE_SSSE3,$(CXXFLAGS)),)
+  HAVE_SSSE3 = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -mssse3 -dM -E - 2>/dev/null | $(EGREP) -i -c __SSSE3__)
+  ifeq ($(HAVE_SSSE3),1)
+    ARIA_FLAG = -mssse3
+    SSSE3_FLAG = -mssse3
+  endif
+ifeq ($(findstring -DCRYPTOPP_DISABLE_SSE4,$(CXXFLAGS)),)
+  HAVE_SSE4 = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -msse4.2 -dM -E - 2>/dev/null | $(EGREP) -i -c __SSE4_2__)
+  ifeq ($(HAVE_SSE4),1)
+    BLAKE2_FLAG = -msse4.2
+    CRC_FLAG = -msse4.2
+  endif
+ifeq ($(findstring -DCRYPTOPP_DISABLE_AESNI,$(CXXFLAGS)),)
+  HAVE_CLMUL = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -mssse3 -mpclmul -dM -E - 2>/dev/null | $(EGREP) -i -c __PCLMUL__ )
+  ifeq ($(HAVE_CLMUL),1)
+    GCM_FLAG = -mssse3 -mpclmul
+  endif
+  HAVE_AES = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -msse4.1 -maes -dM -E - 2>/dev/null | $(EGREP) -i -c __AES__)
+  ifeq ($(HAVE_AES),1)
+    AES_FLAG = -msse4.1 -maes
+  endif
+ifeq ($(findstring -DCRYPTOPP_DISABLE_SHA,$(CXXFLAGS)),)
+  HAVE_SHA = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -msse4.2 -msha -dM -E - 2>/dev/null | $(EGREP) -i -c __SHA__)
+  ifeq ($(HAVE_SHA),1)
+    SHA_FLAG = -msse4.2 -msha
+  endif
+endif  # -DCRYPTOPP_DISABLE_SHA
+endif  # -DCRYPTOPP_DISABLE_AESNI
+endif  # -DCRYPTOPP_DISABLE_SSE4
+endif  # -DCRYPTOPP_DISABLE_SSSE3
+
 # BEGIN_NATIVE_ARCH
 # Guard use of -march=native (or -m{32|64} on some platforms)
 # Don't add anything if -march=XXX or -mtune=XXX is specified
@@ -280,6 +321,35 @@ CXXFLAGS += -pipe
 endif
 endif
 
+ifeq ($(IS_NEON),1)
+  HAVE_NEON = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon -dM -E - 2>/dev/null | $(EGREP) -i -c __ARM_NEON)
+  ifeq ($(HAVE_NEON),1)
+    NEON_FLAG = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
+    GCM_FLAG = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
+    ARIA_FLAG = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
+    BLAKE2_FLAG = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
+  endif
+endif
+
+ifeq ($(IS_ARMV8),1)
+  HAVE_NEON = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -march=armv8-a -dM -E - 2>/dev/null | $(EGREP) -i -c __ARM_NEON)
+  ifeq ($(HAVE_NEON),1)
+    ARIA_FLAG = -march=armv8-a
+    BLAKE2_FLAG = -march=armv8-a
+    NEON_FLAG = -march=armv8-a
+  endif
+  HAVE_CRC = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -march=armv8-a+crc -dM -E - 2>/dev/null | $(EGREP) -i -c __ARM_FEATURE_CRC32)
+  ifeq ($(HAVE_NEON),1)
+    CRC_FLAG = -march=armv8-a+crc
+  endif
+  HAVE_CRYPTO = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -march=armv8-a+crypto -dM -E - 2>/dev/null | $(EGREP) -i -c __ARM_FEATURE_CRYPTO)
+  ifeq ($(HAVE_NEON),1)
+    AES_FLAG = -march=armv8-a+crypto
+    GCM_FLAG = -march=armv8-a+crypto
+    SHA_FLAG = -march=armv8-a+crypto
+  endif
+endif
+
 endif	# IS_X86
 
 ###########################################################
@@ -287,7 +357,7 @@ endif	# IS_X86
 ###########################################################
 
 # For SunOS, create a Mapfile that allows our object files
-# to cantain additional bits (like SSE4 and AES on old Xeon)
+# to contain additional bits (like SSE4 and AES on old Xeon)
 # http://www.oracle.com/technetwork/server-storage/solaris/hwcap-modification-139536.html
 ifeq ($(IS_SUN)$(SUN_COMPILER),11)
 ifneq ($(IS_X86)$(IS_X32)$(IS_X64),000)
@@ -319,19 +389,14 @@ endif # OpenMP
 endif # IS_LINUX
 
 ifneq ($(IS_DARWIN),0)
-AR = libtool
-ARFLAGS = -static -o
-CXX ?= c++
-ifeq ($(IS_GCC_29),1)
-CXXFLAGS += -fno-coalesce-templates -fno-coalesce-static-vtables
-LDLIBS += -lstdc++
-LDFLAGS += -flat_namespace -undefined suppress -m
-endif
+  AR = libtool
+  ARFLAGS = -static -o
+  CXX ?= c++
 endif
 
 # Add -errtags=yes to get the name for a warning suppression
 ifneq ($(SUN_COMPILER),0)	# override flags for CC Sun C++ compiler
-IS_64 := $(shell isainfo -b 2>/dev/null | grep -i -c "64")
+IS_64 := $(shell isainfo -b 2>/dev/null | $(EGREP) -i -c "64")
 ifeq ($(IS_64),1)
 CXXFLAGS += -m64
 else ifeq ($(IS_64),0)
@@ -527,12 +592,13 @@ endif
 endif # Nasm
 
 # List test.cpp first to tame C++ static initialization problems.
-TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp datatest.cpp regtest1.cpp regtest2.cpp regtest3.cpp fipsalgt.cpp dlltest.cpp
+TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp datatest.cpp regtest1.cpp regtest2.cpp regtest3.cpp dlltest.cpp fipsalgt.cpp
 TESTOBJS := $(TESTSRCS:.cpp=.o)
 LIBOBJS := $(filter-out $(TESTOBJS),$(OBJS))
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
-DLLSRCS :=  cryptlib.cpp cpu.cpp integer.cpp 3way.cpp adler32.cpp algebra.cpp algparam.cpp arc4.cpp aria.cpp asn.cpp authenc.cpp base32.cpp base64.cpp basecode.cpp bfinit.cpp blake2.cpp blowfish.cpp blumshub.cpp camellia.cpp cast.cpp casts.cpp cbcmac.cpp ccm.cpp chacha.cpp channels.cpp cmac.cpp crc.cpp default.cpp des.cpp dessp.cpp dh.cpp dh2.cpp dll.cpp dsa.cpp eax.cpp ec2n.cpp eccrypto.cpp ecp.cpp elgamal.cpp emsa2.cpp eprecomp.cpp esign.cpp files.cpp filters.cpp fips140.cpp fipstest.cpp gcm.cpp gf256.cpp gf2_32.cpp gf2n.cpp gfpcrypt.cpp gost.cpp gzip.cpp hex.cpp hmac.cpp hrtimer.cpp ida.cpp idea.cpp iterhash.cpp kalyna.cpp kalynatab.cpp keccak.cpp luc.cpp mars.cpp marss.cpp md2.cpp md4.cpp md5.cpp misc.cpp modes.cpp mqueue.cpp mqv.cpp nbtheory.cpp network.cpp oaep.cpp ospstore.cpp osrng.cpp panama.cpp pkcspad.cpp poly1305.cpp polynomi.cpp pssr.cpp pubkey.cpp queue.cpp rabin.cpp randpool.cpp rc2.cpp rc5.cpp rc6.cpp rdrand.cpp rdtables.cpp rijndael.cpp ripemd.cpp rng.cpp rsa.cpp rw.cpp safer.cpp salsa.cpp seal.cpp seed.cpp serpent.cpp sha.cpp sha3.cpp shacal2.cpp shark.cpp sharkbox.cpp skipjack.cpp socketft.cpp sosemanuk.cpp square.cpp squaretb.cpp strciphr.cpp tea.cpp tftables.cpp threefish.cpp tiger.cpp tigertab.cpp trdlocal.cpp ttmac.cpp twofish.cpp vmac.cpp wait.cpp wake.cpp whrlpool.cpp xtr.cpp xtrcrypt.cpp zdeflate.cpp zinflate.cpp zlib.cpp
+DLLSRCS :=  cryptlib.cpp cpu.cpp integer.cpp 3way.cpp adler32.cpp algebra.cpp algparam.cpp arc4.cpp aria-simd.cpp aria.cpp ariatab.cpp asn.cpp authenc.cpp base32.cpp base64.cpp basecode.cpp bfinit.cpp blake2-simd.cpp blake2.cpp blowfish.cpp blumshub.cpp camellia.cpp cast.cpp casts.cpp cbcmac.cpp ccm.cpp chacha.cpp channels.cpp cmac.cpp crc-simd.cpp crc.cpp default.cpp des.cpp dessp.cpp dh.cpp dh2.cpp dll.cpp dsa.cpp eax.cpp ec2n.cpp eccrypto.cpp ecp.cpp elgamal.cpp emsa2.cpp eprecomp.cpp esign.cpp files.cpp filters.cpp fips140.cpp fipstest.cpp gcm-simd.cpp gcm.cpp gf256.cpp gf2_32.cpp gf2n.cpp gfpcrypt.cpp gost.cpp gzip.cpp hex.cpp hmac.cpp hrtimer.cpp ida.cpp idea.cpp iterhash.cpp kalyna.cpp kalynatab.cpp keccak.cpp luc.cpp mars.cpp marss.cpp md2.cpp md4.cpp md5.cpp misc.cpp modes.cpp mqueue.cpp mqv.cpp nbtheory.cpp neon.cpp network.cpp oaep.cpp ospstore.cpp osrng.cpp panama.cpp pkcspad.cpp poly1305.cpp polynomi.cpp pssr.cpp pubkey.cpp queue.cpp rabin.cpp randpool.cpp rc2.cpp rc5.cpp rc6.cpp rdrand.cpp rdtables.cpp rijndael.cpp ripemd.cpp rng.cpp rsa.cpp rw.cpp safer.cpp salsa.cpp seal.cpp seed.cpp serpent.cpp sha-simd.cpp sha.cpp sha3.cpp shacal2-simd.cpp shacal2.cpp shark.cpp sharkbox.cpp skipjack.cpp socketft.cpp sosemanuk.cpp square.cpp squaretb.cpp strciphr.cpp tea.cpp tftables.cpp threefish.cpp tiger.cpp tigertab.cpp trdlocal.cpp ttmac.cpp twofish.cpp vmac.cpp wait.cpp wake.cpp whrlpool.cpp xtr.cpp xtrcrypt.cpp zdeflate.cpp zinflate.cpp zlib.cpp
+
 DLLOBJS := $(DLLSRCS:.cpp=.export.o)
 
 # Import lib testing
@@ -555,8 +621,8 @@ static: libcryptopp.a
 shared dynamic: libcryptopp.so$(SOLIB_VERSION_SUFFIX)
 endif
 
-.PHONY: deps
-deps GNUmakefile.deps:
+.PHONY: dep deps depend
+dep deps depend GNUmakefile.deps:
 	$(CXX) $(strip $(CXXFLAGS)) -MM *.cpp > GNUmakefile.deps
 
 # CXXFLAGS are tuned earlier.
@@ -615,7 +681,7 @@ sources: adhoc.cpp
 DOCUMENT_DIRECTORY := ref$(LIB_VER)
 # Directory Doxygen uses (specified in Doygen config file)
 ifeq ($(wildcard Doxyfile),Doxyfile)
-DOXYGEN_DIRECTORY := $(strip $(shell $(EGREP) "OUTPUT_DIRECTORY" Doxyfile | grep -v "\#" | cut -d "=" -f 2))
+DOXYGEN_DIRECTORY := $(strip $(shell $(EGREP) "OUTPUT_DIRECTORY" Doxyfile | $(EGREP) -v "\#" | cut -d "=" -f 2))
 endif
 # Default directory (in case its missing in the config file)
 ifeq ($(strip $(DOXYGEN_DIRECTORY)),)
@@ -760,13 +826,8 @@ ifeq ($(wildcard Filelist.txt),Filelist.txt)
 DIST_FILES := $(shell cat Filelist.txt)
 endif
 
-.PHONY: appveyor
-appveyor:
-	sed 's|Toolset>v100|Toolset>$$(DefaultPlatformToolset)|g' cryptlib.vcxproj > TestScripts/cryptlib.vcxproj
-	sed 's|Toolset>v100|Toolset>$$(DefaultPlatformToolset)|g' cryptest.vcxproj > TestScripts/cryptest.vcxproj
-
 .PHONY: trim
-trim: appveyor
+trim:
 ifneq ($(IS_DARWIN),0)
 	sed -i '' -e's/[[:space:]]*$$//' *.sh .*.yml *.h *.cpp *.asm *.s *.sln *.vcxproj *.filters GNUmakefile GNUmakefile-cross
 	sed -i '' -e's/[[:space:]]*$$//' TestData/*.dat TestVectors/*.txt TestScripts/*.*
@@ -831,58 +892,90 @@ endif # Dependencies
 # Run rdrand-nasm.sh to create the object files
 ifeq ($(USE_NASM),1)
 rdrand.o: rdrand.h rdrand.cpp rdrand.s
-	$(CXX) $(strip $(CXXFLAGS)) -DNASM_RDRAND_ASM_AVAILABLE=1 -DNASM_RDSEED_ASM_AVAILABLE=1 -c rdrand.cpp
+	$(CXX) $(strip $(CXXFLAGS) -DNASM_RDRAND_ASM_AVAILABLE=1 -DNASM_RDSEED_ASM_AVAILABLE=1 -c rdrand.cpp)
 rdrand-%.o:
 	./rdrand-nasm.sh
 endif
+
+# SSE4.2 or NEON available
+aria-simd.o : aria-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(ARIA_FLAG) -c) $<
+
+# SSE4.2 or NEON available
+neon.o : neon.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(NEON_FLAG) -c) $<
+
+# SSE4.2 or ARMv8a available
+blake2-simd.o : blake2-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(BLAKE2_FLAG) -c) $<
+
+# SSE4.2 or ARMv8a available
+crc-simd.o : crc-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(CRC_FLAG) -c) $<
+
+# PCLMUL or ARMv7a/ARMv8a available
+gcm-simd.o : gcm-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(GCM_FLAG) -c) $<
+
+# AESNI or ARMv7a/ARMv8a available
+rijndael-simd.o : rijndael-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(AES_FLAG) -c) $<
+
+# SSE4.2/SHA-NI or ARMv8a available
+sha-simd.o : sha-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SHA_FLAG) -c) $<
+
+# SSE4.2/SHA-NI or ARMv8a available
+shacal2-simd.o : shacal2-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SHA_FLAG) -c) $<
 
 # Don't build Threefish with UBsan on Travis CI. Timeouts cause the build to fail.
 #   Also see https://stackoverflow.com/q/12983137/608639.
 ifeq ($(findstring true,$(CI)),true)
 threefish.o : threefish.cpp
-	$(CXX) $(strip $(subst -fsanitize=undefined,,$(CXXFLAGS))) -c $<
+	$(CXX) $(strip $(subst -fsanitize=undefined,,$(CXXFLAGS)) -c) $<
 endif
 
 # Don't build Rijndael with UBsan. Too much noise due to unaligned data accesses.
 ifneq ($(findstring -fsanitize=undefined,$(CXXFLAGS)),)
 rijndael.o : rijndael.cpp
-	$(CXX) $(strip $(subst -fsanitize=undefined,,$(CXXFLAGS))) -c $<
+	$(CXX) $(strip $(subst -fsanitize=undefined,,$(CXXFLAGS)) -c) $<
 endif
 
 # Don't build VMAC and friends with Asan. Too many false positives.
 ifneq ($(findstring -fsanitize=address,$(CXXFLAGS)),)
 vmac.o : vmac.cpp
-	$(CXX) $(strip $(subst -fsanitize=address,,$(CXXFLAGS))) -c $<
+	$(CXX) $(strip $(subst -fsanitize=address,,$(CXXFLAGS)) -c) $<
 endif
 
 # Only use CRYPTOPP_DATA_DIR if its not set in CXXFLAGS
 ifeq ($(findstring -DCRYPTOPP_DATA_DIR, $(strip $(CXXFLAGS))),)
 ifneq ($(strip $(CRYPTOPP_DATA_DIR)),)
 validat%.o : validat%.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c $<
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c) $<
 bench%.o : bench%.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c $<
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c) $<
 datatest.o : datatest.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c $<
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c) $<
 test.o : test.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c $<
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_DATA_DIR=\"$(CRYPTOPP_DATA_DIR)\" -c) $<
 endif
 endif
 
 %.dllonly.o : %.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_DLL_ONLY -c $< -o $@
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_DLL_ONLY -c) $< -o $@
 
 %.import.o : %.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_IMPORTS -c $< -o $@
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_IMPORTS -c) $< -o $@
 
 %.export.o : %.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -DCRYPTOPP_EXPORTS -c $< -o $@
+	$(CXX) $(strip $(CXXFLAGS) -DCRYPTOPP_EXPORTS -c) $< -o $@
 
 %.bc : %.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -c $<
+	$(CXX) $(strip $(CXXFLAGS) -c) $<
 
 %.o : %.cpp
-	$(CXX) $(strip $(CXXFLAGS)) -c $<
+	$(CXX) $(strip $(CXXFLAGS) -c) $<
 
 .PHONY: so_warning
 so_warning:
