@@ -1,4 +1,4 @@
-Crypto++: a C++ Class Library of Cryptographic Schemes
+Crypto++: free C++ Class Library of Cryptographic Schemes
 Version 5.6.5 - OCT/11/2016
 
 Crypto++ Library is a free C++ class library of cryptographic schemes.
@@ -6,7 +6,7 @@ Currently the library contains the following algorithms:
 
                    algorithm type  name
 
- authenticated encryption schemes  GCM, CCM, EAX
+ authenticated encryption schemes  GCM, CCM, EAX, OCB
 
         high speed stream ciphers  ChaCha (ChaCha8/12/20), Panama, Sosemanuk,
                                    Salsa20, XSalsa20
@@ -15,7 +15,7 @@ Currently the library contains the following algorithms:
                                    CAST-256
 
                                    ARIA, IDEA, Triple-DES (DES-EDE2 and DES-EDE3),
-              other block ciphers  Camellia, SEED, Kalyna RC5, Blowfish, TEA, XTEA,
+              other block ciphers  Camellia, SEED, Kalyna, RC5, Blowfish, TEA, XTEA,
                                    Threefish, Skipjack, SHACAL-2
 
   block cipher modes of operation  ECB, CBC, CBC ciphertext stealing (CTS),
@@ -26,7 +26,7 @@ Currently the library contains the following algorithms:
 
                                    BLAKE2s, BLAKE2b, Keccack (F1600) SHA-1, SHA-2 
                    hash functions  (SHA-224, SHA-256, SHA-384, and SHA-512), SHA-3,
-                                   Tiger,WHIRLPOOL, RIPEMD-128, RIPEMD-256,
+                                   Tiger, WHIRLPOOL, RIPEMD-128, RIPEMD-256,
                                    RIPEMD-160, RIPEMD-320
 
                                    RSA, DSA, Determinsitic DSA, ElGamal, 
@@ -51,7 +51,7 @@ algorithms retained for backwards  3.0, WAKE-OFB, DESX (DES-XEX3), RC2,
 Other features include:
 
   * pseudo random number generators (PRNG): ANSI X9.17 appendix C, RandomPool,
-    RDRAND, RDSEED, NIST Hash DRBG, NIST HMAC DRBG
+    VIA Padlock, RDRAND, RDSEED, NIST Hash and HMAC DRBGs
   * password based key derivation functions: PBKDF1 and PBKDF2 from PKCS #5,
     PBKDF from PKCS #12 appendix B, HKDF from RFC 5869
   * Shamir's secret sharing scheme and Rabin's information dispersal algorithm
@@ -62,7 +62,7 @@ Other features include:
   * useful non-cryptographic algorithms
       + DEFLATE (RFC 1951) compression/decompression with gzip (RFC 1952) and
         zlib (RFC 1950) format support
-      + hex, base-32, and base-64 coding/decoding
+      + Hex, base-32, base-64, URL safe base-64 encoding and decoding
       + 32-bit CRC, CRC-C and Adler32 checksum
   * class wrappers for these platform and operating system features (optional):
       + high resolution timers on Windows, Unix, and Mac OS
@@ -70,24 +70,27 @@ Other features include:
       + Windows named pipes
       + /dev/random, /dev/urandom, /dev/srandom
       + Microsoft's CryptGenRandom on Windows
-      + VIA Padlock, Amd64 RDRAND and RDSEED
   * A high level interface for most of the above, using a filter/pipeline
     metaphor
   * benchmarks and validation testing
-  * x86, x86_64, MMX, SSE2, SSE4 assembly code for the most commonly used
-    algorithms, with run-time CPU feature detection and code selection.
-    Limited ARM NEON and ARMv8 ASIMD, CRC and Crypto extension support
-  * some versions are available in FIPS 140-2 validated form
+  * x86, x64 (x86-64), x32 (ILP32), ARM-32, Aarch32 and Aarch64 code for the commonly
+    used algorithms
+      + run-time CPU feature detection and code selection</li>
+      + supports GCC-style and MSVC-style inline assembly, and MASM for x64
+      + x86, x64 (x86-64), x32 provides MMX, SSE2, and SSE4 implementations
+      + ARM-32, Aarch32 and Aarch64 provides NEON, ASIMD and ARMv8 implementations
 
-You are welcome to use it for any purpose without paying me, but see
-License.txt for the fine print.
+The Crypto++ library was orginally written by Wei Dai. The library is now
+maintained by several team members and the community. You are welcome to use it
+for any purpose without paying anyone, but see License.txt for the fine print.
 
 The following compilers are supported for this release. Please visit
 http://www.cryptopp.com the most up to date build instructions and porting notes.
 
-  * MSVC 6.0 - 2015
-  * GCC 3.3 - 7.0
-  * Clang 2.9 - 4.0
+  * Visual Studio 2003 - 2015
+  * GCC 3.3 - 7.1
+  * Apple Clang 4.3 - 8.3
+  * LLVM Clang 2.9 - 4.0
   * C++Builder 2010
   * Intel C++ Compiler 9 - 16.0
   * Sun Studio 12u1 - 12.5
@@ -106,28 +109,24 @@ synchronization when multiple threads access a common Crypto++ object.
 
 *** MSVC-Specific Information ***
 
-On Windows, Crypto++ can be compiled into 3 forms: a static library
-including all algorithms, a DLL with only FIPS Approved algorithms, and
-a static library with only algorithms not in the DLL.
-(FIPS Approved means Approved according to the FIPS 140-2 standard.)
-The DLL may be used by itself, or it may be used together with the second
-form of the static library. MSVC project files are included to build
-all three forms, and sample applications using each of the three forms
-are also included.
+To compile Crypto++ with MSVC, open "cryptest.sln" (for MSVC 2003 - 2015)
+and build one or more of the following projects:
 
-To compile Crypto++ with MSVC, open  "cryptest.sln" (for MSVC 2005 - 2015)
-or "cryptest.dsw" (for MSVC 6 - MSVC .NET 2003) workspace file and build
-one or more of the following projects:
-
-cryptdll - This builds the DLL. Please note that if you wish to use Crypto++
-  as a FIPS validated module, you must use a pre-built DLL that has undergone
-  the FIPS validation process instead of building your own.
-dlltest - This builds a sample application that only uses the DLL.
 cryptest Non-DLL-Import Configuration - This builds the full static library
   along with a full test driver.
 cryptest DLL-Import Configuration - This builds a static library containing
   only algorithms not in the DLL, along with a full test driver that uses
   both the DLL and the static library.
+cryptdll - This builds the DLL. Please note that if you wish to use Crypto++
+  as a FIPS validated module, you must use a pre-built DLL that has undergone
+  the FIPS validation process instead of building your own.
+dlltest - This builds a sample application that only uses the DLL.
+
+The DLL used to provide FIPS validated cryptography. The library was moved
+to the CMVP's <A HREF=
+"http://csrc.nist.gov/groups/STM/cmvp/documents/140-1/140val-historical.htm">
+Historical Validation List</A>. The library and the DLL are no longer considered
+validated. You should no longer use the DLL.
 
 To use the Crypto++ DLL in your application, #include "dll.h" before including
 any other Crypto++ header files, and place the DLL in the same directory as
@@ -211,9 +210,7 @@ and code examples.
 
 If you run into any problems, please try the Crypto++ mailing list.
 The subscription information and the list archive are available on
-http://www.cryptopp.com. You can also email me directly by visiting
-http://www.weidai.com, but you will probably get a faster response through
-the mailing list.
+http://www.cryptopp.com.
 
 *** Source Code and Contributing ***
 
