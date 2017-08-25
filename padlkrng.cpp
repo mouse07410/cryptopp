@@ -44,7 +44,7 @@ void PadlockRNG::GenerateBlock(byte *output, size_t size)
 			"movl %%eax, %0          ;\n"
 
 			: "=g" (m_msr) : "g" (m_buffer.data()), "g" (m_divisor)
-#if (CRYPTOPP_BOOL_X3 || CRYPTOPP_BOOL_X64)
+#if (CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
 			: "eax", "edx", "rdi", "cc"
 #else
 			: "eax", "edx", "edi", "cc"
@@ -52,7 +52,7 @@ void PadlockRNG::GenerateBlock(byte *output, size_t size)
 		);
 
 		const size_t ret = m_msr & 0x1f;
-		const size_t rem = STDMIN<size_t>(ret, STDMIN<size_t>(size, 16U));
+		const size_t rem = STDMIN<size_t>(ret, STDMIN<size_t>(size, 16U /*buffer size*/));
 		std::memcpy(output, m_buffer, rem);
 		size -= rem; output += rem;
 	}
@@ -71,7 +71,7 @@ void PadlockRNG::GenerateBlock(byte *output, size_t size)
 		}
 
 		const size_t ret = (m_msr = result) & 0x1f;
-		const size_t rem = STDMIN<size_t>(ret, STDMIN<size_t>(size, 16U));
+		const size_t rem = STDMIN<size_t>(ret, STDMIN<size_t>(size, 16U /*buffer size*/));
 		std::memcpy(output, buffer, rem);
 		size -= rem; output += rem;
 	}
