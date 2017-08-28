@@ -225,20 +225,24 @@ ifeq ($(SUN_COMPILER),1)
   ifeq ($(COUNT),0)
     SSSE3_FLAG = -xarch=ssse3 -D__SSSE3__=1
     ARIA_FLAG = -xarch=ssse3 -D__SSSE3__=1
+    LDFLAGS += -xarch=ssse3
   endif
   COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sse4_2 -xdumpmacros /dev/null 2>&1 | $(EGREP) -i -c "illegal value ignored")
   ifeq ($(COUNT),0)
     BLAKE2_FLAG = -xarch=sse4_2 -D__SSE4_2__=1
     CRC_FLAG = -xarch=sse4_2 -D__SSE4_2__=1
+    LDFLAGS += -xarch=sse4_2
   endif
   COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=aes -xdumpmacros /dev/null 2>&1 | $(EGREP) -i -c "illegal value ignored")
   ifeq ($(COUNT),0)
     GCM_FLAG = -xarch=aes -D__PCLMUL__=1
     AES_FLAG = -xarch=aes -D__AES__=1
+    LDFLAGS += -xarch=aes
   endif
   COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sha -xdumpmacros /dev/null 2>&1 | $(EGREP) -i -c "illegal value ignored")
   ifeq ($(COUNT),0)
     SHA_FLAG = -xarch=sha -D__SHA__=1
+    LDFLAGS += -xarch=sha
   endif
 endif
 # End SunCC
@@ -399,9 +403,6 @@ ifneq ($(SUN_CC10_BUGGY),0)
 # remove it if you get "already had a body defined" errors in vector.cc
 CXXFLAGS += -DCRYPTOPP_INCLUDE_VECTOR_CC
 endif
-#ifneq ($SUNCC_512_OR_LATER),0)
-#CXXFLAGS += -xarch=aes -D__AES__=1 -xarch=no%sse4_1 -xarch=no%sse4_2
-#endif
 AR = $(CXX)
 ARFLAGS = -xar -o
 RANLIB = true
@@ -834,7 +835,7 @@ convert:
 	@-$(CHMOD) 0700 $(EXEC_FILES) *.sh *.cmd TestScripts/*.sh TestScripts/*.pl TestScripts/*.cmd
 	@-$(CHMOD) 0700 *.cmd *.sh GNUmakefile GNUmakefile-cross TestScripts/*.sh TestScripts/*.pl
 	-unix2dos --keepdate --quiet $(TEXT_FILES) .*.yml *.asm *.cmd *.cmake TestScripts/*.*
-	-dos2unix --keepdate --quiet GNUmakefile GNUmakefile-cross *.s *.sh TestScripts/*.sh
+	-dos2unix --keepdate --quiet GNUmakefile GNUmakefile-cross *.s *.sh *.mapfile TestScripts/*.sh
 ifneq ($(IS_DARWIN),0)
 	@-xattr -c *
 endif

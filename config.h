@@ -470,6 +470,7 @@ NAMESPACE_END
 	#define CRYPTOPP_X64_ASM_AVAILABLE 1
 #endif
 
+// 32-bit SunCC does not enable SSE2 by default.
 #if !defined(CRYPTOPP_DISABLE_ASM) && (defined(_MSC_VER) || defined(__SSE2__))
 	#define CRYPTOPP_SSE2_INTRIN_AVAILABLE 1
 #endif
@@ -498,8 +499,14 @@ NAMESPACE_END
 	#define CRYPTOPP_SSE42_AVAILABLE 1
 #endif
 
-// Requires Sun Studio 12.3 (SunCC 0x5120)
-#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_CLMUL) && \
+// Couple to CRYPTOPP_DISABLE_AES, but use CRYPTOPP_CLMUL_AVAILABLE so we can selectively
+//  disable for misbehaving platofrms and compilers, like Solaris or some Clang.
+#if defined(CRYPTOPP_DISABLE_AES)
+	#define CRYPTOPP_DISABLE_CLMUL 1
+#endif
+
+// Requires Sun Studio 12.3 (SunCC 0x5120) in theory.
+#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_CLMUL) && defined(CRYPTOPP_SSE42_AVAILABLE) && \
 	(defined(__PCLMUL__) || (_MSC_FULL_VER >= 150030729) || (__SUNPRO_CC >= 0x5120) || \
 	(CRYPTOPP_GCC_VERSION >= 40300) || (__INTEL_COMPILER >= 1110) || \
 	(CRYPTOPP_LLVM_CLANG_VERSION >= 30200) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40300))
@@ -507,7 +514,7 @@ NAMESPACE_END
 #endif
 
 // Requires Sun Studio 12.3 (SunCC 0x5120)
-#if !defined(CRYPTOPP_DISABLE_SSE4) && defined(CRYPTOPP_SSSE3_AVAILABLE) && \
+#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(CRYPTOPP_DISABLE_AES) && defined(CRYPTOPP_SSE42_AVAILABLE) && \
 	(defined(__AES__) || (_MSC_FULL_VER >= 150030729) || (__SUNPRO_CC >= 0x5120) || \
 	(CRYPTOPP_GCC_VERSION >= 40300) || (__INTEL_COMPILER >= 1110) || \
 	(CRYPTOPP_LLVM_CLANG_VERSION >= 30200) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40300))
@@ -575,7 +582,8 @@ NAMESPACE_END
 
 // ***************** Miscellaneous ********************
 
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE || defined(CRYPTOPP_X64_MASM_AVAILABLE)
+// Nearly all Intel's and AMD's have SSE. Enable it independent of SSE ASM and intrinscs
+#if (CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64) && !defined(CRYPTOPP_DISABLE_ASM)
 	#define CRYPTOPP_BOOL_ALIGN16 1
 #else
 	#define CRYPTOPP_BOOL_ALIGN16 0
@@ -951,6 +959,20 @@ NAMESPACE_END
 #  define CRYPTOPP_CXX11_CONSTEXPR 1
 #endif // constexpr compilers
 
+// strong typed enums: MS at VS2012 (17.00); GCC at 4.4; Clang at 3.3; Intel 14.0; SunCC 5.12.
+//   Mircorosft and Intel had partial support earlier, but we require full support.
+#if (CRYPTOPP_MSC_VERSION >= 1700)
+#  define CRYPTOPP_CXX11_ENUM 1
+#elif __has_feature(cxx_strong_enums)
+#  define CRYPTOPP_CXX11_ENUM 1
+#elif (__INTEL_COMPILER >= 1400)
+#  define CRYPTOPP_CXX11_ENUM 1
+#elif (CRYPTOPP_GCC_VERSION >= 40400)
+#  define CRYPTOPP_CXX11_ENUM 1
+#elif (__SUNPRO_CC >= 0x5120)
+#  define CRYPTOPP_CXX11_ENUM 1
+#endif // constexpr compilers
+
 // nullptr_t: MS at VS2010 (16.00); GCC at 4.6; Clang at 3.3; Intel 10.0; SunCC 5.13.
 #if (CRYPTOPP_MSC_VERSION >= 1600)
 #  define CRYPTOPP_CXX11_NULLPTR 1
@@ -994,7 +1016,17 @@ NAMESPACE_END
 
 // Hack... CRYPTOPP_CONSTANT is defined earlier, before C++11 constexpr availability is determined
 // http://stackoverflow.com/q/35213098/608639
-#if defined(CRYPTOPP_CXX11_CONSTEXPR)
+// #if defined(CRYPTOPP_CXX11_CONSTEXPR)
+// # undef CRYPTOPP_CONSTANT
+// # define CRYPTOPP_CONSTANT(x) constexpr static int x;
+// #endif
+
+// Hack... CRYPTOPP_CONSTANT is defined earlier, before C++11 constexpr availability is determined
+// http://stackoverflow.com/q/35213098/608639
+#if defined(CRYPTOPP_CXX11_ENUM)
+# undef CRYPTOPP_CONSTANT
+# define CRYPTOPP_CONSTANT(x) enum : int { x };
+#elif defined(CRYPTOPP_CXX11_CONSTEXPR)
 # undef CRYPTOPP_CONSTANT
 # define CRYPTOPP_CONSTANT(x) constexpr static int x;
 #endif
