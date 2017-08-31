@@ -94,6 +94,7 @@ if [[ ! -z "$GMAKE" ]]; then
 fi
 
 THIS_SYSTEM=$(uname -s 2>&1)
+IS_AIX=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c aix)
 IS_DARWIN=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c darwin)
 IS_LINUX=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c linux)
 IS_CYGWIN=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c cygwin)
@@ -707,6 +708,8 @@ elif [[ "$IS_SOLARIS" -ne "0" ]]; then
 	echo "IS_SOLARIS: $IS_SOLARIS" | tee -a "$TEST_RESULTS"
 elif [[ "$IS_DARWIN" -ne "0" ]]; then
 	echo "IS_DARWIN: $IS_DARWIN" | tee -a "$TEST_RESULTS"
+elif [[ "$IS_AIX" -ne "0" ]]; then
+	echo "IS_AIX: $IS_AIX" | tee -a "$TEST_RESULTS"
 fi
 
 if [[ "$IS_PPC" -ne "0" ]]; then
@@ -816,6 +819,9 @@ elif [[ "$IS_DARWIN" -ne "0" ]]; then
 elif [[ "$IS_SOLARIS" -ne "0" ]]; then
 	CPU_COUNT=$(psrinfo 2>/dev/null | wc -l | "$AWK" '{print $1}')
 	MEM_SIZE=$(prtconf 2>/dev/null | "$GREP" Memory | "$AWK" '{print $3}')
+elif [[ "$IS_AIX" -ne "0" ]]; then
+	CPU_COUNT=$(bindprocessor -q 2>/dev/null | cut -f 2 -d ':' | wc -w | "$AWK" '{print $1}')
+	MEM_SIZE=$(prtconf -m 2>/dev/null | "$GREP" 'MB' | "$AWK" '{print $3; exit;}')
 fi
 
 # Benchmarks expect frequency in GiHz.
@@ -832,6 +838,9 @@ elif [[ "$IS_DARWIN" -ne "0" ]]; then
 	CPU_FREQ=$("$AWK" "BEGIN {print $CPU_FREQ/1024/1024/1024}")
 elif [[ "$IS_SOLARIS" -ne "0" ]]; then
 	CPU_FREQ=$(psrinfo -v 2>/dev/null | "$GREP" 'MHz' | "$AWK" '{print $6; exit;}')
+	CPU_FREQ=$("$AWK" "BEGIN {print $CPU_FREQ/1024}")
+elif [[ "$IS_AIX" -ne "0" ]]; then
+	CPU_FREQ=$(prtconf -s 2>/dev/null | "$GREP" 'MHz' | "$AWK" '{print $4; exit;}')
 	CPU_FREQ=$("$AWK" "BEGIN {print $CPU_FREQ/1024}")
 fi
 
@@ -1305,43 +1314,61 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		FAILED=0
 		DISASS_TEXT=$("$DISASS" "${DISASSARGS[@]}" "$OBJFILE" 2>/dev/null)
 
-		# ARIA::UncheckedKeySet: 8 vld1q.32
-		COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vld')
-		if [[ ("$COUNT" -lt "8") ]]; then
-			FAILED=1
-			echo "ERROR: failed to generate expected vector load instructions" | tee -a "$TEST_RESULTS"
+		if [[ ("$HAVE_ARMV8A") ]]; then
+			# ARIA::UncheckedKeySet: 8 vld1q.32
+			COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vld')
+			if [[ ("$COUNT" -lt "8") ]]; then
+				FAILED=1
+				echo "ERROR: failed to generate NEON load instructions" | tee -a "$TEST_RESULTS"
+			fi
+		else  # ARMv7
+			# ARIA::UncheckedKeySet: 6 vld1.32 {d1,d2}
+			COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vld1.32[[:space:]]*{')
+			if [[ ("$COUNT" -lt "6") ]]; then
+				FAILED=1
+				echo "ERROR: failed to generate NEON load instructions" | tee -a "$TEST_RESULTS"
+			fi
 		fi
 
-		# ARIA::UncheckedKeySet: 24 vstr1q.32
-		COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vst')
-		if [[ ("$COUNT" -lt "24") ]]; then
-			FAILED=1
-			echo "ERROR: failed to generate expected vector store instructions" | tee -a "$TEST_RESULTS"
+		if [[ ("$HAVE_ARMV8A") ]]; then
+			# ARIA::UncheckedKeySet: 20 vstr1q.32
+			COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vst')
+			if [[ ("$COUNT" -lt "20") ]]; then
+				FAILED=1
+				echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
+			fi
+		else
+			# ARIA::UncheckedKeySet: 16 vstr1.32 {d1,d2}
+			COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vst1.32[[:space:]]*{')
+			if [[ ("$COUNT" -lt "16") ]]; then
+				FAILED=1
+				echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
+			fi
 		fi
 
 		# ARIA::UncheckedKeySet: 17 vshl.32
 		COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vshl')
 		if [[ ("$COUNT" -lt "17") ]]; then
 			FAILED=1
-			echo "ERROR: failed to generate expected vector shift left instructions" | tee -a "$TEST_RESULTS"
+			echo "ERROR: failed to generate NEON shift left instructions" | tee -a "$TEST_RESULTS"
 		fi
 
 		# ARIA::UncheckedKeySet: 17 vshr.32
 		COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c 'vshl')
 		if [[ ("$COUNT" -lt "17") ]]; then
 			FAILED=1
-			echo "ERROR: failed to generate expected vector shift right instructions" | tee -a "$TEST_RESULTS"
+			echo "ERROR: failed to generate NEON shift right instructions" | tee -a "$TEST_RESULTS"
 		fi
 
 		# ARIA::UncheckedKeySet: 34 veor
 		COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'eor.*v|veor')
 		if [[ ("$COUNT" -lt "34") ]]; then
 			FAILED=1
-			echo "ERROR: failed to generate expected vector xor instructions" | tee -a "$TEST_RESULTS"
+			echo "ERROR: failed to generate NEON xor instructions" | tee -a "$TEST_RESULTS"
 		fi
 
 		if [[ ("$FAILED" -eq "0") ]]; then
-			echo "Verified vector load, store, shfit left, shift right, xor machine instructions" | tee -a "$TEST_RESULTS"
+			echo "Verified NEON load, store, shfit left, shift right, xor machine instructions" | tee -a "$TEST_RESULTS"
 		fi
 	fi
 
