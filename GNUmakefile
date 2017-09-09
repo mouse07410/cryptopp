@@ -51,6 +51,7 @@ IS_NETBSD := $(shell $(CXX) -dumpmachine 2>&1 | $(GREP) -i -c "NetBSD")
 
 SUN_COMPILER := $(shell $(CXX) -V 2>&1 | $(GREP) -i -c -E 'CC: (Sun|Studio)')
 GCC_COMPILER := $(shell $(CXX) --version 2>&1 | $(GREP) -v -E '(llvm|clang)' | $(GREP) -i -c -E '(gcc|g\+\+)')
+XLC_COMPILER := $(shell $(CXX) $(CXX) -qversion 2>&1 |$(GREP) -i -c "IBM XL")
 CLANG_COMPILER := $(shell $(CXX) --version 2>&1 | $(GREP) -i -c -E '(llvm|clang)')
 INTEL_COMPILER := $(shell $(CXX) --version 2>&1 | $(GREP) -i -c '\(icc\)')
 MACPORTS_COMPILER := $(shell $(CXX) --version 2>&1 | $(GREP) -i -c "macports")
@@ -331,6 +332,22 @@ ifeq ($(IS_ARMV8),1)
   endif
 endif
 
+# PowerPC and PowerPC-64
+ifeq ($(XLC_COMPILER),1)
+  # http://www-01.ibm.com/support/docview.wss?uid=swg21007500
+  ifeq ($(findstring -qrtti,$(CXXFLAGS)),)
+    CXXFLAGS += -qrtti
+  endif
+  # -fPIC causes link errors dues to unknown option
+  ifneq ($(findstring -fPIC,$(CXXFLAGS)),)
+      CXXFLAGS := $(CXXFLAGS:-fPIC=-qpic)
+  endif
+  # Warnings and intermittent failures on early IBM XL C/C++
+  ifneq ($(findstring -O3,$(CXXFLAGS)),)
+      CXXFLAGS := $(CXXFLAGS:-O3=-O2)
+  endif
+endif
+
 endif	# IS_X86
 
 ###########################################################
@@ -343,8 +360,9 @@ ifneq ($(IS_LINUX)$(GCC_COMPILER)$(CLANG_COMPILER)$(INTEL_COMPILER),0000)
   CXXFLAGS += -pthread
 endif # CXXFLAGS
 
-# Add -pipe for everything except ARM (allow ARM-64 because they seems to have > 1 GB of memory)
-ifeq ($(IS_ARM32),0)
+# Add -pipe for everything except IBM XL C/C++ and ARM.
+# Allow ARM-64 because they seems to have >1 GB of memory
+ifeq ($(XLC_COMPILER)$(IS_ARM32),00)
   ifeq ($(findstring -save-temps,$(CXXFLAGS)),)
     CXXFLAGS += -pipe
   endif
@@ -775,7 +793,11 @@ libcryptopp.so: libcryptopp.so$(SOLIB_VERSION_SUFFIX) | so_warning
 endif
 
 libcryptopp.so$(SOLIB_VERSION_SUFFIX): $(LIBOBJS)
-	$(CXX) -shared $(SOLIB_FLAGS) -o $@ $(strip $(CXXFLAGS)) $(LDFLAGS) $(LIBOBJS) $(LDLIBS)
+ifeq ($(XLC_COMPILER),1)
+	$(CXX) -qmkshrobj $(SOLIB_FLAGS) -o $@ $(strip $(CXXFLAGS)) $(LDFLAGS) $(LIBOBJS) $(LDLIBS)
+else
+	$(CXX) -shared $(SOLIB_FLAGS) -o $@ $(strip $(CXXFLAGS)) $(PIC_FLAG) $(LDFLAGS) $(LIBOBJS) $(LDLIBS)
+endif
 ifeq ($(HAS_SOLIB_VERSION),1)
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) libcryptopp.so
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
