@@ -113,6 +113,19 @@ CRYPTOPP_ALIGN_DATA(16) static word32 Td[256*4];
 
 static volatile bool s_TeFilled = false, s_TdFilled = false;
 
+ANONYMOUS_NAMESPACE_BEGIN
+
+CRYPTOPP_ALIGN_DATA(16)
+const word32 s_one[] = {0, 0, 0, 1<<24};
+
+/* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
+CRYPTOPP_ALIGN_DATA(16)
+const word32 s_rconLE[] = {
+	0x01, 0x02, 0x04, 0x08,	0x10, 0x20, 0x40, 0x80,	0x1B, 0x36
+};
+
+ANONYMOUS_NAMESPACE_END
+
 // ************************* Portable Code ************************************
 
 #define QUARTER_ROUND(L, T, t, a, b, c, d)	\
@@ -221,7 +234,7 @@ void Rijndael::Base::FillDecTable()
 }
 
 #if (CRYPTOPP_AESNI_AVAILABLE)
-extern void Rijndael_UncheckedSetKey_SSE4_AESNI(const byte *userKey, size_t keyLen, word32* rk);
+extern void Rijndael_UncheckedSetKey_SSE4_AESNI(const byte *userKey, size_t keyLen, word32* rk, unsigned int rounds);
 extern void Rijndael_UncheckedSetKeyRev_AESNI(word32 *key, unsigned int rounds);
 
 extern size_t Rijndael_Enc_AdvancedProcessBlocks_AESNI(const word32 *subkeys, size_t rounds,
@@ -235,6 +248,15 @@ extern size_t Rijndael_Enc_AdvancedProcessBlocks_ARMV8(const word32 *subkeys, si
         const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
 extern size_t Rijndael_Dec_AdvancedProcessBlocks_ARMV8(const word32 *subkeys, size_t rounds,
         const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
+#endif
+
+#if (CRYPTOPP_POWER8_AES_AVAILABLE)
+extern void ByteReverseArrayLE(byte src[16]);
+
+extern void Rijndael_Enc_ProcessAndXorBlock_POWER8(const word32 *subkeys, size_t rounds,
+        const byte *inBlock, const byte *xorBlock, byte *outBlock);
+extern void Rijndael_Dec_ProcessAndXorBlock_POWER8(const word32 *subkeys, size_t rounds,
+        const byte *inBlock, const byte *xorBlock, byte *outBlock);
 #endif
 
 void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, const NameValuePairs &)
@@ -252,7 +274,7 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 	{
 		// TODO: Add non-SSE4.1 variant for low-end Atoms. The low-end
 		//  Atoms have SSE2-SSSE3 and AES-NI, but not SSE4.1 or SSE4.2.
-		Rijndael_UncheckedSetKey_SSE4_AESNI(userKey, keyLen, rk);
+		Rijndael_UncheckedSetKey_SSE4_AESNI(userKey, keyLen, rk, m_rounds);
 		if (!IsForwardTransformation())
 			Rijndael_UncheckedSetKeyRev_AESNI(m_key, m_rounds);
 
@@ -267,7 +289,8 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 	while (true)
 	{
 		temp  = rk[keyLen/4-1];
-		word32 x = (word32(Se[GETBYTE(temp, 2)]) << 24) ^ (word32(Se[GETBYTE(temp, 1)]) << 16) ^ (word32(Se[GETBYTE(temp, 0)]) << 8) ^ Se[GETBYTE(temp, 3)];
+		word32 x = (word32(Se[GETBYTE(temp, 2)]) << 24) ^ (word32(Se[GETBYTE(temp, 1)]) << 16) ^
+					(word32(Se[GETBYTE(temp, 0)]) << 8) ^ Se[GETBYTE(temp, 3)];
 		rk[keyLen/4] = rk[0] ^ x ^ *(rc++);
 		rk[keyLen/4+1] = rk[1] ^ rk[keyLen/4];
 		rk[keyLen/4+2] = rk[2] ^ rk[keyLen/4+1];
@@ -294,6 +317,25 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 
 	rk = m_key;
 
+#if CRYPTOPP_POWER8_AES_AVAILABLE
+	if (HasAES())
+	{
+		ConditionalByteReverse(BIG_ENDIAN_ORDER, rk, rk, 16);
+		ConditionalByteReverse(BIG_ENDIAN_ORDER, rk + m_rounds*4, rk + m_rounds*4, 16);
+		ConditionalByteReverse(BIG_ENDIAN_ORDER, rk+4, rk+4, (m_rounds-1)*16);
+
+#if defined(IS_LITTLE_ENDIAN)
+		// VSX registers are big-endian. The entire subkey table must be byte
+		// reversed on little-endian systems to ensure it loads properly.
+		byte * ptr = reinterpret_cast<byte*>(rk);
+		for (unsigned int i=0; i<=m_rounds; i++)
+			ByteReverseArrayLE(ptr+i*16);
+#endif  // IS_LITTLE_ENDIAN
+
+		return;
+	}
+#endif  // CRYPTOPP_POWER8_AES_AVAILABLE
+
 	if (IsForwardTransformation())
 	{
 		if (!s_TeFilled)
@@ -307,10 +349,11 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 		if (!s_TdFilled)
 			FillDecTable();
 
+		#define InverseMixColumn(x) \
+			TL_M(Td, 0, Se[GETBYTE(x, 3)]) ^ TL_M(Td, 1, Se[GETBYTE(x, 2)]) ^ \
+			TL_M(Td, 2, Se[GETBYTE(x, 1)]) ^ TL_M(Td, 3, Se[GETBYTE(x, 0)])
+
 		unsigned int i, j;
-
-#define InverseMixColumn(x)		TL_M(Td, 0, Se[GETBYTE(x, 3)]) ^ TL_M(Td, 1, Se[GETBYTE(x, 2)]) ^ TL_M(Td, 2, Se[GETBYTE(x, 1)]) ^ TL_M(Td, 3, Se[GETBYTE(x, 0)])
-
 		for (i = 4, j = 4*m_rounds-4; i < j; i += 4, j -= 4)
 		{
 			temp = InverseMixColumn(rk[i    ]); rk[i    ] = InverseMixColumn(rk[j    ]); rk[j    ] = temp;
@@ -358,6 +401,14 @@ void Rijndael::Enc::ProcessAndXorBlock(const byte *inBlock, const byte *xorBlock
 	if (HasAES())
 	{
 		(void)Rijndael::Enc::AdvancedProcessBlocks(inBlock, xorBlock, outBlock, 16, 0);
+		return;
+	}
+#endif
+
+#if (CRYPTOPP_POWER8_AES_AVAILABLE)
+	if (HasAES())
+	{
+		(void)Rijndael_Enc_ProcessAndXorBlock_POWER8(m_key, m_rounds, inBlock, xorBlock, outBlock);
 		return;
 	}
 #endif
@@ -444,6 +495,14 @@ void Rijndael::Dec::ProcessAndXorBlock(const byte *inBlock, const byte *xorBlock
 	if (HasAES())
 	{
 		(void)Rijndael::Dec::AdvancedProcessBlocks(inBlock, xorBlock, outBlock, 16, 0);
+		return;
+	}
+#endif
+
+#if (CRYPTOPP_POWER8_AES_AVAILABLE)
+	if (HasAES())
+	{
+		(void)Rijndael_Dec_ProcessAndXorBlock_POWER8(m_key, m_rounds, inBlock, xorBlock, outBlock);
 		return;
 	}
 #endif
