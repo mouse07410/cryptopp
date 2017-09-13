@@ -11,7 +11,7 @@
 # See http://www.cryptopp.com/wiki/Android_(Command_Line) for more details
 # ====================================================================
 
-set -eu
+# set -eu
 
 unset IS_CROSS_COMPILE
 
@@ -93,7 +93,7 @@ fi
 #####################################################################
 
 if [ "$#" -lt 1 ]; then
-	THE_ARCH=armv7
+	THE_ARCH=armv7a-neon
 else
 	THE_ARCH=$(tr [A-Z] [a-z] <<< "$1")
 fi
@@ -107,7 +107,7 @@ case "$THE_ARCH" in
 	AOSP_ARCH="arch-arm"
 	AOSP_FLAGS="-march=armv5te -mtune=xscale -mthumb -msoft-float -funwind-tables -fexceptions -frtti"
 	;;
-  armv7a|armeabi-v7a)
+  armv7a|armv7-a|armeabi-v7a)
 	TOOLCHAIN_ARCH="arm-linux-androideabi"
 	TOOLCHAIN_NAME="arm-linux-androideabi"
 	AOSP_ABI="armeabi-v7a"
@@ -287,6 +287,12 @@ else
 	THE_STL=$(tr [A-Z] [a-z] <<< "$2")
 fi
 
+# LLVM include directory may be different depending on NDK version. Default to new location (latest NDK checked: r16beta1).
+LLVM_INCLUDE_DIR="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/include"
+if [ ! -d "$LLVM_INCLUDE_DIR" ]; then
+	LLVM_INCLUDE_DIR="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/libcxx/include"
+fi
+
 case "$THE_STL" in
   stlport-static)
 	AOSP_STL_INC="$ANDROID_NDK_ROOT/sources/cxx-stl/stlport/stlport/"
@@ -307,11 +313,19 @@ case "$THE_STL" in
 	AOSP_STL_LIB="$ANDROID_NDK_ROOT/sources/cxx-stl/gnu-libstdc++/$AOSP_TOOLCHAIN_SUFFIX/libs/$AOSP_ABI/libgnustl_shared.so"
 	;;
   llvm-static)
-	AOSP_STL_INC="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/libcxx/include"
+  	if [ ! -d "$LLVM_INCLUDE_DIR" ]; then
+		echo "ERROR: Unable to locate include LLVM directory at $LLVM_INCLUDE_DIR -- has it moved since NDK r16beta1?"
+		[ "$0" = "$BASH_SOURCE" ] && exit 1 || return 1
+	fi
+	AOSP_STL_INC="$LLVM_INCLUDE_DIR"
 	AOSP_STL_LIB="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/libs/$AOSP_ABI/libc++_static.a"
 	;;
   llvm|llvm-shared)
-	AOSP_STL_INC="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/libcxx/include"
+  	if [ ! -d "$LLVM_INCLUDE_DIR" ]; then
+		echo "ERROR: Unable to locate LLVM include directory at $LLVM_INCLUDE_DIR -- has it moved since NDK r16beta1?"
+		[ "$0" = "$BASH_SOURCE" ] && exit 1 || return 1
+	fi
+	AOSP_STL_INC="$LLVM_INCLUDE_DIR"
 	AOSP_STL_LIB="$ANDROID_NDK_ROOT/sources/cxx-stl/llvm-libc++/libs/$AOSP_ABI/libc++_shared.so"
 	;;
   *)
@@ -342,6 +356,22 @@ if [ ! -z "$AOSP_BITS_INC" ]; then
 	export AOSP_BITS_INC
 fi
 
+# Now that we are using cpu-features from Android rather than CPU probing, we
+# need to copy cpu-features.h and cpu-features.c from the NDK into our source
+# directory and then build it.
+
+if [[ ! -e "$ANDROID_NDK_ROOT/sources/android/cpufeatures/cpu-features.h" ]]; then
+	echo "ERROR: Unable to locate cpu-features.h"
+	[ "$0" = "$BASH_SOURCE" ] && exit 1 || return 1
+fi
+cp "$ANDROID_NDK_ROOT/sources/android/cpufeatures/cpu-features.h" .
+
+if [[ ! -e "$ANDROID_NDK_ROOT/sources/android/cpufeatures/cpu-features.c" ]]; then
+	echo "ERROR: Unable to locate cpu-features.c"
+	[ "$0" = "$BASH_SOURCE" ] && exit 1 || return 1
+fi
+cp "$ANDROID_NDK_ROOT/sources/android/cpufeatures/cpu-features.c" .
+
 #####################################################################
 
 VERBOSE=1
@@ -357,11 +387,15 @@ if [ ! -z "$VERBOSE" ] && [ "$VERBOSE" != "0" ]; then
   if [ ! -z "$AOSP_BITS_INC" ]; then
     echo "AOSP_BITS_INC: $AOSP_BITS_INC"
   fi
+
+  if [ -e "cpu-features.h" ] && [ -e "cpu-features.c" ]; then
+    echo "CPU FEATURES: cpu-features.h and cpu-features.c are present"
+  fi
 fi
 
 #####################################################################
 
-COUNT=$(echo -n "$AOSP_STL_LIB" | grep -i -c 'libstdc++')
+COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libstdc\+\+')
 if [[ ("$COUNT" -ne "0") ]]; then
 	echo
 	echo "*******************************************************************************"
@@ -382,7 +416,7 @@ if [[ ("$COUNT" -ne "0") ]]; then
 	echo "*******************************************************************************"
 fi
 
-COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libc++)')
+COUNT=$(echo -n "$AOSP_STL_LIB" | egrep -i -c 'libc\+\+')
 if [[ ("$COUNT" -ne "0") ]]; then
 	echo
 	echo "*******************************************************************************"
@@ -394,8 +428,9 @@ fi
 
 echo
 echo "*******************************************************************************"
-echo "It looks the the environment is set correctly. Your next step is"
-echo "build the library with 'make -f GNUmakefile-cross'"
+echo "It looks the the environment is set correctly. Your next step is build"
+echo "the library with 'make -f GNUmakefile-cross'. You can create a versioned"
+echo "shared object using 'HAS_SOLIB_VERSION=1 make -f GNUmakefile-cross'"
 echo "*******************************************************************************"
 echo
 

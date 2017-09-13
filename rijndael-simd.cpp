@@ -766,14 +766,8 @@ void Rijndael_UncheckedSetKeyRev_AESNI(word32 *key, unsigned int rounds)
 
 #if (CRYPTOPP_POWER8_AES_AVAILABLE)
 
-#if defined(CRYPTOPP_XLC_VERSION)
- // #include <builtins.h>
- typedef __vector unsigned char uint8x16_p8;
- typedef __vector unsigned long long uint64x2_p8;
-#elif defined(CRYPTOPP_GCC_VERSION)
- typedef __vector unsigned char uint8x16_p8;
- typedef __vector unsigned long long uint64x2_p8;
-#endif
+typedef __vector unsigned char      uint8x16_p8;
+typedef __vector unsigned long long uint64x2_p8;
 
 /* Reverses a 16-byte array as needed */
 void ByteReverseArrayLE(byte dest[16], const byte src[16])
@@ -817,6 +811,22 @@ uint8x16_p8 Load8x16(const uint8_t src[16])
 #endif
 }
 
+uint8x16_p8 Load8x16(int off, const uint8_t src[16])
+{
+#if defined(CRYPTOPP_XLC_VERSION)
+	/* http://stackoverflow.com/q/46124383/608639 */
+	uint8_t* s = (uint8_t*)src;
+# if defined(IS_LITTLE_ENDIAN)
+	return vec_xl_be(off, s);
+# else
+	return vec_xl(off, s);
+# endif
+#else
+	/* GCC, Clang, etc */
+	return (uint8x16_p8)vec_vsx_ld(off, src);
+#endif
+}
+
 void Store8x16(const uint8x16_p8 src, uint8_t dest[16])
 {
 #if defined(CRYPTOPP_XLC_VERSION)
@@ -854,6 +864,28 @@ uint64x2_p8 Load64x2(const uint8_t src[16])
 #endif
 }
 
+uint64x2_p8 Load64x2(int off, const uint8_t src[16])
+{
+#if defined(CRYPTOPP_XLC_VERSION)
+	/* http://stackoverflow.com/q/46124383/608639 */
+	uint8_t* s = (uint8_t*)src;
+# if defined(IS_LITTLE_ENDIAN)
+	return (uint64x2_p8)vec_xl_be(off, s);
+# else
+	return (uint64x2_p8)vec_xl(off, s);
+# endif
+#else
+	/* GCC, Clang, etc */
+# if defined(IS_LITTLE_ENDIAN)
+	const uint8x16_p8 mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
+	const uint8x16_p8 zero = {0};
+	return (uint64x2_p8)vec_perm(vec_vsx_ld(off, src), zero, mask);
+# else
+	return (uint64x2_p8)vec_vsx_ld(off, src);
+# endif
+#endif
+}
+
 void Store64x2(const uint64x2_p8 src, uint8_t dest[16])
 {
 #if defined(CRYPTOPP_XLC_VERSION)
@@ -885,6 +917,7 @@ void Store64x2(const uint64x2_p8 src, uint8_t dest[16])
 	CRYPTOPP_ASSERT(0);
 #endif
 
+// Loads a mis-aligned byte array, performs an endian conversion.
 inline VectorType VectorLoad(const byte src[16])
 {
 #if defined(CRYPTOPP_XLC_VERSION)
@@ -894,16 +927,33 @@ inline VectorType VectorLoad(const byte src[16])
 #endif
 }
 
-inline VectorType VectorLoadAligned(const byte vec[16])
+// Loads a mis-aligned byte array, performs an endian conversion.
+inline VectorType VectorLoad(int off, const byte src[16])
 {
-	return (VectorType)vec_ld(0, vec);
+#if defined(CRYPTOPP_XLC_VERSION)
+	return Load8x16(off, src);
+#elif defined(CRYPTOPP_GCC_VERSION)
+	return Load64x2(off, src);
+#endif
 }
 
-inline VectorType VectorLoadAligned(int off, const byte vec[16])
+// Loads an aligned byte array, does not perform an endian conversion.
+//  This function presumes the subkey table is correct endianess.
+inline VectorType VectorLoadKey(const byte src[16])
 {
-	return (VectorType)vec_ld(off, vec);
+	CRYPTOPP_ASSERT(IsAlignedOn(src, 16));
+	return (VectorType)vec_ld(0, src);
 }
 
+// Loads an aligned byte array, does not perform an endian conversion.
+//  This function presumes the subkey table is correct endianess.
+inline VectorType VectorLoadKey(int off, const byte src[16])
+{
+	CRYPTOPP_ASSERT(IsAlignedOn(src, 16));
+	return (VectorType)vec_ld(off, src);
+}
+
+// Stores to a mis-aligned byte array, performs an endian conversion.
 inline void VectorStore(const VectorType& src, byte dest[16])
 {
 #if defined(CRYPTOPP_XLC_VERSION)
@@ -929,9 +979,9 @@ template <class T1, class T2>
 inline T1 VectorEncrypt(const T1& state, const T2& key)
 {
 #if defined(CRYPTOPP_XLC_VERSION)
-	return (T2)__vcipher(state, key);
+	return (T1)__vcipher(state, (T1)key);
 #elif defined(CRYPTOPP_GCC_VERSION)
-	return __builtin_crypto_vcipher(state, (T1)key);
+	return (T1)__builtin_crypto_vcipher(state, (T1)key);
 #else
 	CRYPTOPP_ASSERT(0);
 #endif
@@ -941,9 +991,9 @@ template <class T1, class T2>
 inline T1 VectorEncryptLast(const T1& state, const T2& key)
 {
 #if defined(CRYPTOPP_XLC_VERSION)
-	return (T1)__vcipherlast(state, key);
+	return (T1)__vcipherlast(state, (T1)key);
 #elif defined(CRYPTOPP_GCC_VERSION)
-	return __builtin_crypto_vcipherlast(state, (T1)key);
+	return (T1)__builtin_crypto_vcipherlast(state, (T1)key);
 #else
 	CRYPTOPP_ASSERT(0);
 #endif
@@ -953,9 +1003,9 @@ template <class T1, class T2>
 inline T1 VectorDecrypt(const T1& state, const T2& key)
 {
 #if defined(CRYPTOPP_XLC_VERSION)
-	return (T1)__vncipher(state, key);
+	return (T1)__vncipher(state, (T1)key);
 #elif defined(CRYPTOPP_GCC_VERSION)
-	return __builtin_crypto_vncipher(state, (T1)key);
+	return (T1)__builtin_crypto_vncipher(state, (T1)key);
 #else
 	CRYPTOPP_ASSERT(0);
 #endif
@@ -965,9 +1015,9 @@ template <class T1, class T2>
 inline T1 VectorDecryptLast(const T1& state, const T2& key)
 {
 #if defined(CRYPTOPP_XLC_VERSION)
-	return (T1)__vncipherlast(state, key);
+	return (T1)__vncipherlast(state, (T1)key);
 #elif defined(CRYPTOPP_GCC_VERSION)
-	return __builtin_crypto_vncipherlast(state, (T1)key);
+	return (T1)__builtin_crypto_vncipherlast(state, (T1)key);
 #else
 	CRYPTOPP_ASSERT(0);
 #endif
@@ -975,62 +1025,226 @@ inline T1 VectorDecryptLast(const T1& state, const T2& key)
 
 //////////////////////////////////////////////////////////////////
 
-void Rijndael_Enc_ProcessAndXorBlock_POWER8(const word32 *subkeys, size_t rounds,
-        const byte *inBlock, const byte *xorBlock, byte *outBlock)
+inline void POWER8_Enc_Block(VectorType &block, const word32 *subkeys, unsigned int rounds)
 {
 	CRYPTOPP_ASSERT(IsAlignedOn(subkeys, 16));
 	const byte *keys = reinterpret_cast<const byte*>(subkeys);
 
-	VectorType s = VectorLoad(inBlock);
-	VectorType k = VectorLoadAligned(keys);
+	VectorType k = VectorLoadKey(keys);
+	block = VectorXor(block, k);
 
-	s = VectorXor(s, k);
 	for (size_t i=1; i<rounds-1; i+=2)
 	{
-		s = VectorEncrypt(s, VectorLoadAligned(  i*16,   keys));
-		s = VectorEncrypt(s, VectorLoadAligned((i+1)*16, keys));
+		block = VectorEncrypt(block, VectorLoadKey(  i*16,   keys));
+		block = VectorEncrypt(block, VectorLoadKey((i+1)*16, keys));
 	}
 
-	s = VectorEncrypt(s, VectorLoadAligned((rounds-1)*16, keys));
-	s = VectorEncryptLast(s, VectorLoadAligned(rounds*16, keys));
-
-	// According to benchmarks this is a tad bit slower
-	// if (xorBlock)
-	//	s = VectorXor(s, VectorLoad(xorBlock));
-
-	VectorType x = xorBlock ? VectorLoad(xorBlock) : (VectorType) {0};
-	s = VectorXor(s, x);
-
-	VectorStore(s, outBlock);
+	block = VectorEncrypt(block, VectorLoadKey((rounds-1)*16, keys));
+	block = VectorEncryptLast(block, VectorLoadKey(rounds*16, keys));
 }
 
-void Rijndael_Dec_ProcessAndXorBlock_POWER8(const word32 *subkeys, size_t rounds,
-        const byte *inBlock, const byte *xorBlock, byte *outBlock)
+inline void POWER8_Enc_4_Blocks(VectorType &block0, VectorType &block1, VectorType &block2,
+            VectorType &block3, const word32 *subkeys, unsigned int rounds)
+{
+	CRYPTOPP_ASSERT(subkeys);
+	const byte *keys = reinterpret_cast<const byte*>(subkeys);
+
+	VectorType k = VectorLoadKey(keys);
+	block0 = VectorXor(block0, k);
+	block1 = VectorXor(block1, k);
+	block2 = VectorXor(block2, k);
+	block3 = VectorXor(block3, k);
+
+	for (size_t i=1; i<rounds; ++i)
+	{
+		k = VectorLoadKey(i*16, keys);
+		block0 = VectorEncrypt(block0, k);
+		block1 = VectorEncrypt(block1, k);
+		block2 = VectorEncrypt(block2, k);
+		block3 = VectorEncrypt(block3, k);
+	}
+
+	k = VectorLoadKey(rounds*16, keys);
+	block0 = VectorEncryptLast(block0, k);
+	block1 = VectorEncryptLast(block1, k);
+	block2 = VectorEncryptLast(block2, k);
+	block3 = VectorEncryptLast(block3, k);
+
+}
+
+inline void POWER8_Dec_Block(VectorType &block, const word32 *subkeys, unsigned int rounds)
 {
 	CRYPTOPP_ASSERT(IsAlignedOn(subkeys, 16));
 	const byte *keys = reinterpret_cast<const byte*>(subkeys);
 
-	VectorType s = VectorLoad(inBlock);
-	VectorType k = VectorLoadAligned(rounds*16, keys);
+	VectorType k = VectorLoadKey(rounds*16, keys);
+	block = VectorXor(block, k);
 
-	s = VectorXor(s, k);
 	for (size_t i=rounds-1; i>1; i-=2)
 	{
-		s = VectorDecrypt(s, VectorLoadAligned(  i*16,   keys));
-		s = VectorDecrypt(s, VectorLoadAligned((i-1)*16, keys));
+		block = VectorDecrypt(block, VectorLoadKey(  i*16,   keys));
+		block = VectorDecrypt(block, VectorLoadKey((i-1)*16, keys));
 	}
 
-	s = VectorDecrypt(s, VectorLoadAligned(16, keys));
-	s = VectorDecryptLast(s, VectorLoadAligned(0, keys));
-
-	// According to benchmarks this is a tad bit slower
-	// if (xorBlock)
-	//	s = VectorXor(s, VectorLoad(xorBlock));
-
-	VectorType x = xorBlock ? VectorLoad(xorBlock) : (VectorType) {0};
-	s = VectorXor(s, x);
-
-	VectorStore(s, outBlock);
+	block = VectorDecrypt(block, VectorLoadKey(16, keys));
+	block = VectorDecryptLast(block, VectorLoadKey(0, keys));
 }
+
+inline void POWER8_Dec_4_Blocks(VectorType &block0, VectorType &block1, VectorType &block2,
+            VectorType &block3, const word32 *subkeys, unsigned int rounds)
+{
+	CRYPTOPP_ASSERT(subkeys);
+	const byte *keys = reinterpret_cast<const byte*>(subkeys);
+
+	VectorType k = VectorLoadKey(rounds*16, keys);
+	block0 = VectorXor(block0, k);
+	block1 = VectorXor(block1, k);
+	block2 = VectorXor(block2, k);
+	block3 = VectorXor(block3, k);
+
+	for (size_t i=rounds-1; i>0; --i)
+	{
+		k = VectorLoadKey(i*16, keys);
+		block0 = VectorDecrypt(block0, k);
+		block1 = VectorDecrypt(block1, k);
+		block2 = VectorDecrypt(block2, k);
+		block3 = VectorDecrypt(block3, k);
+	}
+
+	k = VectorLoadKey(0, keys);
+	block0 = VectorDecryptLast(block0, k);
+	block1 = VectorDecryptLast(block1, k);
+	block2 = VectorDecryptLast(block2, k);
+	block3 = VectorDecryptLast(block3, k);
+}
+
+template <typename F1, typename F4>
+size_t Rijndael_AdvancedProcessBlocks_POWER8(F1 func1, F4 func4, const word32 *subKeys, size_t rounds,
+            const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
+{
+	CRYPTOPP_ASSERT(subKeys);
+	CRYPTOPP_ASSERT(inBlocks);
+	CRYPTOPP_ASSERT(outBlocks);
+	CRYPTOPP_ASSERT(length >= 16);
+
+	const size_t blockSize = 16;
+	size_t inIncrement = (flags & (BlockTransformation::BT_InBlockIsCounter|BlockTransformation::BT_DontIncrementInOutPointers)) ? 0 : blockSize;
+	size_t xorIncrement = xorBlocks ? blockSize : 0;
+	size_t outIncrement = (flags & BlockTransformation::BT_DontIncrementInOutPointers) ? 0 : blockSize;
+
+	if (flags & BlockTransformation::BT_ReverseDirection)
+	{
+		inBlocks += length - blockSize;
+		xorBlocks += length - blockSize;
+		outBlocks += length - blockSize;
+		inIncrement = 0-inIncrement;
+		xorIncrement = 0-xorIncrement;
+		outIncrement = 0-outIncrement;
+	}
+
+	if (flags & BlockTransformation::BT_AllowParallel)
+	{
+		while (length >= 4*blockSize)
+		{
+			VectorType block0, block1, block2, block3, temp;
+			block0 = VectorLoad(inBlocks);
+
+			if (flags & BlockTransformation::BT_InBlockIsCounter)
+			{
+#if defined(IS_LITTLE_ENDIAN)
+				const VectorType one = (VectorType)((uint64x2_p8){1,0});
+#else
+				const VectorType one = (VectorType)((uint64x2_p8){0,1});
+#endif
+				block1 = VectorAdd(block0, one);
+				block2 = VectorAdd(block1, one);
+				block3 = VectorAdd(block2, one);
+				temp   = VectorAdd(block3, one);
+				VectorStore(temp, const_cast<byte*>(inBlocks));
+			}
+			else
+			{
+				const int inc = static_cast<int>(inIncrement);
+				block1 = VectorLoad(1*inc, inBlocks);
+				block2 = VectorLoad(2*inc, inBlocks);
+				block3 = VectorLoad(3*inc, inBlocks);
+				inBlocks += 4*inIncrement;
+			}
+
+			if (flags & BlockTransformation::BT_XorInput)
+			{
+				const int inc = static_cast<int>(xorIncrement);
+				block0 = VectorXor(block0, VectorLoad(0*inc, xorBlocks));
+				block1 = VectorXor(block1, VectorLoad(1*inc, xorBlocks));
+				block2 = VectorXor(block2, VectorLoad(2*inc, xorBlocks));
+				block3 = VectorXor(block3, VectorLoad(3*inc, xorBlocks));
+				xorBlocks += 4*inc;
+			}
+
+			func4(block0, block1, block2, block3, subKeys, rounds);
+
+			if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+			{
+				const int inc = static_cast<int>(xorIncrement);
+				block0 = VectorXor(block0, VectorLoad(0*inc, xorBlocks));
+				block1 = VectorXor(block1, VectorLoad(1*inc, xorBlocks));
+				block2 = VectorXor(block2, VectorLoad(2*inc, xorBlocks));
+				block3 = VectorXor(block3, VectorLoad(3*inc, xorBlocks));
+				xorBlocks += 4*inc;
+			}
+
+			VectorStore(block0, outBlocks);
+			outBlocks += outIncrement;
+			VectorStore(block1, outBlocks);
+			outBlocks += outIncrement;
+			VectorStore(block2, outBlocks);
+			outBlocks += outIncrement;
+			VectorStore(block3, outBlocks);
+			outBlocks += outIncrement;
+
+			length -= 4*blockSize;
+		}
+	}
+
+	while (length >= blockSize)
+	{
+		VectorType block = VectorLoad(inBlocks);
+
+		if (flags & BlockTransformation::BT_XorInput)
+			block = VectorXor(block, VectorLoad(xorBlocks));
+
+		if (flags & BlockTransformation::BT_InBlockIsCounter)
+			const_cast<byte *>(inBlocks)[15]++;
+
+		func1(block, subKeys, rounds);
+
+		if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+			block = VectorXor(block, VectorLoad(xorBlocks));
+
+		VectorStore(block, outBlocks);
+
+		inBlocks += inIncrement;
+		outBlocks += outIncrement;
+		xorBlocks += xorIncrement;
+		length -= blockSize;
+	}
+
+	return length;
+}
+
+size_t Rijndael_Enc_AdvancedProcessBlocks_POWER8(const word32 *subKeys, size_t rounds,
+            const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
+{
+	return Rijndael_AdvancedProcessBlocks_POWER8(POWER8_Enc_Block, POWER8_Enc_4_Blocks,
+            subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+}
+
+size_t Rijndael_Dec_AdvancedProcessBlocks_POWER8(const word32 *subKeys, size_t rounds,
+            const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
+{
+	return Rijndael_AdvancedProcessBlocks_POWER8(POWER8_Dec_Block, POWER8_Dec_4_Blocks,
+            subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+}
+
 #endif  // CRYPTOPP_POWER8_AES_AVAILABLE
 NAMESPACE_END

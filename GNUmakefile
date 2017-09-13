@@ -198,6 +198,11 @@ endif  # -DCRYPTOPP_DISABLE_SSSE3
 endif  # -DCRYPTOPP_DISABLE_ASM
 endif  # CXXFLAGS
 
+ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
+  ifeq ($(IS_X86),1)
+    CPU_FLAG = -msse2
+  endif
+endif
 ifeq ($(findstring -DCRYPTOPP_DISABLE_SSSE3,$(CXXFLAGS)),)
   HAVE_SSSE3 = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -mssse3 -dM -E - 2>/dev/null | $(GREP) -i -c __SSSE3__)
   ifeq ($(HAVE_SSSE3),1)
@@ -341,12 +346,12 @@ ifneq ($(IS_PPC32)$(IS_PPC64)$(IS_AIX),000)
     ALTIVEC_FLAG = -maltivec
   endif
   # GCC and some compatibles
-  HAVE_CRYPTO = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -mcpu=power8 -maltivec -mvsx -dM -E - 2>/dev/null | $(GREP) -i -c -E '_ARCH_PWR8|_ARCH_PWR9|__CRYPTO')
+  HAVE_CRYPTO = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -mcpu=power8 -maltivec -dM -E - 2>/dev/null | $(GREP) -i -c -E '_ARCH_PWR8|_ARCH_PWR9|__CRYPTO')
   ifneq ($(HAVE_CRYPTO),0)
-    AES_FLAG = -mcpu=power8 -maltivec -mvsx
-    GCM_FLAG = -mcpu=power8 -maltivec -mvsx
-    SHA_FLAG = -mcpu=power8 -maltivec -mvsx
-    ALTIVEC_FLAG = -mcpu=power8 -maltivec -mvsx
+    AES_FLAG = -mcpu=power8 -maltivec
+    GCM_FLAG = -mcpu=power8 -maltivec
+    SHA_FLAG = -mcpu=power8 -maltivec
+    ALTIVEC_FLAG = -mcpu=power8 -maltivec
   endif
   # IBM XL C/C++
   HAVE_ALTIVEC = $(shell $(CXX) $(CXXFLAGS) -qshowmacros -qaltivec -E adhoc.cpp.proto 2>/dev/null | $(GREP) -i -c '__ALTIVEC__')
@@ -947,6 +952,10 @@ aria-simd.o : aria-simd.cpp
 # SSE4.2 or ARMv8a available
 blake2-simd.o : blake2-simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(BLAKE2_FLAG) -c) $<
+
+# SSE2 on i586
+cpu.o : cpu.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(CPU_FLAG) -c) $<
 
 # SSE4.2 or ARMv8a available
 crc-simd.o : crc-simd.cpp
