@@ -17,52 +17,27 @@
 # include <sys/systemcfg.h>
 #endif
 
-#if defined(__linux__)
+#ifdef __linux__
+# include <unistd.h>
+#endif
+
+// Capability queries, requires Glibc 2.16, https://lwn.net/Articles/519085/
+// CRYPTOPP_GLIBC_VERSION not used because config.h is missing <feature.h>
+#if (((__GLIBC__ * 100) + __GLIBC_MINOR__) >= 216)
+# define CRYPTOPP_GETAUXV_AVAILABLE 1
+#endif
+
+#if CRYPTOPP_GETAUXV_AVAILABLE
 # include <sys/auxv.h>
-# ifndef HWCAP_ASIMD
-# define HWCAP_ASIMD (1 << 1)
-# endif
-# ifndef HWCAP_ARM_NEON
-# define HWCAP_ARM_NEON 4096
-# endif
-# ifndef HWCAP_CRC32
-# define HWCAP_CRC32 (1 << 7)
-# endif
-# ifndef HWCAP2_CRC32
-# define HWCAP2_CRC32 (1 << 4)
-# endif
-# ifndef HWCAP_PMULL
-# define HWCAP_PMULL (1 << 4)
-# endif
-# ifndef HWCAP2_PMULL
-# define HWCAP2_PMULL (1 << 1)
-# endif
-# ifndef HWCAP_AES
-# define HWCAP_AES (1 << 3)
-# endif
-# ifndef HWCAP2_AES
-# define HWCAP2_AES (1 << 0)
-# endif
-# ifndef HWCAP_SHA1
-# define HWCAP_SHA1 (1 << 5)
-# endif
-# ifndef HWCAP_SHA2
-# define HWCAP_SHA2 (1 << 6)
-# endif
-# ifndef HWCAP2_SHA1
-# define HWCAP2_SHA1 (1 << 2)
-# endif
-# ifndef HWCAP2_SHA2
-# define HWCAP2_SHA2 (1 << 3)
-# endif
+#else
+unsigned long int getauxval(unsigned long int) { return 0; }
 #endif
 
 #if defined(__APPLE__) && defined(__aarch64__)
 # include <sys/utsname.h>
 #endif
 
-// http://android.googlesource.com/platform/ndk/+/master/sources/android/cpufeatures/cpu-features.h
-// The cpu-features header and source file are located in ANDROID_NDK_ROOT/sources/android
+// The cpu-features header and source file are located in $ANDROID_NDK_ROOT/sources/android/cpufeatures
 // setenv-android.sh will copy the header and source file into PWD and the makefile will build it in place.
 #if defined(__ANDROID__)
 # include "cpu-features.h"
@@ -123,24 +98,31 @@ extern "C"
 }
 #endif
 
-// Embarcadero  and Issue 498
+// Borland/Embarcadero and Issue 498
 // cpu.cpp (131): E2211 Inline assembly not allowed in inline and template functions
 bool CpuId(word32 func, word32 subfunc, word32 output[4])
 {
-#if defined(CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY)
+#if defined(CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY) || defined(__BORLANDC__)
     __try
 	{
+		// Borland/Embarcadero and Issue 500
+		// Local variables for cpuid output
+		word32 a, b, c, d;
 		__asm
 		{
 			mov eax, func
 			mov ecx, subfunc
 			cpuid
 			mov edi, output
-			mov [edi], eax
-			mov [edi+4], ebx
-			mov [edi+8], ecx
-			mov [edi+12], edx
+			mov [a], eax
+			mov [b], ebx
+			mov [c], ecx
+			mov [d], edx
 		}
+		output[0] = a;
+		output[1] = b;
+		output[2] = c;
+		output[3] = d;
 	}
 	// GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION
 	__except (EXCEPTION_EXECUTE_HANDLER)
@@ -149,7 +131,7 @@ bool CpuId(word32 func, word32 subfunc, word32 output[4])
 	}
 
 	// function 0 returns the highest basic function understood in EAX
-	if(input == 0)
+	if(func == 0)
 		return !!output[0];
 
 	return true;
@@ -306,9 +288,9 @@ void DetectX86Features()
 
 	if (IsIntel(cpuid0))
 	{
-		enum { RDRAND_FLAG = (1 << 30) };
-		enum { RDSEED_FLAG = (1 << 18) };
-		enum {    SHA_FLAG = (1 << 29) };
+		CRYPTOPP_CONSTANT(RDRAND_FLAG = (1 << 30))
+		CRYPTOPP_CONSTANT(RDSEED_FLAG = (1 << 18))
+		CRYPTOPP_CONSTANT(   SHA_FLAG = (1 << 29))
 
 		g_isP4 = ((cpuid1[0] >> 8) & 0xf) == 0xf;
 		g_cacheLineSize = 8 * GETBYTE(cpuid1[1], 1);
@@ -325,9 +307,9 @@ void DetectX86Features()
 	}
 	else if (IsAMD(cpuid0))
 	{
-		enum { RDRAND_FLAG = (1 << 30) };
-		enum { RDSEED_FLAG = (1 << 18) };
-		enum {    SHA_FLAG = (1 << 29) };
+		CRYPTOPP_CONSTANT(RDRAND_FLAG = (1 << 30))
+		CRYPTOPP_CONSTANT(RDSEED_FLAG = (1 << 18))
+		CRYPTOPP_CONSTANT(   SHA_FLAG = (1 << 29))
 
 		CpuId(0x80000005, 0, cpuid2);
 		g_cacheLineSize = GETBYTE(cpuid2[2], 0);
@@ -344,11 +326,11 @@ void DetectX86Features()
 	}
 	else if (IsVIA(cpuid0))
 	{
-		enum {  RNG_FLAGS = (0x3 << 2) };
-		enum {  ACE_FLAGS = (0x3 << 6) };
-		enum { ACE2_FLAGS = (0x3 << 8) };
-		enum {  PHE_FLAGS = (0x3 << 10) };
-		enum {  PMM_FLAGS = (0x3 << 12) };
+		CRYPTOPP_CONSTANT( RNG_FLAGS = (0x3 << 2))
+		CRYPTOPP_CONSTANT( ACE_FLAGS = (0x3 << 6))
+		CRYPTOPP_CONSTANT(ACE2_FLAGS = (0x3 << 8))
+		CRYPTOPP_CONSTANT( PHE_FLAGS = (0x3 << 10))
+		CRYPTOPP_CONSTANT( PMM_FLAGS = (0x3 << 12))
 
 		CpuId(0xC0000000, 0, cpuid2);
 		if (cpuid2[0] >= 0xC0000001)
@@ -397,6 +379,43 @@ extern bool CPU_ProbeAES();
 extern bool CPU_ProbeSHA1();
 extern bool CPU_ProbeSHA2();
 extern bool CPU_ProbePMULL();
+
+#ifndef HWCAP_ASIMD
+# define HWCAP_ASIMD (1 << 1)
+#endif
+#ifndef HWCAP_ARM_NEON
+# define HWCAP_ARM_NEON 4096
+#endif
+#ifndef HWCAP_CRC32
+# define HWCAP_CRC32 (1 << 7)
+#endif
+#ifndef HWCAP2_CRC32
+# define HWCAP2_CRC32 (1 << 4)
+#endif
+#ifndef HWCAP_PMULL
+# define HWCAP_PMULL (1 << 4)
+#endif
+#ifndef HWCAP2_PMULL
+# define HWCAP2_PMULL (1 << 1)
+#endif
+#ifndef HWCAP_AES
+# define HWCAP_AES (1 << 3)
+#endif
+#ifndef HWCAP2_AES
+# define HWCAP2_AES (1 << 0)
+#endif
+#ifndef HWCAP_SHA1
+# define HWCAP_SHA1 (1 << 5)
+#endif
+#ifndef HWCAP_SHA2
+# define HWCAP_SHA2 (1 << 6)
+#endif
+#ifndef HWCAP2_SHA1
+# define HWCAP2_SHA1 (1 << 2)
+#endif
+#ifndef HWCAP2_SHA2
+# define HWCAP2_SHA2 (1 << 3)
+#endif
 
 inline bool CPU_QueryNEON()
 {
@@ -586,28 +605,19 @@ void DetectArmFeatures()
 	g_hasSHA1 = CPU_QuerySHA1() || CPU_ProbeSHA1();
 	g_hasSHA2 = CPU_QuerySHA2() || CPU_ProbeSHA2();
 
+#if defined(__linux__)
+	g_cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+#endif
+
+	if (!g_cacheLineSize)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
+
 	g_ArmDetectionDone = true;
 }
 
 // *************************** PowerPC and PowerPC64 ***************************
 
 #elif (CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64)
-
-#if defined(__linux__)
-# include <sys/auxv.h>
-# ifndef PPC_FEATURE_HAS_ALTIVEC
-# define PPC_FEATURE_HAS_ALTIVEC  0x10000000
-# endif
-# ifndef PPC_FEATURE_ARCH_2_06
-# define PPC_FEATURE_ARCH_2_06    0x00000100
-# endif
-# ifndef PPC_FEATURE2_ARCH_2_07
-# define PPC_FEATURE2_ARCH_2_07   0x80000000
-# endif
-# ifndef PPC_FEATURE2_VEC_CRYPTO
-# define PPC_FEATURE2_VEC_CRYPTO  0x02000000
-# endif
-#endif
 
 bool CRYPTOPP_SECTION_INIT g_PowerpcDetectionDone = false;
 bool CRYPTOPP_SECTION_INIT g_hasAltivec = false, CRYPTOPP_SECTION_INIT g_hasPower8 = false;
@@ -619,6 +629,19 @@ extern bool CPU_ProbePower8();
 extern bool CPU_ProbeAES();
 extern bool CPU_ProbeSHA1();
 extern bool CPU_ProbeSHA2();
+
+#ifndef PPC_FEATURE_HAS_ALTIVEC
+# define PPC_FEATURE_HAS_ALTIVEC  0x10000000
+#endif
+#ifndef PPC_FEATURE_ARCH_2_06
+# define PPC_FEATURE_ARCH_2_06    0x00000100
+#endif
+#ifndef PPC_FEATURE2_ARCH_2_07
+# define PPC_FEATURE2_ARCH_2_07   0x80000000
+#endif
+#ifndef PPC_FEATURE2_VEC_CRYPTO
+# define PPC_FEATURE2_VEC_CRYPTO  0x02000000
+#endif
 
 inline bool CPU_QueryAltivec()
 {
@@ -700,10 +723,16 @@ void DetectPowerpcFeatures()
 	g_hasSHA1 = CPU_QuerySHA1() || CPU_ProbeSHA1();
 	g_hasSHA2 = CPU_QuerySHA2() || CPU_ProbeSHA2();
 
-#ifdef _AIX
+#if defined(_AIX)
 	// /usr/include/sys/systemcfg.h
 	g_cacheLineSize = getsystemcfg(SC_L1C_DLS);
+#elif defined(__linux__)
+	// GCC112 CentOS 7 returns 0?
+	g_cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 #endif
+
+	if (!g_cacheLineSize)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
 	g_PowerpcDetectionDone = true;
 }
