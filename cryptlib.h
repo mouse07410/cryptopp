@@ -871,17 +871,56 @@ public:
 
 	//! \brief Encrypt or decrypt the last block of data
 	//! \param outString the output byte buffer
+	//! \param outLength the size of the output byte buffer, in bytes
 	//! \param inString the input byte buffer
-	//! \param length the size of the input and output byte buffers, in bytes
-	//!  ProcessLastBlock is used when the last block of data is special.
-	//!   Currently the only use of this function is CBC-CTS mode.
-	virtual void ProcessLastBlock(byte *outString, const byte *inString, size_t length);
+	//! \param inLength the size of the input byte buffer, in bytes
+	//! \returns the number of bytes used in outString
+	//! \details ProcessLastBlock is used when the last block of data is special and requires handling
+	//!   by the cipher. The current implementation provides an output buffer with a size
+	//!   <tt>inLength+2*MandatoryBlockSize()</tt>. The return value allows the cipher to expand cipher text
+	//!   during encryption or shrink plain text during decryption.
+	//! \details This member function is used by CBC-CTS and OCB modes.
+	//! \sa IsLastBlockSpecial
+	virtual size_t ProcessLastBlock(byte *outString, size_t outLength, const byte *inString, size_t inLength);
 
 	//! \brief Provides the size of the last block
 	//! \returns the minimum size of the last block
 	//! \details MinLastBlockSize() returns the minimum size of the last block. 0 indicates the last
 	//!   block is not special.
 	virtual unsigned int MinLastBlockSize() const {return 0;}
+
+	//! \brief Determines if the last block receives special processing
+	//! \returns true if the last block reveives special processing, false otherwise.
+	//! \details Some authenticated encryption modes have needs that are not expressed well
+	//!   with MandatoryBlockSize() and MinLastBlockSize(). For example, AES/OCB uses
+	//!   16-byte blocks (MandatoryBlockSize = 16) and the last block requires special processing
+	//!   (MinLastBlockSize = 0). However, 0 is a valid last block size for OCB and the special
+	//!   processing is custom padding, and not standard PKCS padding. In response an
+	//!   unambiguous IsLastBlockSpecial() was added.
+	//!  \details When IsLastBlockSpecial() returns false nothing special happens. All the former
+	//!   rules and behaviors apply. This is the default behavior of IsLastBlockSpecial().
+	//!  \details When IsLastBlockSpecial() returns true four things happen. First, MinLastBlockSize = 0
+	//!   means 0 is a valid block size that should be processed. Second, standard block cipher padding is
+	//!   \a not \a applied. Third, the caller supplies an outString is larger than inString by
+	//!   <tt>2*MandatoryBlockSize()</tt>. That is, there's a reserve available when processing the last block.
+	//!   Fourth, the cipher is responsible for finalization like custom padding. The cipher will tell
+	//!   the library how many bytes were processed or used by returning the appropriate value from
+	//!   ProcessLastBlock().
+	//! \details The return value of ProcessLastBlock() indicates how many bytes were written
+	//!   to outString. A filter pipelining data will send <tt>outString</tt> and up to <tt>outLength</tt>
+	//!   to an <tt>AttachedTransformation()</tt> for additional processing. Below is an example of the code
+	//!   used in <tt>StreamTransformationFilter::LastPut</tt>.
+	//! <pre>  if (m_cipher.IsLastBlockSpecial())
+	//!   {
+	//!     size_t reserve = 2*m_cipher.MandatoryBlockSize();
+	//!     space = HelpCreatePutSpace(*AttachedTransformation(), DEFAULT_CHANNEL, length+reserve);
+	//!     length = m_cipher.ProcessLastBlock(space, length+reserve, inString, length);
+	//!     AttachedTransformation()->Put(space, length);
+	//!     return;
+	//!   }</pre>
+	//! \sa ProcessLastBlock
+	//! \since Crypto++ 6.0
+	virtual bool IsLastBlockSpecial() const {return false;}
 
 	//! \brief Encrypt or decrypt a string of bytes
 	//! \param inoutString the string to process
