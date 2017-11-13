@@ -42,14 +42,6 @@ CRYPTOPP_COMPILE_ASSERT(sizeof(word64) == 8);
 CRYPTOPP_COMPILE_ASSERT(sizeof(dword) == 2*sizeof(word));
 #endif
 
-class NullNameValuePairs : public NameValuePairs
-{
-public:
-	NullNameValuePairs() {}    //  Clang complains a default ctor must be avilable
-	bool GetVoidValue(const char *name, const std::type_info &valueType, void *pValue) const
-		{CRYPTOPP_UNUSED(name); CRYPTOPP_UNUSED(valueType); CRYPTOPP_UNUSED(pValue); return false;}
-};
-
 BufferedTransformation & TheBitBucket()
 {
 	static BitBucket bitBucket;
@@ -316,11 +308,6 @@ word32 RandomNumberGenerator::GenerateWord32(word32 min, word32 max)
 void RandomNumberGenerator::GenerateBlock(byte *output, size_t size)
 {
 	CRYPTOPP_UNUSED(output), CRYPTOPP_UNUSED(size);
-
-#if 0
-	// This breaks AutoSeededX917RNG<T> generators.
-	throw NotImplemented("RandomNumberGenerator: GenerateBlock not implemented");
-#endif
 
 	ArraySink s(output, size);
 	GenerateIntoBufferedTransformation(s, DEFAULT_CHANNEL, size);
@@ -943,30 +930,6 @@ int LibraryVersion(CRYPTOPP_NOINLINE_DOTDOTDOT)
 {
 	return CRYPTOPP_BUILD_VERSION;
 }
-
-// ***************** C++ Static Initialization ********************
-// We can't put these in the anonymous namespace. DEFAULT_CHANNEL,
-// AAD_CHANNEL and g_nullNameValuePairs must be defined in CryptoPP.
-
-#if HAVE_GCC_INIT_PRIORITY
-const std::string DEFAULT_CHANNEL __attribute__ ((init_priority (CRYPTOPP_INIT_PRIORITY + 10))) = "";
-const std::string AAD_CHANNEL __attribute__ ((init_priority (CRYPTOPP_INIT_PRIORITY + 11))) = "AAD";
-const NullNameValuePairs s_nullNameValuePairs __attribute__ ((init_priority (CRYPTOPP_INIT_PRIORITY + 12)));
-const NameValuePairs &g_nullNameValuePairs = dynamic_cast<const NameValuePairs&>(s_nullNameValuePairs);
-#elif HAVE_MSC_INIT_PRIORITY
-#pragma warning(disable: 4075)
-#pragma init_seg(".CRT$XCU-010")
-const std::string DEFAULT_CHANNEL("");
-const std::string AAD_CHANNEL("AAD");
-const NullNameValuePairs s_nullNameValuePairs;
-const NameValuePairs &g_nullNameValuePairs = dynamic_cast<const NameValuePairs&>(s_nullNameValuePairs);
-#pragma warning(default: 4075)
-#else
-const std::string DEFAULT_CHANNEL = "";
-const std::string AAD_CHANNEL = "AAD";
-const simple_ptr<NullNameValuePairs> s_pNullNameValuePairs(new NullNameValuePairs);
-const NameValuePairs &g_nullNameValuePairs = *s_pNullNameValuePairs.m_p;
-#endif
 
 NAMESPACE_END  // CryptoPP
 
