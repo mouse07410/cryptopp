@@ -655,7 +655,7 @@ fi
 
 # Valgrind testing of C++03, C++11, C++14 and C++17 binaries. Valgrind tests take a long time...
 if [[ (-z "$HAVE_VALGRIND") ]]; then
-	if [[ $(command -v CC 2>/dev/null) ]]; then
+	if [[ $(command -v valgrind 2>/dev/null) ]]; then
 		HAVE_VALGRIND=1
 	fi
 fi
@@ -2058,7 +2058,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		rm -f adhoc.cpp > /dev/null 2>&1
 
 		CXXFLAGS="$DEBUG_CXXFLAGS -march=i686 $OPT_PIC"
-		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+		CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2086,7 +2086,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		rm -f adhoc.cpp > /dev/null 2>&1
 
 		CXXFLAGS="$RELEASE_CXXFLAGS -march=i686 $OPT_PIC"
-		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+		CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2117,7 +2117,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		rm -f adhoc.cpp > /dev/null 2>&1
 
 		CXXFLAGS="$DEBUG_CXXFLAGS -march=x86-64 $OPT_PIC"
-		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+		CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2145,7 +2145,7 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		rm -f adhoc.cpp > /dev/null 2>&1
 
 		CXXFLAGS="$RELEASE_CXXFLAGS -march=x86-64 $OPT_PIC"
-		CXX="$CXX" "$MAKE" "${MAKEARGS[@]}" CXXFLAGS="$CXXFLAGS" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+		CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
