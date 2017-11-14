@@ -67,6 +67,9 @@ unset CRYPTOPP_DATA_DIR
 # Avoid Malloc and Scribble guards on OS X (they are tested below)
 unset MallocScribble MallocPreScribble MallocGuardEdges
 
+# List of tests performed
+TEST_LIST=()
+
 ############################################
 # Setup tools and platforms
 
@@ -107,6 +110,7 @@ IS_DRAGONFLY=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c dragonfly)
 IS_FREEBSD=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c freebsd)
 IS_NETBSD=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c netbsd)
 IS_SOLARIS=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c sunos)
+IS_BSD=$(echo -n "$THIS_SYSTEM" | "$GREP" -i -c bsd)
 
 IS_DEBIAN=$(lsb_release -a 2>&1 | "$GREP" -i -c debian)
 IS_FEDORA=$(lsb_release -a 2>&1 | "$GREP" -i -c fedora)
@@ -692,6 +696,14 @@ if [[ (-z "$HAVE_DISASS") ]]; then
 	fi
 fi
 
+# LD_LIBRARY_PATH and DYLD_LIBRARY_PATH
+if [[ "$IS_LINUX" -ne "0" || "$IS_SOLARIS" -ne "0" || "$IS_BSD" -ne "0" ]]; then
+    HAVE_LD_LIBRARY_PATH=1
+fi
+if [[ "$IS_DARWIN" -ne "0" ]]; then
+    HAVE_DYLD_LIBRARY_PATH=1
+fi
+
 # Fixup... GCC 4.8 ASAN produces false positives under ARM
 if [[ ( ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0") && "$GCC_48_COMPILER" -ne "0") ]]; then
 	HAVE_ASAN=0
@@ -964,6 +976,7 @@ if true; then
 	echo "Testing: No Posix NDEBUG or assert" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("No Posix NDEBUG or assert")
 	FAILED=0
 
 	# Filter out C++ and Doxygen comments.
@@ -1002,6 +1015,7 @@ if true; then
 	echo "Testing: C++ std::min and std::max" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("C++ std::min and std::max")
 	FAILED=0
 
 	# If this fires, then use the library's STDMIN(a,b) or (std::min)(a, b);
@@ -1036,6 +1050,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: X86 rotate immediate code generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("X86 rotate immediate code generation")
 
 		OBJFILE=sha.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1083,6 +1099,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "Testing: X86 CRC32 code generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("X86 CRC32 code generation")
+
 		OBJFILE=crc-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1120,6 +1138,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: X86 AES-NI code generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("X86 AES-NI code generation")
 
 		OBJFILE=rijndael-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1183,6 +1203,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "Testing: X86 carryless multiply code generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("X86 carryless multiply code generation")
+
 		OBJFILE=gcm-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1225,6 +1247,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "Testing: X86 RDRAND and RDSEED code generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("X86 RDRAND and RDSEED code generation")
+
 		OBJFILE=rdrand.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1266,6 +1290,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_X86" -ne "0" || "$IS_X64" -ne "0")) ]]; t
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: X86 SHA code generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("X86 SHA code generation")
 
 		OBJFILE=sha-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1335,6 +1361,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: ARM NEON code generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("ARM NEON code generation")
 
 		OBJFILE=aria-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1442,6 +1470,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		echo "Testing: ARM CRC32 code generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("ARM CRC32 code generation")
+
 		OBJFILE=crc-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1492,6 +1522,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		echo "Testing: ARM carryless multiply code generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("ARM carryless multiply code generation")
+
 		OBJFILE=gcm-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1529,6 +1561,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: ARM AES generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("ARM AES generation")
 
 		OBJFILE=rijndael-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1579,6 +1613,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_ARM32" -ne "0" || "$IS_ARM64" -ne "0")) ]
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: ARM SHA generation" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("ARM SHA generation")
 
 		OBJFILE=sha-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1682,6 +1718,8 @@ if [[ ("$HAVE_DISASS" -ne "0" && ("$IS_PPC32" -ne "0" || "$IS_PPC64" -ne "0")) ]
 		echo "Testing: Power8 AES generation" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Power8 AES generation")
+
 		OBJFILE=rijndael-simd.o; rm -f "$OBJFILE" 2>/dev/null
 		CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS $PPC_AES_FLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
@@ -1729,6 +1767,8 @@ if true; then
 	echo "Testing: Debug, default CXXFLAGS" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, default CXXFLAGS")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -1755,6 +1795,8 @@ if true; then
 	echo "Testing: Release, default CXXFLAGS" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, default CXXFLAGS")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -1777,6 +1819,142 @@ if true; then
 fi
 
 ############################################
+# Shared Objects
+if [[ "$HAVE_LD_LIBRARY_PATH" -ne "0" ]]; then
+	############################################
+	# Debug build
+	echo
+	echo "************************************" | tee -a "$TEST_RESULTS"
+	echo "Testing: Debug, shared object" | tee -a "$TEST_RESULTS"
+	echo
+
+	TEST_LIST+=("Debug, shared object")
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	# Create a new makefile based on the old one
+	"$SED" -e 's|\./libcryptopp.a|\./libcryptopp.so|g' -e 's|cryptest.exe: libcryptopp.a|cryptest.exe: libcryptopp.so|g' GNUmakefile > GNUmakefile.shared
+
+	CXXFLAGS="$DEBUG_CXXFLAGS"
+	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+	else
+		LD_LIBRARY_PATH="." ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+		fi
+		LD_LIBRARY_PATH="." ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+		fi
+	fi
+
+	############################################
+	# Release build
+	echo
+	echo "************************************" | tee -a "$TEST_RESULTS"
+	echo "Testing: Release, shared object" | tee -a "$TEST_RESULTS"
+	echo
+
+	TEST_LIST+=("Release, shared object")
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	CXXFLAGS="$RELEASE_CXXFLAGS"
+	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+	else
+		LD_LIBRARY_PATH="." ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+		fi
+		LD_LIBRARY_PATH="." ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+		fi
+		echo
+	fi
+
+	rm -f GNUmakefile.shared > /dev/null 2>&1
+fi
+
+############################################
+# Dynamic Objects on Darwin
+if [[ "$HAVE_DYLD_LIBRARY_PATH" -ne "0" ]]; then
+	############################################
+	# Debug build
+	echo
+	echo "************************************" | tee -a "$TEST_RESULTS"
+	echo "Testing: Debug, dynamic library" | tee -a "$TEST_RESULTS"
+	echo
+
+	TEST_LIST+=("Debug, dynamic library")
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	# Create a new makefile based on the old one
+	"$SED" -e 's|\./libcryptopp.a|\./libcryptopp.dylib|g' -e 's|cryptest.exe: libcryptopp.a|cryptest.exe: libcryptopp.dylib|g' GNUmakefile > GNUmakefile.shared
+
+	CXXFLAGS="$DEBUG_CXXFLAGS"
+	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+	else
+		DYLD_LIBRARY_PATH="." ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+		fi
+		DYLD_LIBRARY_PATH="." ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+		fi
+	fi
+
+	############################################
+	# Release build
+	echo
+	echo "************************************" | tee -a "$TEST_RESULTS"
+	echo "Testing: Release, dynamic library" | tee -a "$TEST_RESULTS"
+	echo
+
+	TEST_LIST+=("Release, dynamic library")
+
+	"$MAKE" clean > /dev/null 2>&1
+	rm -f adhoc.cpp > /dev/null 2>&1
+
+	CXXFLAGS="$RELEASE_CXXFLAGS"
+	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
+	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+	else
+		DYLD_LIBRARY_PATH="." ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+		fi
+		DYLD_LIBRARY_PATH="." ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
+			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+		fi
+		echo
+	fi
+
+	rm -f GNUmakefile.shared > /dev/null 2>&1
+fi
+
+############################################
 # Debian specific.
 if [[ ("$IS_DEBIAN" -ne "0" || "$IS_UBUNTU" -ne "0") ]]; then
 
@@ -1792,6 +1970,8 @@ if [[ ("$IS_DEBIAN" -ne "0" || "$IS_UBUNTU" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Debian standard build" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Debian standard build")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -1834,6 +2014,8 @@ if [[ ("$IS_FEDORA" -ne "0") ]]; then
 	echo "Testing: Fedora standard build" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Fedora standard build")
+
 	if [[ ! -f /usr/lib/rpm/redhat/redhat-hardened-cc1 ]]; then
 		echo "ERROR: please install redhat-rpm-config package"
 	else
@@ -1870,6 +2052,8 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		echo "Testing: Debug, i686 minimum arch CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Debug, i686 minimum arch CXXFLAGS")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -1895,6 +2079,8 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Release, i686 minimum arch CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Release, i686 minimum arch CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -1925,6 +2111,8 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		echo "Testing: Debug, x86_64 minimum arch CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Debug, x86_64 minimum arch CXXFLAGS")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -1950,6 +2138,8 @@ if [[ ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -ne "0" || "$INTEL_COMPILER"
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Release, x86_64 minimum arch CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Release, x86_64 minimum arch CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -1985,6 +2175,8 @@ if [[ ( ("$IS_X86" -ne "0" || "$IS_X32" -ne "0" || "$IS_X64" -ne "0") && "$HAVE_
 		echo "Testing: Debug, mismatched arch capabilities" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Debug, mismatched arch capabilities")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2014,6 +2206,8 @@ if [[ ( ("$IS_X86" -ne "0" || "$IS_X32" -ne "0" || "$IS_X64" -ne "0") && "$HAVE_
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Release, mismatched arch capabilities" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Release, mismatched arch capabilities")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -2048,6 +2242,8 @@ if [[ ( ("$IS_X86" -ne "0" || "$IS_X32" -ne "0" || "$IS_X64" -ne "0") && "$HAVE_
 		echo "Testing: Debug, mismatched arch capabilities" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Debug, mismatched arch capabilities")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2077,6 +2273,8 @@ if [[ ( ("$IS_X86" -ne "0" || "$IS_X32" -ne "0" || "$IS_X64" -ne "0") && "$HAVE_
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Release, mismatched arch capabilities" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Release, mismatched arch capabilities")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -2114,6 +2312,8 @@ if true; then
 	echo "Testing: Debug, DISABLE_ASM" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, DISABLE_ASM")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2139,6 +2339,8 @@ if true; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, DISABLE_ASM" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, DISABLE_ASM")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2171,6 +2373,8 @@ if true; then
 	echo "Testing: Debug, NO_CPU_FEATURE_PROBES" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, NO_CPU_FEATURE_PROBES")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2196,6 +2400,8 @@ if true; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, NO_CPU_FEATURE_PROBES" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, NO_CPU_FEATURE_PROBES")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2228,6 +2434,8 @@ if [[ "$HAVE_CXX11" -ne "0" ]] || [[ "$HAVE_GNU11" -ne "0" ]]; then
 	echo "Testing: Debug, CRYPTOPP_NO_CXX11" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, CRYPTOPP_NO_CXX11")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2253,6 +2461,8 @@ if [[ "$HAVE_CXX11" -ne "0" ]] || [[ "$HAVE_GNU11" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, CRYPTOPP_NO_CXX11" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, CRYPTOPP_NO_CXX11")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2285,6 +2495,8 @@ if [[ "$HAVE_CXX03" -ne "0" ]]; then
 	echo "Testing: Debug, c++03" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++03")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2310,6 +2522,8 @@ if [[ "$HAVE_CXX03" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++03" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2342,6 +2556,8 @@ if [[ "$HAVE_GNU03" -ne "0" ]]; then
 	echo "Testing: Debug, gnu++03" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, gnu++03")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2367,6 +2583,8 @@ if [[ "$HAVE_GNU03" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, gnu++03" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, gnu++03")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2399,6 +2617,8 @@ if [[ "$HAVE_CXX11" -ne "0" ]]; then
 	echo "Testing: Debug, c++11" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++11")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2424,6 +2644,8 @@ if [[ "$HAVE_CXX11" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++11" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2456,6 +2678,8 @@ if [[ "$HAVE_GNU11" -ne "0" ]]; then
 	echo "Testing: Debug, gnu++11" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, gnu++11")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2481,6 +2705,8 @@ if [[ "$HAVE_GNU11" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, gnu++11" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, gnu++11")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2513,6 +2739,8 @@ if [[ "$HAVE_CXX14" -ne "0" ]]; then
 	echo "Testing: Debug, c++14" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++14")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2538,6 +2766,8 @@ if [[ "$HAVE_CXX14" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++14" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++14")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2570,6 +2800,8 @@ if [[ "$HAVE_GNU14" -ne "0" ]]; then
 	echo "Testing: Debug, gnu++14" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, gnu++14")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2595,6 +2827,8 @@ if [[ "$HAVE_GNU14" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, gnu++14" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, gnu++14")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2627,6 +2861,8 @@ if [[ "$HAVE_CXX17" -ne "0" ]]; then
 	echo "Testing: Debug, c++17" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++17")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2652,6 +2888,8 @@ if [[ "$HAVE_CXX17" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++17" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++17")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2684,6 +2922,8 @@ if [[ "$HAVE_GNU17" -ne "0" ]]; then
 	echo "Testing: Debug, gnu++17" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, gnu++17")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2709,6 +2949,8 @@ if [[ "$HAVE_GNU17" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, gnu++17" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, gnu++17")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2741,6 +2983,8 @@ if [[ "$HAVE_X32" -ne "0" ]]; then
 	echo "Testing: Debug, X32" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, X32")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2766,6 +3010,8 @@ if [[ "$HAVE_X32" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, X32" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, X32")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2798,6 +3044,8 @@ if true; then
 	echo "Testing: Debug, INIT_PRIORITY (0)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, INIT_PRIORITY (0)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2823,6 +3071,8 @@ if true; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, INIT_PRIORITY (0)" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, INIT_PRIORITY (0)")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2855,6 +3105,8 @@ if true; then
 	echo "Testing: Debug, NO_OS_DEPENDENCE" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, NO_OS_DEPENDENCE")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2880,6 +3132,8 @@ if true; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, NO_OS_DEPENDENCE" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, NO_OS_DEPENDENCE")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2912,6 +3166,8 @@ if [[ "$HAVE_LDGOLD" -ne "0" ]]; then
 	echo "Testing: Debug, ld-gold linker" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, ld-gold linker")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2937,6 +3193,8 @@ if [[ "$HAVE_LDGOLD" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, ld-gold linker" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, ld-gold linker")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -2969,6 +3227,8 @@ if [[ "$HAVE_O3" -ne "0" ]]; then
 	echo "Testing: Debug, -O3 optimizations" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, -O3 optimizations")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -2994,6 +3254,8 @@ if [[ "$HAVE_O3" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, -O3 optimizations" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, -O3 optimizations")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3026,6 +3288,8 @@ if [[ "$HAVE_O5" -ne "0" ]]; then
 	echo "Testing: Debug, -O5 optimizations" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, -O5 optimizations")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3051,6 +3315,8 @@ if [[ "$HAVE_O5" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, -O5 optimizations" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, -O5 optimizations")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3083,6 +3349,8 @@ if [[ "$HAVE_OS" -ne "0" ]]; then
 	echo "Testing: Debug, -Os optimizations" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, -Os optimizations")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3108,6 +3376,8 @@ if [[ "$HAVE_OS" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, -Os optimizations" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, -Os optimizations")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3140,6 +3410,8 @@ if [[ "$HAVE_OFAST" -ne "0" ]]; then
 	echo "Testing: Debug, -Ofast optimizations" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, -Ofast optimizations")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3165,6 +3437,8 @@ if [[ "$HAVE_OFAST" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, -Ofast optimizations" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, -Ofast optimizations")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3197,6 +3471,8 @@ if [[ ("$GNU_LINKER" -eq "1") ]]; then
 	echo "Testing: Debug, dead code strip" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, dead code strip")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3223,6 +3499,8 @@ if [[ ("$GNU_LINKER" -eq "1") ]]; then
 	echo "Testing: Release, dead code strip" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, dead code strip")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3246,10 +3524,15 @@ fi
 ############################################
 # OpenMP
 if [[ ("$HAVE_OMP" -ne "0") ]]; then
+
+	############################################
+	# Debug build
 	echo
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Debug, OpenMP" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Debug, OpenMP")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3270,10 +3553,14 @@ if [[ ("$HAVE_OMP" -ne "0") ]]; then
 		fi
 	fi
 
+	############################################
+	# Release build
 	echo
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, OpenMP" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, OpenMP")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3306,6 +3593,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "Testing: Debug, c++03, UBsan" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++03, UBsan")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3331,6 +3620,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++03, UBsan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03, UBsan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3362,6 +3653,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Debug, c++03, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Debug, c++03, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3400,6 +3693,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++03, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3443,6 +3738,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "Testing: Debug, c++03, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++03, Bounds Sanitizer")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3480,6 +3777,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++03, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03, Bounds Sanitizer")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3522,6 +3821,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "Testing: Debug, c++03, CET" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++03, CET")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3547,6 +3848,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++03, CET" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03, CET")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3579,6 +3882,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "Testing: Debug, c++11, UBsan" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++11, UBsan")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3604,6 +3909,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++11, UBsan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11, UBsan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3635,6 +3942,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Debug, c++11, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Debug, c++11, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3673,6 +3982,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++11, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3716,6 +4027,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "Testing: Debug, c++11, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++11, Bounds Sanitizer")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3753,6 +4066,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++11, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11, Bounds Sanitizer")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3796,6 +4111,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "Testing: Debug, c++11, CET" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++11, CET")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3821,6 +4138,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++11, CET" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11, CET")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3850,6 +4169,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "Testing: Release, c++14, UBsan" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, c++14, UBsan")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3877,6 +4198,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++14, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++14, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3917,6 +4240,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "Testing: Release, c++14, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, c++14, Bounds Sanitizer")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -3944,6 +4269,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++14, CET" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++14, CET")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -3973,6 +4300,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && "$HAVE_UBSAN" -ne "0") ]]; then
 	echo "Testing: Release, c++17, UBsan" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, c++17, UBsan")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4000,6 +4329,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && "$HAVE_ASAN" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++17, Asan" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++17, Asan")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4040,6 +4371,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && "$HAVE_BSAN" -ne "0") ]]; then
 	echo "Testing: Release, c++17, Bounds Sanitizer" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Release, c++17, Bounds Sanitizer")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4067,6 +4400,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && "$HAVE_CET" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Release, c++17, CET" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++17, CET")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4103,6 +4438,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Sun Studio 12.2, debug, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Sun Studio 12.2, debug, platform CXXFLAGS")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4128,6 +4465,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Sun Studio 12.2, release, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Testing: Sun Studio 12.2, release, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4160,6 +4499,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Sun Studio 12.3, debug, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Sun Studio 12.3, debug, platform CXXFLAGS")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4185,6 +4526,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Sun Studio 12.3, release, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Sun Studio 12.3, release, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4217,7 +4560,7 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Sun Studio 12.4, debug, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
-		# No workarounds... SunCC 5.13 does AES, PCLMUL, RDRAND, AVX, BMI, ADX...
+		TEST_LIST+=("Sun Studio 12.4, debug, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4244,6 +4587,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Sun Studio 12.4, release, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Sun Studio 12.4, release, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4276,7 +4621,7 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Sun Studio 12.5, debug, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
-		# No workarounds... SunCC 5.14 does AES, PCLMUL, RDRAND, AVX, BMI, ADX...
+		TEST_LIST+=("Sun Studio 12.5, debug, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4303,6 +4648,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Sun Studio 12.5, release, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Sun Studio 12.5, release, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4335,7 +4682,7 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Sun Studio 12.6, debug, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
-		# No workarounds... SunCC 5.15 does AES, PCLMUL, RDRAND, AVX, BMI, ADX...
+		TEST_LIST+=("Sun Studio 12.6, debug, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4362,6 +4709,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Sun Studio 12.6, release, platform CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Sun Studio 12.6, release, platform CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4394,6 +4743,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "Testing: Solaris GCC, debug, default CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Solaris GCC, debug, default CXXFLAGS")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4419,6 +4770,8 @@ if [[ "$IS_SOLARIS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Soalris GCC, release, default CXXFLAGS" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Soalris GCC, release, default CXXFLAGS")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -4452,6 +4805,8 @@ if [[ ("$IS_DARWIN" -ne "0") && ("$HAVE_CXX03" -ne "0" && "$CLANG_COMPILER" -ne 
 	echo "Testing: Darwin, c++03, libc++ (LLVM)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++03, libc++ (LLVM)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4479,6 +4834,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX03" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, c++03, libstdc++ (GNU)" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, c++03, libstdc++ (GNU)")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4508,6 +4865,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX11" -ne "0" && "$CLANG_COMPILER" -ne "0
 	echo "Testing: Darwin, c++11, libc++ (LLVM)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++11, libc++ (LLVM)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4535,6 +4894,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX11" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, c++11, libstdc++ (GNU)" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, c++11, libstdc++ (GNU)")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4564,6 +4925,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX14" -ne "0" && "$CLANG_COMPILER" -ne "0
 	echo "Testing: Darwin, c++14, libc++ (LLVM)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++14, libc++ (LLVM)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4591,6 +4954,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX14" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, c++14, libstdc++ (GNU)" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, c++14, libstdc++ (GNU)")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4620,6 +4985,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX17" -ne "0" && "$CLANG_COMPILER" -ne "0
 	echo "Testing: Darwin, c++17, libc++ (LLVM)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++17, libc++ (LLVM)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4648,6 +5015,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX17" -ne "0") ]]; then
 	echo "Testing: Darwin, c++17, libstdc++ (GNU)" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++17, libstdc++ (GNU)")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4675,6 +5044,8 @@ if [[ "$IS_DARWIN" -ne "0" && "$HAVE_INTEL_MULTIARCH" -ne "0" && "$HAVE_CXX03" -
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, Intel multiarch, c++03" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, Intel multiarch, c++03")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4715,6 +5086,8 @@ if [[ "$IS_DARWIN" -ne "0" && "$HAVE_INTEL_MULTIARCH" -ne "0" && "$HAVE_CXX11" -
 	echo "Testing: Darwin, Intel multiarch, c++11" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, Intel multiarch, c++11")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4753,6 +5126,8 @@ if [[ "$IS_DARWIN" -ne "0" && "$HAVE_INTEL_MULTIARCH" -ne "0" && "$HAVE_CXX14" -
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, Intel multiarch, c++14" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, Intel multiarch, c++14")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4793,6 +5168,8 @@ if [[ "$IS_DARWIN" -ne "0" && "$HAVE_INTEL_MULTIARCH" -ne "0" && "$HAVE_CXX17" -
 	echo "Testing: Darwin, Intel multiarch, c++17" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, Intel multiarch, c++17")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4831,6 +5208,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_PPC_MULTIARCH" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, PowerPC multiarch" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, PowerPC multiarch")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4871,6 +5250,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX03" -ne "0") ]]; then
 	echo "Testing: Darwin, c++03, Malloc Guards" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++03, Malloc Guards")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4904,6 +5285,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX11" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, c++11, Malloc Guards" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, c++11, Malloc Guards")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -4939,6 +5322,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX14" -ne "0") ]]; then
 	echo "Testing: Darwin, c++14, Malloc Guards" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Darwin, c++14, Malloc Guards")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -4972,6 +5357,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$HAVE_CXX17" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Darwin, c++17, Malloc Guards" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Darwin, c++17, Malloc Guards")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5011,7 +5398,10 @@ if [[ "$WANT_BENCHMARKS" -ne "0" ]]; then
 		echo "Testing: Benchmarks, c++03" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Testing: Benchmarks, c++03")
+
 		"$MAKE" clean > /dev/null 2>&1
+		rm -f adhoc.cpp > /dev/null 2>&1
 
 		CXXFLAGS="$RELEASE_CXXFLAGS -std=c++03 $USER_CXXFLAGS"
 		CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
@@ -5034,6 +5424,8 @@ if [[ "$WANT_BENCHMARKS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Benchmarks, c++11" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Testing: Benchmarks, c++11")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -5059,6 +5451,8 @@ if [[ "$WANT_BENCHMARKS" -ne "0" ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Benchmarks, c++14" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Benchmarks, c++14")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -5089,6 +5483,8 @@ if [[ "$IS_MINGW" -ne "0" ]]; then
 	echo "Testing: MinGW, PREFER_BERKELEY_STYLE_SOCKETS" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("MinGW, PREFER_BERKELEY_STYLE_SOCKETS")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5116,6 +5512,8 @@ if [[ "$IS_MINGW" -ne "0" ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: MinGW, PREFER_WINDOWS_STYLE_SOCKETS" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("MinGW, PREFER_WINDOWS_STYLE_SOCKETS")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5145,6 +5543,8 @@ if [[ "$HAVE_CXX03" -ne "0" && "$HAVE_VALGRIND" -ne "0" ]]; then
 	echo "Testing: Valgrind, c++03" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Valgrind, c++03")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5166,6 +5566,8 @@ if [[ ("$HAVE_VALGRIND" -ne "0" && "$HAVE_CXX11" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Valgrind, c++11" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Valgrind, c++11")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5189,6 +5591,8 @@ if [[ ("$HAVE_VALGRIND" -ne "0" && "$HAVE_CXX14" -ne "0") ]]; then
 	echo "Testing: Valgrind, c++14" | tee -a "$TEST_RESULTS"
 	echo
 
+	TEST_LIST+=("Valgrind, c++14")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5210,6 +5614,8 @@ if [[ ("$HAVE_VALGRIND" -ne "0" && "$HAVE_CXX17" -ne "0") ]]; then
 	echo "************************************" | tee -a "$TEST_RESULTS"
 	echo "Testing: Valgrind, c++17" | tee -a "$TEST_RESULTS"
 	echo
+
+	TEST_LIST+=("Valgrind, c++17")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5236,6 +5642,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "Testing: Debug, c++03, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++03, elevated warnings")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5252,6 +5660,8 @@ if [[ ("$HAVE_CXX03" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "************************************" | tee -a "$WARN_RESULTS"
 	echo "Testing: Release, c++03, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++03, elevated warnings")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5274,6 +5684,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "Testing: Debug, c++11, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++11, elevated warnings")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5290,6 +5702,8 @@ if [[ ("$HAVE_CXX11" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "************************************" | tee -a "$WARN_RESULTS"
 	echo "Testing: Release, c++11, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++11, elevated warnings")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5312,6 +5726,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "Testing: Debug, c++14, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++14, elevated warnings")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5328,6 +5744,8 @@ if [[ ("$HAVE_CXX14" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "************************************" | tee -a "$WARN_RESULTS"
 	echo "Testing: Release, c++14, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++14, elevated warnings")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5350,6 +5768,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "Testing: Debug, c++17, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
 
+	TEST_LIST+=("Debug, c++17, elevated warnings")
+
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5366,6 +5786,8 @@ if [[ ("$HAVE_CXX17" -ne "0" && ("$GCC_COMPILER" -ne "0" || "$CLANG_COMPILER" -n
 	echo "************************************" | tee -a "$WARN_RESULTS"
 	echo "Testing: Release, c++17, elevated warnings" | tee -a "$WARN_RESULTS"
 	echo
+
+	TEST_LIST+=("Release, c++17, elevated warnings")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5393,6 +5815,8 @@ if [[ ("$CLANG_COMPILER" -eq "0") ]]; then
 		echo "************************************" | tee -a "$TEST_RESULTS"
 		echo "Testing: Clang compiler" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Clang compiler")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -5429,6 +5853,8 @@ if [[ ("$GCC_COMPILER" -eq "0") ]]; then
 		echo "Testing: GCC compiler" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("GCC compiler")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5461,11 +5887,13 @@ if [[ ("$INTEL_COMPILER" -eq "0") ]]; then
 	if [[ "$?" -eq "0" ]]; then
 
 		############################################
-		# INTEL build
+		# Intel build
 		echo
 		echo "************************************" | tee -a "$TEST_RESULTS"
-		echo "Testing: INTEL compiler" | tee -a "$TEST_RESULTS"
+		echo "Testing: Intel compiler" | tee -a "$TEST_RESULTS"
 		echo
+
+		TEST_LIST+=("Intel compiler")
 
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
@@ -5503,6 +5931,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "Testing: MacPorts 4.x GCC compiler" | tee -a "$TEST_RESULTS"
 			echo
 
+			TEST_LIST+=("MacPorts 4.x GCC compiler")
+
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5535,6 +5965,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "************************************" | tee -a "$TEST_RESULTS"
 			echo "Testing: MacPorts 5.x GCC compiler" | tee -a "$TEST_RESULTS"
 			echo
+
+			TEST_LIST+=("MacPorts 5.x GCC compiler")
 
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
@@ -5569,6 +6001,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "Testing: MacPorts 6.x GCC compiler" | tee -a "$TEST_RESULTS"
 			echo
 
+			TEST_LIST+=("MacPorts 6.x GCC compiler")
+
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5601,6 +6035,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "************************************" | tee -a "$TEST_RESULTS"
 			echo "Testing: MacPorts 7.x GCC compiler" | tee -a "$TEST_RESULTS"
 			echo
+
+			TEST_LIST+=("MacPorts 7.x GCC compiler")
 
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
@@ -5635,6 +6071,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "Testing: MacPorts 3.7 Clang compiler" | tee -a "$TEST_RESULTS"
 			echo
 
+			TEST_LIST+=("MacPorts 3.7 Clang compiler")
+
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5666,6 +6104,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "************************************" | tee -a "$TEST_RESULTS"
 			echo "Testing: MacPorts 3.8 Clang compiler" | tee -a "$TEST_RESULTS"
 			echo
+
+			TEST_LIST+=("MacPorts 3.8 Clang compiler")
 
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
@@ -5699,6 +6139,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "Testing: MacPorts 3.9 Clang compiler" | tee -a "$TEST_RESULTS"
 			echo
 
+			TEST_LIST+=("MacPorts 3.9 Clang compiler")
+
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5730,6 +6172,8 @@ if [[ ("$IS_DARWIN" -ne "0" && "$MACPORTS_COMPILER" -eq "0") ]]; then
 			echo "************************************" | tee -a "$TEST_RESULTS"
 			echo "Testing: MacPorts 4.x Clang compiler" | tee -a "$TEST_RESULTS"
 			echo
+
+			TEST_LIST+=("MacPorts 4.x Clang compiler")
 
 			"$MAKE" clean > /dev/null 2>&1
 			rm -f adhoc.cpp > /dev/null 2>&1
@@ -5766,6 +6210,8 @@ if [[ "$IS_DARWIN" -ne "0" ]]; then
 		echo "Testing: Xcode Clang compiler" | tee -a "$TEST_RESULTS"
 		echo
 
+		TEST_LIST+=("Xcode Clang compiler")
+
 		"$MAKE" clean > /dev/null 2>&1
 		rm -f adhoc.cpp > /dev/null 2>&1
 
@@ -5793,8 +6239,10 @@ if [[ ("$IS_CYGWIN" -eq "0") && ("$IS_MINGW" -eq "0") ]]; then
 
 	echo
 	echo "************************************" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
-	echo "Testing: Test install with data directory" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
+	echo "Testing: Install with data directory" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 	echo
+
+	TEST_LIST+=("Install with data directory")
 
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
@@ -5861,8 +6309,10 @@ if [[ ("$IS_CYGWIN" -eq "0" && "$IS_MINGW" -eq "0") ]]; then
 
 	echo
 	echo "************************************" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
-	echo "Testing: Test remove with data directory" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
+	echo "Testing: Remove with data directory" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 	echo
+
+	TEST_LIST+=("Remove with data directory")
 
 	"$MAKE" "${MAKEARGS[@]}" remove PREFIX="$INSTALL_DIR" 2>&1 | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
@@ -5916,15 +6366,15 @@ echo "************************************************" | tee -a "$TEST_RESULTS"
 echo "************************************************" | tee -a "$TEST_RESULTS"
 echo | tee -a "$TEST_RESULTS"
 
-COUNT=$("$GREP" 'Testing:' "$TEST_RESULTS" "$WARN_RESULTS" | wc -l | "$AWK" '{print $1}')
+COUNT="${#TEST_LIST[@]}"
 if (( "$COUNT" == "0" )); then
 	echo "No configurations tested" | tee -a "$TEST_RESULTS"
 else
 	echo "$COUNT configurations tested" | tee -a "$TEST_RESULTS"
-	ESCAPED=$("$GREP" 'Testing: ' "$TEST_RESULTS" | "$AWK" -F ": " '{print " - " $2 "$"}')
-	echo " $ESCAPED" | tr $ '\n' | tee -a "$TEST_RESULTS"
-	ESCAPED=$("$GREP" 'Testing: ' "$WARN_RESULTS" | "$AWK" -F ": " '{print " - " $2 "$"}')
-	echo " $ESCAPED" | tr '$' '\n' | tee -a "$TEST_RESULTS"
+	for TEST in "${TEST_LIST[@]}"
+	do
+	  echo "  - $TEST" | tee -a "$TEST_RESULTS"
+	done
 fi
 echo | tee -a "$TEST_RESULTS"
 
