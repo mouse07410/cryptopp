@@ -98,7 +98,7 @@ ifeq ($(IS_AIX),1)
   endif
 endif
 
-# Newlib needs _XOPEN_SOURCE=700 for signals
+# Newlib needs _XOPEN_SOURCE=600 for signals
 HAS_NEWLIB := $(shell $(CXX) -x c++ $(CXXFLAGS) -dM -E adhoc.cpp.proto 2>&1 | $(GREP) -i -c "__NEWLIB__")
 
 ###########################################################
@@ -226,9 +226,10 @@ endif  # -DCRYPTOPP_DISABLE_SSSE3
 endif  # -DCRYPTOPP_DISABLE_ASM
 endif  # CXXFLAGS
 
+# SSE2 is a core feature of x86_64
 ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   ifeq ($(IS_X86),1)
-    CPU_FLAG = -msse2
+    SSE_FLAG = -msse2
   endif
 endif
 ifeq ($(findstring -DCRYPTOPP_DISABLE_SSSE3,$(CXXFLAGS)),)
@@ -238,9 +239,12 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_SSSE3,$(CXXFLAGS)),)
     SSSE3_FLAG = -mssse3
   endif
 ifeq ($(findstring -DCRYPTOPP_DISABLE_SSE4,$(CXXFLAGS)),)
+  HAVE_SSE4 = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -msse4.1 -dM -E - 2>/dev/null | $(GREP) -i -c __SSE4_1__)
+  ifeq ($(HAVE_SSE4),1)
+    BLAKE2_FLAG = -msse4.1
+  endif
   HAVE_SSE4 = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -msse4.2 -dM -E - 2>/dev/null | $(GREP) -i -c __SSE4_2__)
   ifeq ($(HAVE_SSE4),1)
-    BLAKE2_FLAG = -msse4.2
     CRC_FLAG = -msse4.2
   endif
 ifeq ($(findstring -DCRYPTOPP_DISABLE_AESNI,$(CXXFLAGS)),)
@@ -264,25 +268,29 @@ endif  # -DCRYPTOPP_DISABLE_SSSE3
 
 # Begin SunCC
 ifeq ($(SUN_COMPILER),1)
-  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=ssse3 -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal value ignored")
+  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=ssse3 -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal")
   ifeq ($(COUNT),0)
     SSSE3_FLAG = -xarch=ssse3 -D__SSSE3__=1
     ARIA_FLAG = -xarch=ssse3 -D__SSSE3__=1
     LDFLAGS += -xarch=ssse3
   endif
-  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sse4_2 -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal value ignored")
+  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sse4_1 -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal")
   ifeq ($(COUNT),0)
-    BLAKE2_FLAG = -xarch=sse4_2 -D__SSE4_2__=1
+    BLAKE2_FLAG = -xarch=sse4_1 -D__SSE4_1__=1
+    LDFLAGS += -xarch=sse4_1
+  endif
+  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sse4_2 -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal")
+  ifeq ($(COUNT),0)
     CRC_FLAG = -xarch=sse4_2 -D__SSE4_2__=1
     LDFLAGS += -xarch=sse4_2
   endif
-  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=aes -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal value ignored")
+  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=aes -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal")
   ifeq ($(COUNT),0)
     GCM_FLAG = -xarch=aes -D__PCLMUL__=1
     AES_FLAG = -xarch=aes -D__AES__=1
     LDFLAGS += -xarch=aes
   endif
-  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sha -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal value ignored")
+  COUNT := $(shell $(CXX) $(CXXFLAGS) -E -xarch=sha -xdumpmacros /dev/null 2>&1 | $(GREP) -i -c "illegal")
   ifeq ($(COUNT),0)
     SHA_FLAG = -xarch=sha -D__SHA__=1
     LDFLAGS += -xarch=sha
@@ -417,17 +425,6 @@ ifeq ($(XLC_COMPILER),1)
   else
   ifeq ($(IS_PPC32)$(XLC_COMPILER)$(HAVE_BITS),110)
     CXXFLAGS += -q32
-  endif
-  endif
-  ifeq ($(findstring -q64,$(CXXFLAGS)),-q64)
-    ifeq ($(findstring -X64,$(ARFLAGS)),)
-      ARFLAGS := -r -X64
-    endif
-  else
-  ifeq ($(findstring -q32,$(CXXFLAGS)),-q32)
-    ifeq ($(findstring -X32,$(ARFLAGS)),)
-      ARFLAGS := -r -X32
-    endif
   endif
   endif
 endif
@@ -1008,13 +1005,13 @@ endif
 aria-simd.o : aria-simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(ARIA_FLAG) -c) $<
 
-# SSE4.2 or ARMv8a available
+# SSE4.1 or ARMv8a available
 blake2-simd.o : blake2-simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(BLAKE2_FLAG) -c) $<
 
 # SSE2 on i586
-cpu.o : cpu.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(CPU_FLAG) -c) $<
+sse-simd.o : sse-simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SSE_FLAG) -c) $<
 
 # SSE4.2 or ARMv8a available
 crc-simd.o : crc-simd.cpp

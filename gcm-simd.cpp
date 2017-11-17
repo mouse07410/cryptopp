@@ -30,6 +30,10 @@
 # undef CRYPTOPP_ARM_PMULL_AVAILABLE
 #endif
 
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE)
+# include <emmintrin.h>
+#endif
+
 #if (CRYPTOPP_CLMUL_AVAILABLE)
 # include <tmmintrin.h>
 # include <wmmintrin.h>
@@ -83,7 +87,7 @@ inline poly128_t VMULL_HIGH_P64(poly64x2_t a, poly64x2_t b)
 # endif
 #endif
 
-#if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64) && CRYPTOPP_ARM_PMULL_AVAILABLE
+#if CRYPTOPP_ARM_PMULL_AVAILABLE
 #if defined(__GNUC__)
 // Schneiders, Hovsmith and O'Rourke used this trick.
 // It results in much better code generation in production code
@@ -426,6 +430,19 @@ void GCM_ReverseHashBufferIfNeeded_PMULL(byte *hashBuffer)
         vst1q_u8(hashBuffer, vextq_u8(x, x, 8));
     }
 }
+#endif
+
+#if CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE
+# if defined (__SUNPRO_CC)
+// SunCC 5.10-5.11 compiler crash. Move GCM_Xor16_SSE2 out-of-line, and place in
+// a source file with a SSE architecture switch. Also see GH #226 and GH #284.
+void GCM_Xor16_SSE2(byte *a, const byte *b, const byte *c)
+{
+    _mm_store_si128(M128_CAST(a), _mm_xor_si128(
+        _mm_load_si128(CONST_M128_CAST(b)),
+        _mm_load_si128(CONST_M128_CAST(c))));
+}
+# endif
 #endif
 
 #if CRYPTOPP_CLMUL_AVAILABLE

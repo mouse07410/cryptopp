@@ -13,29 +13,21 @@
 
 // Uncomment for benchmarking C++ against SSE2 or NEON.
 // Do so in both blake2.cpp and blake2-simd.cpp.
-// #undef CRYPTOPP_SSE42_AVAILABLE
+// #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 
 #if !(defined(__ARM_NEON) || defined(_MSC_VER))
 # undef CRYPTOPP_ARM_NEON_AVAILABLE
 #endif
 
-#if (CRYPTOPP_SSE42_AVAILABLE)
+#if (CRYPTOPP_SSE41_AVAILABLE)
 # include <emmintrin.h>
-# include <nmmintrin.h>
+# include <tmmintrin.h>
+# include <smmintrin.h>
 #endif
 
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
 # include <arm_neon.h>
-#endif
-
-#ifdef CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
-# include <signal.h>
-# include <setjmp.h>
-#endif
-
-#ifndef EXCEPTION_EXECUTE_HANDLER
-# define EXCEPTION_EXECUTE_HANDLER 1
 #endif
 
 // Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
@@ -44,9 +36,10 @@
 
 NAMESPACE_BEGIN(CryptoPP)
 
-// Sun Studio 12.3 and earlier lack SSE2's _mm_set_epi64x. Win32 lacks _mm_set_epi64x, Win64 supplies it except for VS2008.
-// Also see http://stackoverflow.com/a/38547909/608639
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE && ((__SUNPRO_CC >= 0x5100 && __SUNPRO_CC < 0x5130) || (defined(_MSC_VER) && _MSC_VER < 1600) || (defined(_M_IX86) && _MSC_VER >= 1600))
+// Sun Studio 12.3 and earlier lack SSE2's _mm_set_epi64x. Win32 lacks _mm_set_epi64x,
+// Win64 supplies it except for VS2008. See http://stackoverflow.com/a/38547909/608639
+#if CRYPTOPP_SSE2_INTRIN_AVAILABLE && ((__SUNPRO_CC >= 0x5100 && __SUNPRO_CC < 0x5130) || \
+	(defined(_MSC_VER) && _MSC_VER < 1600) || (defined(_M_IX86) && _MSC_VER >= 1600))
 inline __m128i MM_SET_EPI64X(const word64 a, const word64 b)
 {
     const word64 t[2] = {b,a}; __m128i r;
@@ -75,7 +68,7 @@ const word64 BLAKE2B_IV[8] = {
 
 ANONYMOUS_NAMESPACE_END
 
-#if CRYPTOPP_SSE42_AVAILABLE
+#if CRYPTOPP_SSE41_AVAILABLE
 void BLAKE2_Compress32_SSE4(const byte* input, BLAKE2_State<word32, false>& state)
 {
   __m128i row1, row2, row3, row4;
@@ -1605,7 +1598,7 @@ void BLAKE2_Compress64_SSE4(const byte* input, BLAKE2_State<word64, true>& state
   _mm_storeu_si128(M128_CAST(&state.h[4]), _mm_xor_si128(_mm_loadu_si128(CONST_M128_CAST(&state.h[4])), row2l));
   _mm_storeu_si128(M128_CAST(&state.h[6]), _mm_xor_si128(_mm_loadu_si128(CONST_M128_CAST(&state.h[6])), row2h));
 }
-#endif  // CRYPTOPP_SSE42_AVAILABLE
+#endif  // CRYPTOPP_SSE41_AVAILABLE
 
 // Disable NEON for Cortex-A53 and A57. Also see http://github.com/weidai11/cryptopp/issues/367
 #if CRYPTOPP_BOOL_ARM32 && CRYPTOPP_ARM_NEON_AVAILABLE
