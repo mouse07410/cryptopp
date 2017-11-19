@@ -1,3 +1,0 @@
-#!/bin/bash
-# Bogus - to satisfy Travis CI
-exit 0
