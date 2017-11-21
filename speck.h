@@ -45,6 +45,7 @@ template <class W>
 struct SPECK_Base
 {
     virtual ~SPECK_Base() {}
+    SPECK_Base() : m_kwords(0) {}
 
     typedef SecBlock<W, AllocatorWithCleanup<W, true> > AlignedSecBlock;
     mutable AlignedSecBlock m_wspace;  // workspace
@@ -54,9 +55,13 @@ struct SPECK_Base
 
 //! \class SPECK64
 //! \brief SPECK 64-bit block cipher
-//! \details SPECK64 provides 64-bit block size. The valid key sizes are 98-bit and 128-bit.
-//! \note Crypto++ provides a byte oriented implementation
-//! \sa SPECK64, SPECK128, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a>
+//! \details Speck is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
+//!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
+//! \details SPECK64 provides 64-bit block size. The valid key sizes are 96-bit and 128-bit.
+//! \sa SPECK64, SPECK128,  <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SPECK
+//!   Families of Lightweight Block Ciphers</A>, <A HREF="http://iadgov.github.io/simon-speck/">
+//!   The Simon and Speck GitHub</A>, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a> on the
+//!   Crypto++ wiki
 //! \since Crypto++ 6.0
 class CRYPTOPP_NO_VTABLE SPECK64 : public SPECK_Info<8, 12, 12, 16>, public BlockCipherDocumentation
 {
@@ -68,7 +73,8 @@ public:
     {
     public:
         std::string AlgorithmName() const {
-            return StaticAlgorithmName() + "(" + IntToString(m_kwords*sizeof(word32)*8) + ")";
+            return StaticAlgorithmName() + (m_kwords == 0 ? "" :
+                "(" + IntToString(m_kwords*sizeof(word32)*8) + ")");
         }
 
     protected:
@@ -101,9 +107,13 @@ public:
 
 //! \class SPECK128
 //! \brief SPECK 128-bit block cipher
+//! \details Speck is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
+//!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
 //! \details SPECK128 provides 128-bit block size. The valid key sizes are 128-bit, 192-bit and 256-bit.
-//! \note Crypto++ provides a byte oriented implementation
-//! \sa SPECK64, SPECK128, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a>
+//! \sa SPECK64, SPECK128,  <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SPECK
+//!   Families of Lightweight Block Ciphers</A>, <A HREF="http://iadgov.github.io/simon-speck/">
+//!   The Simon and Speck GitHub</A>, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a> on the
+//!   Crypto++ wiki
 //! \since Crypto++ 6.0
 class CRYPTOPP_NO_VTABLE SPECK128 : public SPECK_Info<16, 16, 16, 32>, public BlockCipherDocumentation
 {
@@ -115,7 +125,8 @@ public:
     {
     public:
         std::string AlgorithmName() const {
-            return StaticAlgorithmName() + "(" + IntToString(m_kwords*sizeof(word64)*8) + ")";
+            return StaticAlgorithmName() + (m_kwords == 0 ? "" :
+                "(" + IntToString(m_kwords*sizeof(word64)*8) + ")");
         }
 
     protected:

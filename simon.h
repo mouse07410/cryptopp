@@ -5,7 +5,7 @@
 //! \details Simon is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
 //!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
 //! \sa <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SPECK Families of
-//!   Lightweight Block Ciphers</A> and <A HREF="http://iadgov.github.io/simon-simon/">
+//!   Lightweight Block Ciphers</A> and <A HREF="http://iadgov.github.io/simon-speck/">
 //!   The Simon and Speck GitHub</A>
 //! \since Crypto++ 6.0
 
@@ -45,6 +45,7 @@ template <class W>
 struct SIMON_Base
 {
     virtual ~SIMON_Base() {}
+    SIMON_Base() : m_kwords(0) {}
 
     typedef SecBlock<W, AllocatorWithCleanup<W, true> > AlignedSecBlock;
     mutable AlignedSecBlock m_wspace;  // workspace
@@ -54,9 +55,13 @@ struct SIMON_Base
 
 //! \class SIMON64
 //! \brief SIMON 64-bit block cipher
-//! \details SIMON64 provides 64-bit block size. The valid key sizes are 98-bit and 128-bit.
-//! \note Crypto++ provides a byte oriented implementation
-//! \sa SIMON64, SIMON128, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the Crypto++ wiki
+//! \details Simon is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
+//!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
+//! \details SIMON64 provides 64-bit block size. The valid key sizes are 96-bit and 128-bit.
+//! \sa SIMON64, SIMON128,  <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SIMON
+//!   Families of Lightweight Block Ciphers</A>, <A HREF="http://iadgov.github.io/simon-speck/">
+//!   The Simon and Speck GitHub</A>, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the
+//!   Crypto++ wiki
 //! \since Crypto++ 6.0
 class CRYPTOPP_NO_VTABLE SIMON64 : public SIMON_Info<8, 12, 12, 16>, public BlockCipherDocumentation
 {
@@ -68,7 +73,8 @@ public:
     {
     public:
         std::string AlgorithmName() const {
-            return StaticAlgorithmName() + "(" + IntToString(m_kwords*sizeof(word32)*8) + ")";
+            return StaticAlgorithmName() + (m_kwords == 0 ? "" :
+                "(" + IntToString(m_kwords*sizeof(word32)*8) + ")");
         }
 
     protected:
@@ -101,9 +107,13 @@ public:
 
 //! \class SIMON128
 //! \brief SIMON 128-bit block cipher
+//! \details Simon is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
+//!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
 //! \details SIMON128 provides 128-bit block size. The valid key sizes are 128-bit, 192-bit and 256-bit.
-//! \note Crypto++ provides a byte oriented implementation
-//! \sa SIMON64, SIMON128, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the Crypto++ wiki
+//! \sa SIMON64, SIMON128,  <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SIMON
+//!   Families of Lightweight Block Ciphers</A>, <A HREF="http://iadgov.github.io/simon-speck/">
+//!   The Simon and Speck GitHub</A>, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the
+//!   Crypto++ wiki
 //! \since Crypto++ 6.0
 class CRYPTOPP_NO_VTABLE SIMON128 : public SIMON_Info<16, 16, 16, 32>, public BlockCipherDocumentation
 {
@@ -115,7 +125,8 @@ public:
     {
     public:
         std::string AlgorithmName() const {
-            return StaticAlgorithmName() + "(" + IntToString(m_kwords*sizeof(word64)*8) + ")";
+            return StaticAlgorithmName() + (m_kwords == 0 ? "" :
+                "(" + IntToString(m_kwords*sizeof(word64)*8) + ")");
         }
 
     protected:
