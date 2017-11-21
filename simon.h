@@ -1,16 +1,16 @@
-// speck.h - written and placed in the public domain by Jeffrey Walton
+// simon.h - written and placed in the public domain by Jeffrey Walton
 
-//! \file speck.h
-//! \brief Classes for the Speck block cipher
-//! \details Speck is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
+//! \file simon.h
+//! \brief Classes for the Simon block cipher
+//! \details Simon is a block cipher designed by Ray Beaulieu, Douglas Shors, Jason Smith,
 //!   Stefan Treatman-Clark, Bryan Weeks and Louis Wingers.
 //! \sa <A HREF="http://eprint.iacr.org/2013/404">The SIMON and SPECK Families of
-//!   Lightweight Block Ciphers</A> and <A HREF="http://iadgov.github.io/simon-speck/">
+//!   Lightweight Block Ciphers</A> and <A HREF="http://iadgov.github.io/simon-simon/">
 //!   The Simon and Speck GitHub</A>
 //! \since Crypto++ 6.0
 
-#ifndef CRYPTOPP_SPECK_H
-#define CRYPTOPP_SPECK_H
+#ifndef CRYPTOPP_SIMON_H
+#define CRYPTOPP_SIMON_H
 
 #include "config.h"
 #include "seckey.h"
@@ -18,33 +18,33 @@
 
 NAMESPACE_BEGIN(CryptoPP)
 
-//! \class SPECK_Info
-//! \brief SPECK block cipher information
+//! \class SIMON_Info
+//! \brief SIMON block cipher information
 //! \tparam BS block size of the cipher, in bytes
 //! \tparam D default key length, in bytes
 //! \tparam N minimum key length, in bytes
 //! \tparam M maximum key length, in bytes
 //! \since Crypto++ 6.0
 template <unsigned int BS, unsigned int D, unsigned int N, unsigned int M>
-struct SPECK_Info : public FixedBlockSize<BS>, VariableKeyLength<D, N, M>
+struct SIMON_Info : public FixedBlockSize<BS>, VariableKeyLength<D, N, M>
 {
     static const std::string StaticAlgorithmName()
     {
         // Format is Cipher-Blocksize(Keylength)
-        return "SPECK-" + IntToString(BS*8);
+        return "SIMON-" + IntToString(BS*8);
     }
 };
 
-//! \class SPECK_Base
-//! \brief SPECK block cipher base class
+//! \class SIMON_Base
+//! \brief SIMON block cipher base class
 //! \tparam BS block size of the cipher, in bytes
-//! \details User code should use SPECK64 or SPECK128
-//! \sa SPECK64, SPECK128, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a>
+//! \details User code should use SIMON64 or SIMON128
+//! \sa SIMON64, SIMON128, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the Crypto++ wiki
 //! \since Crypto++ 6.0
 template <class W>
-struct SPECK_Base
+struct SIMON_Base
 {
-    virtual ~SPECK_Base() {}
+    virtual ~SIMON_Base() {}
 
     typedef SecBlock<W, AllocatorWithCleanup<W, true> > AlignedSecBlock;
     mutable AlignedSecBlock m_wspace;  // workspace
@@ -52,19 +52,19 @@ struct SPECK_Base
     unsigned int            m_kwords;  // number of key words
 };
 
-//! \class SPECK64
-//! \brief SPECK 64-bit block cipher
-//! \details SPECK64 provides 64-bit block size. The valid key sizes are 98-bit and 128-bit.
+//! \class SIMON64
+//! \brief SIMON 64-bit block cipher
+//! \details SIMON64 provides 64-bit block size. The valid key sizes are 98-bit and 128-bit.
 //! \note Crypto++ provides a byte oriented implementation
-//! \sa SPECK64, SPECK128, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a>
+//! \sa SIMON64, SIMON128, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the Crypto++ wiki
 //! \since Crypto++ 6.0
-class CRYPTOPP_NO_VTABLE SPECK64 : public SPECK_Info<8, 12, 12, 16>, public BlockCipherDocumentation
+class CRYPTOPP_NO_VTABLE SIMON64 : public SIMON_Info<8, 12, 12, 16>, public BlockCipherDocumentation
 {
 public:
-    //! \brief SPECK block cipher transformation functions
+    //! \brief SIMON block cipher transformation functions
     //! \details Provides implementation common to encryption and decryption
     //! \since Crypto++ 6.0
-    class CRYPTOPP_NO_VTABLE Base : protected SPECK_Base<word32>, public BlockCipherImpl<SPECK_Info<8, 12, 12, 16> >
+    class CRYPTOPP_NO_VTABLE Base : protected SIMON_Base<word32>, public BlockCipherImpl<SIMON_Info<8, 12, 12, 16> >
     {
     public:
         std::string AlgorithmName() const {
@@ -99,19 +99,19 @@ public:
     typedef BlockCipherFinal<DECRYPTION, Dec> Decryption;
 };
 
-//! \class SPECK128
-//! \brief SPECK 128-bit block cipher
-//! \details SPECK128 provides 128-bit block size. The valid key sizes are 128-bit, 192-bit and 256-bit.
+//! \class SIMON128
+//! \brief SIMON 128-bit block cipher
+//! \details SIMON128 provides 128-bit block size. The valid key sizes are 128-bit, 192-bit and 256-bit.
 //! \note Crypto++ provides a byte oriented implementation
-//! \sa SPECK64, SPECK128, <a href="http://www.cryptopp.com/wiki/SPECK">SPECK</a>
+//! \sa SIMON64, SIMON128, <a href="http://www.cryptopp.com/wiki/SIMON">SIMON</a> on the Crypto++ wiki
 //! \since Crypto++ 6.0
-class CRYPTOPP_NO_VTABLE SPECK128 : public SPECK_Info<16, 16, 16, 32>, public BlockCipherDocumentation
+class CRYPTOPP_NO_VTABLE SIMON128 : public SIMON_Info<16, 16, 16, 32>, public BlockCipherDocumentation
 {
 public:
-    //! \brief SPECK block cipher transformation functions
+    //! \brief SIMON block cipher transformation functions
     //! \details Provides implementation common to encryption and decryption
     //! \since Crypto++ 6.0
-    class CRYPTOPP_NO_VTABLE Base : protected SPECK_Base<word64>, public BlockCipherImpl<SPECK_Info<16, 16, 16, 32> >
+    class CRYPTOPP_NO_VTABLE Base : protected SIMON_Base<word64>, public BlockCipherImpl<SIMON_Info<16, 16, 16, 32> >
     {
     public:
         std::string AlgorithmName() const {
@@ -148,4 +148,4 @@ public:
 
 NAMESPACE_END
 
-#endif  // CRYPTOPP_SPECK_H
+#endif  // CRYPTOPP_SIMON_H

@@ -6,20 +6,20 @@
 #include "speck.h"
 #include "misc.h"
 
-// TODO
-#include <iostream>
-
 ANONYMOUS_NAMESPACE_BEGIN
 
 using CryptoPP::word32;
 using CryptoPP::word64;
 using CryptoPP::rotlFixed;
 using CryptoPP::rotrFixed;
-using CryptoPP::rotlVariable;
-using CryptoPP::rotrVariable;
 
 //! \brief Forward round transformation
 //! \tparam W word type
+//! \details TF83() is the forward round transformation using a=8 and b=3 rotations.
+//!   The initial test implementation provided template parameters, but they were
+//!   removed because SPECK32 using a=7 and b=2 was not on the road map. The
+//!   additional template parameters also made calling SPECK_Encrypt and SPECK_Decrypt
+//!   kind of messy.
 template <class W>
 inline void TF83(W& x, W& y, const W& k)
 {
@@ -31,6 +31,11 @@ inline void TF83(W& x, W& y, const W& k)
 
 //! \brief Reverse round transformation
 //! \tparam W word type
+//! \details TR83() is the reverse round transformation using a=8 and b=3 rotations.
+//!   The initial test implementation provided template parameters, but they were
+//!   removed because SPECK32 using a=7 and b=2 was not on the road map. The
+//!   additional template parameters also made calling SPECK_Encrypt and SPECK_Decrypt
+//!   kind of messy.
 template <class W>
 inline void TR83(W& x, W& y, const W& k)
 {
@@ -52,7 +57,7 @@ inline void SPECK_Encrypt(W c[2], const W p[2], const W k[R])
     c[0]=p[0]; c[1]=p[1];
 
     // Don't unroll this loop. Things slow down.
-    for(W i=0; static_cast<int>(i)<R; ++i)
+    for (size_t i=0; static_cast<int>(i)<R; ++i)
         TF83(c[0], c[1], k[i]);
 }
 
@@ -68,7 +73,7 @@ inline void SPECK_Decrypt(W p[2], const W c[2], const W k[R])
     p[0]=c[0]; p[1]=c[1];
 
     // Don't unroll this loop. Things slow down.
-    for(W i=R-1; static_cast<int>(i)>=0; --i)
+    for (size_t i=R-1; static_cast<int>(i)>=0; --i)
         TR83(p[0], p[1], k[i]);
 }
 
@@ -79,7 +84,7 @@ inline void SPECK_Decrypt(W p[2], const W c[2], const W k[R])
 //! \param key empty subkey array
 //! \param k user key array
 template <class W, unsigned int R>
-inline void SPECK_RoundKeys_2W(W key[R], const W k[2])
+inline void SPECK_ExpandKey_2W(W key[R], const W k[2])
 {
     CRYPTOPP_ASSERT(R==32);
     W i=0, B=k[1], A=k[0];
@@ -99,7 +104,7 @@ inline void SPECK_RoundKeys_2W(W key[R], const W k[2])
 //! \param key empty subkey array
 //! \param k user key array
 template <class W, unsigned int R>
-inline void SPECK_RoundKeys_3W(W key[R], const W k[3])
+inline void SPECK_ExpandKey_3W(W key[R], const W k[3])
 {
     CRYPTOPP_ASSERT(R==33 || R==26);
     W i=0, C=k[2], B=k[1], A=k[0];
@@ -126,7 +131,7 @@ inline void SPECK_RoundKeys_3W(W key[R], const W k[3])
 //! \param key empty subkey array
 //! \param k user key array
 template <class W, unsigned int R>
-inline void SPECK_RoundKeys_4W(W key[R], const W k[4])
+inline void SPECK_ExpandKey_4W(W key[R], const W k[4])
 {
     CRYPTOPP_ASSERT(R==34 || R==27);
     W i=0, D=k[3], C=k[2], B=k[1], A=k[0];
@@ -154,11 +159,14 @@ inline void SPECK_RoundKeys_4W(W key[R], const W k[4])
 
 ANONYMOUS_NAMESPACE_END
 
+///////////////////////////////////////////////////////////
+
 NAMESPACE_BEGIN(CryptoPP)
 
 void SPECK64::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength, const NameValuePairs &params)
 {
     CRYPTOPP_ASSERT(keyLength == 12 || keyLength == 16);
+    CRYPTOPP_UNUSED(params);
 
     // Building the key schedule table requires {3,4} words workspace.
     // Encrypting and decrypting requires 4 words workspace.
@@ -175,12 +183,12 @@ void SPECK64::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength,
     case 3:
         m_rkey.New(26);
         iblk(m_wspace[2])(m_wspace[1])(m_wspace[0]);
-        SPECK_RoundKeys_3W<word32, 26>(m_rkey, m_wspace);
+        SPECK_ExpandKey_3W<word32, 26>(m_rkey, m_wspace);
         break;
     case 4:
         m_rkey.New(27);
         iblk(m_wspace[3])(m_wspace[2])(m_wspace[1])(m_wspace[0]);
-        SPECK_RoundKeys_4W<word32, 27>(m_rkey, m_wspace);
+        SPECK_ExpandKey_4W<word32, 27>(m_rkey, m_wspace);
         break;
     default:
         CRYPTOPP_ASSERT(0);;
@@ -238,6 +246,7 @@ void SPECK64::Dec::ProcessAndXorBlock(const byte *inBlock, const byte *xorBlock,
 void SPECK128::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength, const NameValuePairs &params)
 {
     CRYPTOPP_ASSERT(keyLength == 16 || keyLength == 24 || keyLength == 32);
+    CRYPTOPP_UNUSED(params);
 
     // Building the key schedule table requires {2,3,4} words workspace.
     // Encrypting and decrypting requires 4 words workspace.
@@ -254,17 +263,17 @@ void SPECK128::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength
     case 2:
         m_rkey.New(32);
         iblk(m_wspace[1])(m_wspace[0]);
-        SPECK_RoundKeys_2W<word64, 32>(m_rkey, m_wspace);
+        SPECK_ExpandKey_2W<word64, 32>(m_rkey, m_wspace);
         break;
     case 3:
         m_rkey.New(33);
         iblk(m_wspace[2])(m_wspace[1])(m_wspace[0]);
-        SPECK_RoundKeys_3W<word64, 33>(m_rkey, m_wspace);
+        SPECK_ExpandKey_3W<word64, 33>(m_rkey, m_wspace);
         break;
     case 4:
         m_rkey.New(34);
         iblk(m_wspace[3])(m_wspace[2])(m_wspace[1])(m_wspace[0]);
-        SPECK_RoundKeys_4W<word64, 34>(m_rkey, m_wspace);
+        SPECK_ExpandKey_4W<word64, 34>(m_rkey, m_wspace);
         break;
     default:
         CRYPTOPP_ASSERT(0);;
