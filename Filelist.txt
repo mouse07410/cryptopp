@@ -273,10 +273,12 @@ sharkbox.cpp
 simple.cpp
 simple.h
 siphash.h
-skipjack.cpp
-skipjack.h
 simon.cpp
 simon.h
+skipjack.cpp
+skipjack.h
+sm4.cpp
+sm4.h
 smartptr.h
 socketft.cpp
 socketft.h
@@ -461,6 +463,7 @@ TestVectors/sha3_512_fips_202.txt
 TestVectors/shacal2.txt
 TestVectors/simon.txt
 TestVectors/siphash.txt
+TestVectors/sm4.txt
 TestVectors/sosemanuk.txt
 TestVectors/speck.txt
 TestVectors/tea.txt
