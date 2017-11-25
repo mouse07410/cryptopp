@@ -1339,6 +1339,59 @@ CRYPTOPP_DLL void CRYPTOPP_API UnalignedDeallocate(void *ptr);
 // ************** rotate functions ***************
 
 //! \brief Performs a left rotate
+//! \tparam R the number of bit positions to rotate the value
+//! \tparam T the word type
+//! \param x the value to rotate
+//! \details This is a portable C/C++ implementation. The value x to be rotated can be 8 to 64-bits wide.
+//! \details y must be in the range <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//!   Use rotlMod if the rotate amount y is outside the range.
+//! \details Use rotlConstant when the rotate amount is constant. The template function was added
+//!   because Clang did not propagate the constant when passed as a function parameter. Clang's
+//!   need for a constexpr meant rotlFixed failed to compile on occassion.
+//! \note rotlConstant attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
+//!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
+//!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 6.0
+template <unsigned int R, class T> inline T rotlConstant(T x)
+{
+	// Portable rotate that reduces to single instruction...
+	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
+	// http://software.intel.com/en-us/forums/topic/580884
+	// and http://llvm.org/bugs/show_bug.cgi?id=24226
+	static const unsigned int THIS_SIZE = sizeof(T)*8;
+	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_ASSERT(R < THIS_SIZE);
+	return T((x<<R)|(x>>(-R&MASK)));
+}
+
+//! \brief Performs a right rotate
+//! \tparam R the number of bit positions to rotate the value
+//! \tparam T the word type
+//! \param x the value to rotate
+//! \details This is a portable C/C++ implementation. The value x to be rotated can be 8 to 64-bits wide.
+//! \details y must be in the range <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//!   Use rotrMod if the rotate amount y is outside the range.
+//! \details Use rotrConstant when the rotate amount is constant. The template function was added
+//!   because Clang did not propagate the constant when passed as a function parameter. Clang's
+//!   need for a constexpr meant rotrFixed failed to compile on occassion.
+//! \note rotrConstant attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
+//!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
+//!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+template <unsigned int R, class T> inline T rotrConstant(T x)
+{
+	// Portable rotate that reduces to single instruction...
+	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
+	// http://software.intel.com/en-us/forums/topic/580884
+	// and http://llvm.org/bugs/show_bug.cgi?id=24226
+	static const unsigned int THIS_SIZE = sizeof(T)*8;
+	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_ASSERT(R < THIS_SIZE);
+	return T((x >> R)|(x<<(-R&MASK)));
+}
+
+//! \brief Performs a left rotate
 //! \tparam T the word type
 //! \param x the value to rotate
 //! \param y the number of bit positions to rotate the value
@@ -1348,6 +1401,8 @@ CRYPTOPP_DLL void CRYPTOPP_API UnalignedDeallocate(void *ptr);
 //! \note rotlFixed attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
 //!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
 //!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 6.0
 template <class T> inline T rotlFixed(T x, unsigned int y)
 {
 	// Portable rotate that reduces to single instruction...
@@ -1370,6 +1425,8 @@ template <class T> inline T rotlFixed(T x, unsigned int y)
 //! \note rotrFixed attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
 //!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
 //!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 3.0
 template <class T> inline T rotrFixed(T x, unsigned int y)
 {
 	// Portable rotate that reduces to single instruction...
@@ -1392,6 +1449,8 @@ template <class T> inline T rotrFixed(T x, unsigned int y)
 //! \note rotlVariable attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
 //!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
 //!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 3.0
 template <class T> inline T rotlVariable(T x, unsigned int y)
 {
 	static const unsigned int THIS_SIZE = sizeof(T)*8;
@@ -1410,6 +1469,8 @@ template <class T> inline T rotlVariable(T x, unsigned int y)
 //! \note rotrVariable attempts to enlist a <tt>rotate IMM</tt> instruction because its often faster
 //!   than a <tt>rotate REG</tt>. Immediate rotates can be up to three times faster than their register
 //!   counterparts.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 3.0
 template <class T> inline T rotrVariable(T x, unsigned int y)
 {
 	static const unsigned int THIS_SIZE = sizeof(T)*8;
@@ -1425,6 +1486,8 @@ template <class T> inline T rotrVariable(T x, unsigned int y)
 //! \details This is a portable C/C++ implementation. The value x to be rotated can be 8 to 64-bits wide.
 //! \details y is reduced to the range <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrVariable will use either <tt>rotate IMM</tt> or <tt>rotate REG</tt>.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 3.0
 template <class T> inline T rotlMod(T x, unsigned int y)
 {
 	static const unsigned int THIS_SIZE = sizeof(T)*8;
@@ -1439,6 +1502,8 @@ template <class T> inline T rotlMod(T x, unsigned int y)
 //! \details This is a portable C/C++ implementation. The value x to be rotated can be 8 to 64-bits wide.
 //! \details y is reduced to the range <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrVariable will use either <tt>rotate IMM</tt> or <tt>rotate REG</tt>.
+//! \sa rotlConstant, rotrConstant, rotlFixed, rotrFixed, rotlVariable, rotrVariable
+//! \since Crypto++ 3.0
 template <class T> inline T rotrMod(T x, unsigned int y)
 {
 	static const unsigned int THIS_SIZE = sizeof(T)*8;
@@ -1456,6 +1521,7 @@ template <class T> inline T rotrMod(T x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotlFixed will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word32 rotlFixed<word32>(word32 x, unsigned int y)
 {
 	// Uses Microsoft <stdlib.h> call, bound to C/C++ language rules.
@@ -1471,6 +1537,7 @@ template<> inline word32 rotlFixed<word32>(word32 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrFixed will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word32 rotrFixed<word32>(word32 x, unsigned int y)
 {
 	// Uses Microsoft <stdlib.h> call, bound to C/C++ language rules.
@@ -1486,6 +1553,7 @@ template<> inline word32 rotrFixed<word32>(word32 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotlVariable will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word32 rotlVariable<word32>(word32 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1500,6 +1568,7 @@ template<> inline word32 rotlVariable<word32>(word32 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrVariable will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word32 rotrVariable<word32>(word32 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1513,6 +1582,7 @@ template<> inline word32 rotrVariable<word32>(word32 x, unsigned int y)
 //! \details This is a Microsoft specific implementation using <tt>_lrotl</tt> provided by
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//! \since Crypto++ 3.0
 template<> inline word32 rotlMod<word32>(word32 x, unsigned int y)
 {
 	y %= 8*sizeof(x);
@@ -1526,6 +1596,7 @@ template<> inline word32 rotlMod<word32>(word32 x, unsigned int y)
 //! \details This is a Microsoft specific implementation using <tt>_lrotr</tt> provided by
 //!   <stdlib.h>. The value x to be rotated is 32-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//! \since Crypto++ 3.0
 template<> inline word32 rotrMod<word32>(word32 x, unsigned int y)
 {
 	y %= 8*sizeof(x);
@@ -1545,6 +1616,7 @@ template<> inline word32 rotrMod<word32>(word32 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrFixed will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word64 rotlFixed<word64>(word64 x, unsigned int y)
 {
 	// Uses Microsoft <stdlib.h> call, bound to C/C++ language rules.
@@ -1560,6 +1632,7 @@ template<> inline word64 rotlFixed<word64>(word64 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrFixed will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word64 rotrFixed<word64>(word64 x, unsigned int y)
 {
 	// Uses Microsoft <stdlib.h> call, bound to C/C++ language rules.
@@ -1575,6 +1648,7 @@ template<> inline word64 rotrFixed<word64>(word64 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotlVariable will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word64 rotlVariable<word64>(word64 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1589,6 +1663,7 @@ template<> inline word64 rotlVariable<word64>(word64 x, unsigned int y)
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
 //! \note rotrVariable will assert in Debug builds if is outside the allowed range.
+//! \since Crypto++ 3.0
 template<> inline word64 rotrVariable<word64>(word64 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1602,6 +1677,7 @@ template<> inline word64 rotrVariable<word64>(word64 x, unsigned int y)
 //! \details This is a Microsoft specific implementation using <tt>_lrotl</tt> provided by
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//! \since Crypto++ 3.0
 template<> inline word64 rotlMod<word64>(word64 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1615,6 +1691,7 @@ template<> inline word64 rotlMod<word64>(word64 x, unsigned int y)
 //! \details This is a Microsoft specific implementation using <tt>_lrotr</tt> provided by
 //!   <stdlib.h>. The value x to be rotated is 64-bits. y must be in the range
 //!   <tt>[0, sizeof(T)*8 - 1]</tt> to avoid undefined behavior.
+//! \since Crypto++ 3.0
 template<> inline word64 rotrMod<word64>(word64 x, unsigned int y)
 {
 	CRYPTOPP_ASSERT(y < 8*sizeof(x));
@@ -1625,7 +1702,6 @@ template<> inline word64 rotrMod<word64>(word64 x, unsigned int y)
 
 #if _MSC_VER >= 1400 && !defined(__INTEL_COMPILER)
 // Intel C++ Compiler 10.0 gives undefined externals with these
-
 template<> inline word16 rotlFixed<word16>(word16 x, unsigned int y)
 {
 	// Intrinsic, not bound to C/C++ language rules.
