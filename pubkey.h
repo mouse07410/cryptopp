@@ -23,13 +23,13 @@
 //!   <li>x1, y1, z1 are abstract interface classes defined in cryptlib.h
 //!   <li>x2, y2, z2 are implementations of the interfaces using "abstract policies", which
 //! 	  are pure virtual functions that should return interfaces to interchangeable algorithms.
-//! 	  These classes have \p Base suffixes.
+//! 	  These classes have Base suffixes.
 //!   <li>x3, y3, z3 hold actual algorithms and implement those virtual functions.
-//! 	  These classes have \p Impl suffixes.
+//! 	  These classes have Impl suffixes.
 //! </ul>
 //!
-//! \details The \p TF_ prefix means an implementation using trapdoor functions on integers.
-//! \details The \p DL_ prefix means an implementation using group operations in groups where discrete log is hard.
+//! \details The TF_ prefix means an implementation using trapdoor functions on integers.
+//! \details The DL_ prefix means an implementation using group operations in groups where discrete log is hard.
 
 #ifndef CRYPTOPP_PUBKEY_H
 #define CRYPTOPP_PUBKEY_H
@@ -66,7 +66,7 @@ NAMESPACE_BEGIN(CryptoPP)
 //!   but difficult to compute in the opposite direction without special knowledge.
 //!   The special knowledge is usually the private key.
 //! \details Trapdoor functions only handle messages of a limited length or size.
-//!   \p MaxPreimage is the plaintext's maximum length, and \p MaxImage is the
+//!   MaxPreimage is the plaintext's maximum length, and MaxImage is the
 //!   ciphertext's maximum length.
 //! \sa TrapdoorFunctionBounds(), RandomizedTrapdoorFunction(), TrapdoorFunction(),
 //!   RandomizedTrapdoorFunctionInverse() and TrapdoorFunctionInverse()
@@ -77,11 +77,11 @@ public:
 
 	//! \brief Returns the maximum size of a message before the trapdoor function is applied
 	//! \returns the maximum size of a message before the trapdoor function is applied
-	//! \details Derived classes must implement \p PreimageBound().
+	//! \details Derived classes must implement PreimageBound().
 	virtual Integer PreimageBound() const =0;
 	//! \brief Returns the maximum size of a message after the trapdoor function is applied
 	//! \returns the maximum size of a message after the trapdoor function is applied
-	//! \details Derived classes must implement \p ImageBound().
+	//! \details Derived classes must implement ImageBound().
 	virtual Integer ImageBound() const =0;
 	//! \brief Returns the maximum size of a message before the trapdoor function is applied bound to a public key
 	//! \returns the maximum size of a message before the trapdoor function is applied bound to a public key
@@ -95,7 +95,7 @@ public:
 
 //! \class RandomizedTrapdoorFunction
 //! \brief Applies the trapdoor function, using random data if required
-//! \details \p ApplyFunction() is the foundation for encrypting a message under a public key.
+//! \details ApplyFunction() is the foundation for encrypting a message under a public key.
 //!   Derived classes will override it at some point.
 //! \sa TrapdoorFunctionBounds(), RandomizedTrapdoorFunction(), TrapdoorFunction(),
 //!   RandomizedTrapdoorFunctionInverse() and TrapdoorFunctionInverse()
@@ -105,23 +105,23 @@ public:
 	virtual ~RandomizedTrapdoorFunction() {}
 
 	//! \brief Applies the trapdoor function, using random data if required
-	//! \param rng a \p RandomNumberGenerator derived class
+	//! \param rng a RandomNumberGenerator derived class
 	//! \param x the message on which the encryption function is applied
-	//! \returns the message \p x encrypted under the public key
-	//! \details \p ApplyRandomizedFunction is a generalization of encryption under a public key
-	//!    cryptosystem. The \p RandomNumberGenerator may (or may not) be required.
+	//! \returns the message x encrypted under the public key
+	//! \details ApplyRandomizedFunction is a generalization of encryption under a public key
+	//!    cryptosystem. The RandomNumberGenerator may (or may not) be required.
 	//!    Derived classes must implement it.
 	virtual Integer ApplyRandomizedFunction(RandomNumberGenerator &rng, const Integer &x) const =0;
 
 	//! \brief Determines if the encryption algorithm is randomized
-	//! \returns \p true if the encryption algorithm is randomized, \p false otherwise
-	//! \details If \p IsRandomized() returns \p false, then \p NullRNG() can be used.
+	//! \returns true if the encryption algorithm is randomized, false otherwise
+	//! \details If IsRandomized() returns false, then NullRNG() can be used.
 	virtual bool IsRandomized() const {return true;}
 };
 
 //! \class TrapdoorFunction
 //! \brief Applies the trapdoor function
-//! \details \p ApplyFunction() is the foundation for encrypting a message under a public key.
+//! \details ApplyFunction() is the foundation for encrypting a message under a public key.
 //!    Derived classes will override it at some point.
 //! \sa TrapdoorFunctionBounds(), RandomizedTrapdoorFunction(), TrapdoorFunction(),
 //!   RandomizedTrapdoorFunctionInverse() and TrapdoorFunctionInverse()
@@ -131,27 +131,27 @@ public:
 	virtual ~TrapdoorFunction() {}
 
 	//! \brief Applies the trapdoor function
-	//! \param rng a \p RandomNumberGenerator derived class
+	//! \param rng a RandomNumberGenerator derived class
 	//! \param x the message on which the encryption function is applied
-	//! \details \p ApplyRandomizedFunction is a generalization of encryption under a public key
-	//!    cryptosystem. The \p RandomNumberGenerator may (or may not) be required.
-	//! \details Internally, \p ApplyRandomizedFunction() calls \p ApplyFunction() \a
-	//!   without the \p RandomNumberGenerator.
+	//! \details ApplyRandomizedFunction is a generalization of encryption under a public key
+	//!    cryptosystem. The RandomNumberGenerator may (or may not) be required.
+	//! \details Internally, ApplyRandomizedFunction() calls ApplyFunction() \a
+	//!   without the RandomNumberGenerator.
 	Integer ApplyRandomizedFunction(RandomNumberGenerator &rng, const Integer &x) const
 		{CRYPTOPP_UNUSED(rng); return ApplyFunction(x);}
 	bool IsRandomized() const {return false;}
 
 	//! \brief Applies the trapdoor
 	//! \param x the message on which the encryption function is applied
-	//! \returns the message \p x encrypted under the public key
-	//! \details \p ApplyFunction is a generalization of encryption under a public key
+	//! \returns the message x encrypted under the public key
+	//! \details ApplyFunction is a generalization of encryption under a public key
 	//!    cryptosystem. Derived classes must implement it.
 	virtual Integer ApplyFunction(const Integer &x) const =0;
 };
 
 //! \class RandomizedTrapdoorFunctionInverse
 //! \brief Applies the inverse of the trapdoor function, using random data if required
-//! \details \p CalculateInverse() is the foundation for decrypting a message under a private key
+//! \details CalculateInverse() is the foundation for decrypting a message under a private key
 //!   in a public key cryptosystem. Derived classes will override it at some point.
 //! \sa TrapdoorFunctionBounds(), RandomizedTrapdoorFunction(), TrapdoorFunction(),
 //!   RandomizedTrapdoorFunctionInverse() and TrapdoorFunctionInverse()
@@ -161,22 +161,22 @@ public:
 	virtual ~RandomizedTrapdoorFunctionInverse() {}
 
 	//! \brief Applies the inverse of the trapdoor function, using random data if required
-	//! \param rng a \p RandomNumberGenerator derived class
+	//! \param rng a RandomNumberGenerator derived class
 	//! \param x the message on which the decryption function is applied
-	//! \returns the message \p x decrypted under the private key
-	//! \details \p CalculateRandomizedInverse is a generalization of decryption using the private key
-	//!    The \p RandomNumberGenerator may (or may not) be required. Derived classes must implement it.
+	//! \returns the message x decrypted under the private key
+	//! \details CalculateRandomizedInverse is a generalization of decryption using the private key
+	//!    The RandomNumberGenerator may (or may not) be required. Derived classes must implement it.
 	virtual Integer CalculateRandomizedInverse(RandomNumberGenerator &rng, const Integer &x) const =0;
 
 	//! \brief Determines if the decryption algorithm is randomized
-	//! \returns \p true if the decryption algorithm is randomized, \p false otherwise
-	//! \details If \p IsRandomized() returns \p false, then \p NullRNG() can be used.
+	//! \returns true if the decryption algorithm is randomized, false otherwise
+	//! \details If IsRandomized() returns false, then NullRNG() can be used.
 	virtual bool IsRandomized() const {return true;}
 };
 
 //! \class TrapdoorFunctionInverse
 //! \brief Applies the inverse of the trapdoor function
-//! \details \p CalculateInverse() is the foundation for decrypting a message under a private key
+//! \details CalculateInverse() is the foundation for decrypting a message under a private key
 //!   in a public key cryptosystem. Derived classes will override it at some point.
 //! \sa TrapdoorFunctionBounds(), RandomizedTrapdoorFunction(), TrapdoorFunction(),
 //!   RandomizedTrapdoorFunctionInverse() and TrapdoorFunctionInverse()
@@ -186,22 +186,22 @@ public:
 	virtual ~TrapdoorFunctionInverse() {}
 
 	//! \brief Applies the inverse of the trapdoor function
-	//! \param rng a \p RandomNumberGenerator derived class
+	//! \param rng a RandomNumberGenerator derived class
 	//! \param x the message on which the decryption function is applied
-	//! \returns the message \p x decrypted under the private key
-	//! \details \p CalculateRandomizedInverse is a generalization of decryption using the private key
-	//! \details Internally, \p CalculateRandomizedInverse() calls \p CalculateInverse() \a
-	//!   without the \p RandomNumberGenerator.
+	//! \returns the message x decrypted under the private key
+	//! \details CalculateRandomizedInverse is a generalization of decryption using the private key
+	//! \details Internally, CalculateRandomizedInverse() calls CalculateInverse() \a
+	//!   without the RandomNumberGenerator.
 	Integer CalculateRandomizedInverse(RandomNumberGenerator &rng, const Integer &x) const
 		{return CalculateInverse(rng, x);}
 
 	//! \brief Determines if the decryption algorithm is randomized
-	//! \returns \p true if the decryption algorithm is randomized, \p false otherwise
-	//! \details If \p IsRandomized() returns \p false, then \p NullRNG() can be used.
+	//! \returns true if the decryption algorithm is randomized, false otherwise
+	//! \details If IsRandomized() returns false, then NullRNG() can be used.
 	bool IsRandomized() const {return false;}
 
 	//! \brief Calculates the inverse of an element
-	//! \param rng a \p RandomNumberGenerator derived class
+	//! \param rng a RandomNumberGenerator derived class
 	//! \param x the element
 	//! \returns the inverse of the element in the group
 	virtual Integer CalculateInverse(RandomNumberGenerator &rng, const Integer &x) const =0;
@@ -315,7 +315,7 @@ typedef std::pair<const byte *, unsigned int> HashIdentifier;
 
 //! \class PK_SignatureMessageEncodingMethod
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p PK_SignatureMessageEncodingMethod provides interfaces for message
+//! \details PK_SignatureMessageEncodingMethod provides interfaces for message
 //!   encoding method for public key signature schemes. The methods support both
 //!   trapdoor functions (<tt>TF_*</tt>) and discrete logarithm (<tt>DL_*</tt>)
 //!   based schemes.
@@ -399,7 +399,7 @@ public:
 
 //! \class PK_DeterministicSignatureMessageEncodingMethod
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p PK_DeterministicSignatureMessageEncodingMethod provides interfaces
+//! \details PK_DeterministicSignatureMessageEncodingMethod provides interfaces
 //!   for message encoding method for public key signature schemes.
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_DeterministicSignatureMessageEncodingMethod : public PK_SignatureMessageEncodingMethod
 {
@@ -411,7 +411,7 @@ public:
 
 //! \class PK_RecoverableSignatureMessageEncodingMethod
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p PK_RecoverableSignatureMessageEncodingMethod provides interfaces
+//! \details PK_RecoverableSignatureMessageEncodingMethod provides interfaces
 //!   for message encoding method for public key signature schemes.
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_RecoverableSignatureMessageEncodingMethod : public PK_SignatureMessageEncodingMethod
 {
@@ -423,7 +423,7 @@ public:
 
 //! \class DL_SignatureMessageEncodingMethod_DSA
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p DL_SignatureMessageEncodingMethod_DSA provides interfaces
+//! \details DL_SignatureMessageEncodingMethod_DSA provides interfaces
 //!   for message encoding method for DSA.
 class CRYPTOPP_DLL DL_SignatureMessageEncodingMethod_DSA : public PK_DeterministicSignatureMessageEncodingMethod
 {
@@ -436,7 +436,7 @@ public:
 
 //! \class DL_SignatureMessageEncodingMethod_NR
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p DL_SignatureMessageEncodingMethod_NR provides interfaces
+//! \details DL_SignatureMessageEncodingMethod_NR provides interfaces
 //!   for message encoding method for Nyberg-Rueppel.
 class CRYPTOPP_DLL DL_SignatureMessageEncodingMethod_NR : public PK_DeterministicSignatureMessageEncodingMethod
 {
@@ -447,9 +447,22 @@ public:
 		byte *representative, size_t representativeBitLength) const;
 };
 
+//! \class DL_SignatureMessageEncodingMethod_SM2
+//! \brief Interface for message encoding method for public key signature schemes.
+//! \details DL_SignatureMessageEncodingMethod_SM2 provides interfaces
+//!   for message encoding method for SM2.
+class CRYPTOPP_DLL DL_SignatureMessageEncodingMethod_SM2 : public PK_DeterministicSignatureMessageEncodingMethod
+{
+public:
+	void ComputeMessageRepresentative(RandomNumberGenerator &rng,
+		const byte *recoverableMessage, size_t recoverableMessageLength,
+		HashTransformation &hash, HashIdentifier hashIdentifier, bool messageEmpty,
+		byte *representative, size_t representativeBitLength) const;
+};
+
 //! \class PK_MessageAccumulatorBase
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p PK_MessageAccumulatorBase provides interfaces
+//! \details PK_MessageAccumulatorBase provides interfaces
 //!   for message encoding method.
 class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE PK_MessageAccumulatorBase : public PK_MessageAccumulator
 {
@@ -471,7 +484,7 @@ public:
 
 //! \class PK_MessageAccumulatorImpl
 //! \brief Interface for message encoding method for public key signature schemes.
-//! \details \p PK_MessageAccumulatorBase provides interfaces
+//! \details PK_MessageAccumulatorBase provides interfaces
 //!   for message encoding method.
 template <class HASH_ALGORITHM>
 class PK_MessageAccumulatorImpl : public PK_MessageAccumulatorBase, protected ObjectHolder<HASH_ALGORITHM>
@@ -624,7 +637,7 @@ protected:
 //! \brief Trapdoor Function (TF) signature with external reference
 //! \tparam BASE base class
 //! \tparam SCHEME_OPTIONS scheme options class
-//! \tparam KEY_CLASS key class
+//! \tparam KEY key class
 //! \details TF_ObjectImplExtRef() holds a pointer to an external key structure
 template <class BASE, class SCHEME_OPTIONS, class KEY>
 class TF_ObjectImplExtRef : public TF_ObjectImplBase<BASE, SCHEME_OPTIONS, KEY>
@@ -828,7 +841,7 @@ public:
 	//! \details The subgroup generator is retrieved from the base precomputation
 	virtual const Element & GetSubgroupGenerator() const {return GetBasePrecomputation().GetBase(GetGroupPrecomputation());}
 
-	//! \brief Set the subgroup generator
+	//! \brief Sets the subgroup generator
 	//! \param base the new subgroup generator
 	//! \details The subgroup generator is set in the base precomputation
 	virtual void SetSubgroupGenerator(const Element &base) {AccessBasePrecomputation().SetBase(GetGroupPrecomputation(), base);}
@@ -1034,29 +1047,65 @@ public:
 
 	virtual ~DL_PublicKey();
 
+	//! \brief Get a named value
+	//! \param name the name of the object or value to retrieve
+	//! \param valueType reference to a variable that receives the value
+	//! \param pValue void pointer to a variable that receives the value
+	//! \returns true if the value was retrieved, false otherwise
+	//! \details GetVoidValue() retrieves the value of name if it exists.
+	//! \note GetVoidValue() is an internal function and should be implemented
+	//!   by derived classes. Users should use one of the other functions instead.
+	//! \sa GetValue(), GetValueWithDefault(), GetIntValue(), GetIntValueWithDefault(),
+	//!   GetRequiredParameter() and GetRequiredIntParameter()
 	bool GetVoidValue(const char *name, const std::type_info &valueType, void *pValue) const
 	{
 		return GetValueHelper(this, name, valueType, pValue, &this->GetAbstractGroupParameters())
 				CRYPTOPP_GET_FUNCTION_ENTRY(PublicElement);
 	}
 
+	//! \brief Initialize or reinitialize this this key
+	//! \param source NameValuePairs to assign
 	void AssignFrom(const NameValuePairs &source);
 
-	// non-inherited
+	//! \brief Retrieves the public element
+	//! \returns the public element
 	virtual const Element & GetPublicElement() const {return GetPublicPrecomputation().GetBase(this->GetAbstractGroupParameters().GetGroupPrecomputation());}
+
+	//! \brief Sets the public element
+	//! \param y the public element
 	virtual void SetPublicElement(const Element &y) {AccessPublicPrecomputation().SetBase(this->GetAbstractGroupParameters().GetGroupPrecomputation(), y);}
+
+	//! \brief Exponentiates this element
+	//! \param exponent the exponent to raise the base
+	//! \returns the public element raised to the exponent
 	virtual Element ExponentiatePublicElement(const Integer &exponent) const
 	{
 		const DL_GroupParameters<T> &params = this->GetAbstractGroupParameters();
 		return GetPublicPrecomputation().Exponentiate(params.GetGroupPrecomputation(), exponent);
 	}
+
+	//! \brief Exponentiates an element
+	//! \param baseExp the first exponent
+	//! \param publicExp the second exponent
+	//! \returns the public element raised to the exponent
+	//! \details CascadeExponentiateBaseAndPublicElement raises the public element to
+	//!   the base element and precomputation.
 	virtual Element CascadeExponentiateBaseAndPublicElement(const Integer &baseExp, const Integer &publicExp) const
 	{
 		const DL_GroupParameters<T> &params = this->GetAbstractGroupParameters();
 		return params.GetBasePrecomputation().CascadeExponentiate(params.GetGroupPrecomputation(), baseExp, GetPublicPrecomputation(), publicExp);
 	}
 
+	//! \brief Accesses the public precomputation
+	//! \details GetPublicPrecomputation returns a const reference, while
+	//!   AccessPublicPrecomputation returns a non-const reference. Must be
+	//!   overridden in derived classes.
 	virtual const DL_FixedBasePrecomputation<T> & GetPublicPrecomputation() const =0;
+
+	//! \brief Accesses the public precomputation
+	//! \details GetPublicPrecomputation returns a const reference, while
+	//!   AccessPublicPrecomputation returns a non-const reference. Must be
+	//!   overridden in derived classes.
 	virtual DL_FixedBasePrecomputation<T> & AccessPublicPrecomputation() =0;
 };
 
@@ -1075,18 +1124,32 @@ public:
 
 	virtual ~DL_PrivateKey();
 
+	//! \brief Initializes a public key from this key
+	//! \param pub reference to a public key
 	void MakePublicKey(DL_PublicKey<T> &pub) const
 	{
 		pub.AccessAbstractGroupParameters().AssignFrom(this->GetAbstractGroupParameters());
 		pub.SetPublicElement(this->GetAbstractGroupParameters().ExponentiateBase(GetPrivateExponent()));
 	}
 
+	//! \brief Get a named value
+	//! \param name the name of the object or value to retrieve
+	//! \param valueType reference to a variable that receives the value
+	//! \param pValue void pointer to a variable that receives the value
+	//! \returns true if the value was retrieved, false otherwise
+	//! \details GetVoidValue() retrieves the value of name if it exists.
+	//! \note GetVoidValue() is an internal function and should be implemented
+	//!   by derived classes. Users should use one of the other functions instead.
+	//! \sa GetValue(), GetValueWithDefault(), GetIntValue(), GetIntValueWithDefault(),
+	//!   GetRequiredParameter() and GetRequiredIntParameter()
 	bool GetVoidValue(const char *name, const std::type_info &valueType, void *pValue) const
 	{
 		return GetValueHelper(this, name, valueType, pValue, &this->GetAbstractGroupParameters())
 				CRYPTOPP_GET_FUNCTION_ENTRY(PrivateExponent);
 	}
 
+	//! \brief Initialize or reinitialize this this key
+	//! \param source NameValuePairs to assign
 	void AssignFrom(const NameValuePairs &source)
 	{
 		this->AccessAbstractGroupParameters().AssignFrom(source);
@@ -1094,7 +1157,13 @@ public:
 			CRYPTOPP_SET_FUNCTION_ENTRY(PrivateExponent);
 	}
 
+	//! \brief Retrieves the private exponent
+	//! \returns the private exponent
+	//! \details Must be overridden in derived classes.
 	virtual const Integer & GetPrivateExponent() const =0;
+	//! \brief Sets the private exponent
+	//! \param x the private exponent
+	//! \details Must be overridden in derived classes.
 	virtual void SetPrivateExponent(const Integer &x) =0;
 };
 
