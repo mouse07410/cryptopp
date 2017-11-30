@@ -30,15 +30,6 @@
 # include <tmmintrin.h>
 #endif
 
-// Hack for SunCC, http://github.com/weidai11/cryptopp/issues/224
-#if (__SUNPRO_CC >= 0x5130)
-# define MAYBE_CONST
-# define MAYBE_UNCONST_CAST(T, x) const_cast<MAYBE_CONST T>(x)
-#else
-# define MAYBE_CONST const
-# define MAYBE_UNCONST_CAST(T, x) (x)
-#endif
-
 // Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
 #define M128_CAST(x) ((__m128i *)(void *)(x))
 #define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
@@ -96,16 +87,42 @@ inline uint64x2_t RotateRight64(const uint64x2_t& val)
     return vorrq_u64(a, b);
 }
 
-inline uint64x2_t Shuffle64(const uint64x2_t& val)
+#if defined(__aarch32__) || defined(__aarch64__)
+// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
+template <>
+inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 {
+    const uint8_t maskb[16] = { 14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7 };
+    const uint8x16_t mask = vld1q_u8(maskb);
     return vreinterpretq_u64_u8(
-        vrev64q_u8(vreinterpretq_u8_u64(val)));
+        vqtbl1q_u8(vreinterpretq_u8_u64(val), mask));
 }
 
-inline uint64x2_t SIMON128_f(const uint64x2_t& v)
+// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
+template <>
+inline uint64x2_t RotateRight64<8>(const uint64x2_t& val)
 {
-    return veorq_u64(RotateLeft64<2>(v),
-        vandq_u64(RotateLeft64<1>(v), RotateLeft64<8>(v)));
+    const uint8_t maskb[16] = { 8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1 };
+    const uint8x16_t mask = vld1q_u8(maskb);
+    return vreinterpretq_u64_u8(
+        vqtbl1q_u8(vreinterpretq_u8_u64(val), mask));
+}
+#endif
+
+inline uint64x2_t Shuffle64(const uint64x2_t& val)
+{
+#if defined(CRYPTOPP_LITTLE_ENDIAN)
+    return vreinterpretq_u64_u8(
+        vrev64q_u8(vreinterpretq_u8_u64(val)));
+#else
+    return val;
+#endif
+}
+
+inline uint64x2_t SIMON128_f(const uint64x2_t& val)
+{
+    return veorq_u64(RotateLeft64<2>(val),
+        vandq_u64(RotateLeft64<1>(val), RotateLeft64<8>(val)));
 }
 
 inline void SIMON128_Enc_Block(uint8x16_t &block0, const word64 *subkeys, unsigned int rounds)
@@ -457,8 +474,8 @@ template <unsigned int R>
 inline __m128i RotateLeft64(const __m128i& val)
 {
     CRYPTOPP_ASSERT(R < 64);
-    const __m128i a(_mm_slli_epi64(val, R));
-    const __m128i b(_mm_srli_epi64(val, 64-R));
+    const __m128i a = _mm_slli_epi64(val, R);
+    const __m128i b = _mm_srli_epi64(val, 64-R);
     return _mm_or_si128(a, b);
 }
 
@@ -466,9 +483,27 @@ template <unsigned int R>
 inline __m128i RotateRight64(const __m128i& val)
 {
     CRYPTOPP_ASSERT(R < 64);
-    const __m128i a(_mm_slli_epi64(val, 64-R));
-    const __m128i b(_mm_srli_epi64(val, R));
+    const __m128i a = _mm_slli_epi64(val, 64-R);
+    const __m128i b = _mm_srli_epi64(val, R);
     return _mm_or_si128(a, b);
+}
+
+// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
+template <>
+inline __m128i RotateLeft64<8>(const __m128i& val)
+{
+    CRYPTOPP_ASSERT(R < 64);
+    const __m128i mask = _mm_set_epi8(14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7);
+    return _mm_shuffle_epi8(val, mask);
+}
+
+// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
+template <>
+inline __m128i RotateRight64<8>(const __m128i& val)
+{
+    CRYPTOPP_ASSERT(R < 64);
+    const __m128i mask = _mm_set_epi8(8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1);
+    return _mm_shuffle_epi8(val, mask);
 }
 
 inline __m128i SIMON128_f(const __m128i& v)
