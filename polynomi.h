@@ -33,14 +33,14 @@ public:
 	typedef T Ring;
 	typedef typename T::Element CoefficientType;
 
-	//! division by zero exception
+	/// division by zero exception
 	class DivideByZero : public Exception
 	{
 	public:
 		DivideByZero() : Exception(OTHER_ERROR, "PolynomialOver<T>: division by zero") {}
 	};
 
-	//! specify the distribution for randomization functions
+	/// specify the distribution for randomization functions
 	class RandomizationParameter
 	{
 	public:
@@ -59,8 +59,8 @@ public:
 		InterpolationFailed() : Exception(OTHER_ERROR, "PolynomialOver<T>: interpolation failed") {}
 	};
 
-	//! \brief Class to tie together values of x and P(x) to reduce potential
-	//! of errors when interpolation arguments are prepared
+	/// \brief Class to tie together values of x and P(x) to reduce potential
+	/// of errors when interpolation arguments are prepared
 	class XYPair
 	{
 	public:
@@ -78,16 +78,16 @@ public:
 
 	/// \name CREATORS
 	//@{
-	//! creates the zero polynomial
+	/// creates the zero polynomial
 	PolynomialOver() : m_coefficients((size_t)0), m_ringSet(false)
 	{}
 
-	//!
+	///
 	PolynomialOver(const Ring &ring, unsigned int count)
 	: m_coefficients((size_t)count, ring.Identity()),
 	  m_ring(ring), m_ringSet(true) {}
 
-	//! copy constructor
+	/// copy constructor
 	PolynomialOver(const PolynomialOver<Ring> &t)
 	  : m_coefficients(t.m_coefficients.size()), m_ring(t.m_ring), m_ringSet(t.isRingSet())
 	{
@@ -96,28 +96,28 @@ public:
 		*this = t;
 	}
 
-	//! construct constant polynomial
+	/// construct constant polynomial
 	PolynomialOver(const CoefficientType &element)
 	  : m_coefficients(1, element), m_ringSet(false) {}
 
-	//! construct polynomial with specified coefficients, starting from coefficient of x^0
+	/// construct polynomial with specified coefficients, starting from coefficient of x^0
 	template <typename Iterator> PolynomialOver(Iterator begin, Iterator end)
 	  : m_coefficients(begin, end), m_ringSet(false) {}
 
-	//! convert from string
+	/// convert from string
 	PolynomialOver(const char *str, const Ring &ring) : m_ring(ring), m_ringSet(true)
 	{ FromStr(str, ring); }
 
-	//! convert from big-endian byte array
+	/// convert from big-endian byte array
 	PolynomialOver(const byte *encodedPolynomialOver, unsigned int byteCount);
 
-	//! convert from Basic Encoding Rules encoded byte array
+	/// convert from Basic Encoding Rules encoded byte array
 	explicit PolynomialOver(const byte *BEREncodedPolynomialOver);
 
-	//! convert from BER encoded byte array stored in a BufferedTransformation object
+	/// convert from BER encoded byte array stored in a BufferedTransformation object
 	explicit PolynomialOver(BufferedTransformation &bt);
 
-	//! create a random PolynomialOver<T>
+	/// create a random PolynomialOver<T>
 	PolynomialOver(RandomNumberGenerator &rng,
 			const RandomizationParameter &parameter,
 			const Ring &ring) : m_ring(ring), m_ringSet(true)
@@ -142,7 +142,7 @@ public:
 
 	/// \name ACCESSORS
 	//@{
-	//! the zero polynomial will return a degree of -1
+	/// the zero polynomial will return a degree of -1
 	int Degree(const Ring &ring) const {
 		return int(CoefficientCount(ring))-1;
 	}
@@ -151,7 +151,7 @@ public:
 			throw InvalidArgument( "Ring was not set!" );
 		return this->Degree(this->m_ring);
 	}
-	//!
+	///
 	unsigned int CoefficientCount() const {
 		if(!this->m_ringSet)
 			throw InvalidArgument( "Ring was not set!" );
@@ -165,7 +165,7 @@ public:
 		const_cast<std::vector<CoefficientType> &>(m_coefficients).resize(count);
 		return count;
 	}
-	//! return coefficient for x^i
+	/// return coefficient for x^i
 	CoefficientType GetCoefficient(unsigned int i, const Ring &ring) const
 	{
 		return (i < m_coefficients.size()) ? m_coefficients[i] : ring.Identity();
@@ -176,12 +176,12 @@ public:
 		return this->GetCoefficient(i, this->m_ring);
 	}
 
-	//! \brief tells whether Ring was set, without throwing exception
+	/// \brief tells whether Ring was set, without throwing exception
 	const bool isRingSet() const {
 		return m_ringSet;
 	}
 
-	//! get ring this polynomial is over
+	/// get ring this polynomial is over
 	const Ring& GetRing() const {
 		if(!this->m_ringSet)
 			throw InvalidArgument( "Ring was not set!" );
@@ -191,7 +191,7 @@ public:
 
 	/// \name MANIPULATORS
 	//@{
-	//! assignment operator
+	/// assignment operator
 	PolynomialOver<Ring>&  operator=(const PolynomialOver<Ring>& t)
 	{
 		//std::cout << "Polynomial<>: inside operator=..." << std::endl;
@@ -214,28 +214,28 @@ public:
 		return *this;
 	}
 
-	//! \brief assign random values to all the polynomial coefficients
-	//! \param rng Random Number Generator
-	//! \param parameter contains the number of coefficients that the randomized polynomial
-	//! will have, and the value 0
-	//! \param ring ring that this polynomial coefficients belong to
+	/// \brief assign random values to all the polynomial coefficients
+	/// \param rng Random Number Generator
+	/// \param parameter contains the number of coefficients that the randomized polynomial
+	/// will have, and the value 0
+	/// \param ring ring that this polynomial coefficients belong to
 	void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter, const Ring &ring)
 	{
 		m_coefficients.resize(parameter.m_coefficientCount);
 		for (unsigned int i=0; i<m_coefficients.size(); ++i)
 			m_coefficients[i] = ring.RandomElement(rng, parameter.m_coefficientParameter);
 	}
-	//! \brief assign random values to all the polynomial coefficients
-	//! \param rng Random Number Generator
-	//! \param parameter contains the number of coefficients that the randomized polynomial
-	//! will have, and the value 0
+	/// \brief assign random values to all the polynomial coefficients
+	/// \param rng Random Number Generator
+	/// \param parameter contains the number of coefficients that the randomized polynomial
+	/// will have, and the value 0
 	void Randomize(RandomNumberGenerator &rng, const RandomizationParameter &parameter) {
 		if(!this->m_ringSet)
 			throw InvalidArgument( "Ring was not set!" );
 		return this->Randomize(rng, parameter, this->m_ring);
 	}
 
-	//! set the coefficient for x^i to value
+	/// set the coefficient for x^i to value
 	void SetCoefficient(unsigned int i, const CoefficientType &value, const Ring &ring)
 	{
 		if (i >= m_coefficients.size())
@@ -247,7 +247,7 @@ public:
 			throw InvalidArgument( "Ring was not set!" );
 		this->SetCoefficient(i, value, this->m_ring);
 	}
-	//!
+	///
 	void Negate(const Ring &ring)
 	{
 		unsigned int count = CoefficientCount(ring);
@@ -260,7 +260,7 @@ public:
 		this->Negate(this->m_ring);
 	}
 
-	//!
+	///
 	void swap(PolynomialOver<Ring> &t)
 	{
 		m_coefficients.swap(t.m_coefficients);
@@ -268,7 +268,7 @@ public:
 	//@}
 
 
-	//! \name BASIC ARITHMETIC ON POLYNOMIALS
+	/// \name BASIC ARITHMETIC ON POLYNOMIALS
 	//@{
 	bool Equals(const PolynomialOver<Ring> &t, const Ring &ring) const {
 		unsigned int count = CoefficientCount(ring);
@@ -479,7 +479,7 @@ public:
 			throw InvalidArgument( "Ring was not set!" );
 		return this->Reduce(t, this->m_ring);
 	}
-	//!
+	///
 
 	PolynomialOver<Ring> Doubled(const Ring &ring) const {return Plus(*this, ring);}
 	PolynomialOver<Ring> Doubled() const {
@@ -487,7 +487,7 @@ public:
 			throw InvalidArgument( "Ring was not set!" );
 		return Plus(*this, this->m_ring);
 	}
-	//!
+	///
 
 	PolynomialOver<Ring> Squared(const Ring &ring) const {return Times(*this, ring);}
 	PolynomialOver<Ring> Squared() const {
@@ -517,12 +517,12 @@ public:
 		return this->EvaluateAt(x, this->m_ring);
 	}
 
-	//! \brief Slower Lagrange Interpolation of polynomial of degree N based on N+1 values
-	//! of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
-	//! \param x value of x that we want P(x) at
-	//! \param x_i vector of known input data points (must have degree+1 of these)
-	//! \param y_i vector of y_i = P(x_i), values of the polynomial at x_i
-	//! \returns value of the polynomial at x
+	/// \brief Slower Lagrange Interpolation of polynomial of degree N based on N+1 values
+	/// of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
+	/// \param x value of x that we want P(x) at
+	/// \param x_i vector of known input data points (must have degree+1 of these)
+	/// \param y_i vector of y_i = P(x_i), values of the polynomial at x_i
+	/// \returns value of the polynomial at x
 	CoefficientType LagrangeInterpolateAt(const CoefficientType &x, const std::vector<CoefficientType>& x_i, const std::vector<CoefficientType>& y_i) const
 	{
 		if (x_i.size() != m_coefficients.size() || y_i.size() != m_coefficients.size())
@@ -549,12 +549,12 @@ public:
 	}
 
 	// a faster version of Interpolate(x, y, n).EvaluateAt(position)
-	//! \brief Newton Interpolation of polynomial of degree N based on N+1 values
-	//! of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
-	//! \param position value of x that we want P(x) at
-	//! \param x vector of x_i - known input data points (must have degree+1 of these)
-	//! \param y vector of y_i = P(x_i), values of the polynomial at x_i
-	//! \returns value of the polynomial at x=position
+	/// \brief Newton Interpolation of polynomial of degree N based on N+1 values
+	/// of this polynomial at N+1 points, i.e., i \in 0..N | y_i = P(x_i)
+	/// \param position value of x that we want P(x) at
+	/// \param x vector of x_i - known input data points (must have degree+1 of these)
+	/// \param y vector of y_i = P(x_i), values of the polynomial at x_i
+	/// \returns value of the polynomial at x=position
 	CoefficientType InterpolateAt(const CoefficientType &position, const std::vector<CoefficientType>& x, const std::vector<CoefficientType>& y) const
 	{
 		unsigned int n = x.size();
@@ -634,7 +634,7 @@ public:
 		return this->ShiftRight(n, this->m_ring);
 	}
 
-	//! calculate r and q such that (a == d*q + r) && (0 <= degree of r < degree of d)
+	/// calculate r and q such that (a == d*q + r) && (0 <= degree of r < degree of d)
 	static void Divide(PolynomialOver<Ring> &r, PolynomialOver<Ring> &q, const PolynomialOver<Ring> &a, const PolynomialOver<Ring> &d, const Ring &ring)
 	{
 		unsigned int i = a.CoefficientCount(ring);
@@ -775,7 +775,7 @@ public:
 	//			CRYPTOPP_ASSERT(this->m_ringSet);
 	//			return a.Input(in, this->m_ring);
 	//		}
-	//		//!
+	//		///
 	//		friend std::ostream& operator<<(std::ostream& out, const ThisType &a)
 	//		{
 	//			CRYPTOPP_ASSERT(this->m_ringSet);

@@ -56,35 +56,35 @@ public:
 	/// \returns true if inversion is fast, false otherwise
 	virtual bool InversionIsFast() const {return false;}
 
-	//! \brief Doubles an element in the group
-	//! \param a the element
-	//! \returns the element doubled
+	/// \brief Doubles an element in the group
+	/// \param a the element
+	/// \returns the element doubled
 	virtual const Element& Double(const Element &a) const {
 		return this->Add(a, a);
 	}
 
-	//! \brief Subtracts elements in the group
-	//! \param a first element
-	//! \param b second element
-	//! \returns the difference of <tt>a</tt> and <tt>b</tt>. The element <tt>a</tt> must provide a Subtract member function.
+	/// \brief Subtracts elements in the group
+	/// \param a first element
+	/// \param b second element
+	/// \returns the difference of <tt>a</tt> and <tt>b</tt>. The element <tt>a</tt> must provide a Subtract member function.
 	virtual const Element& Subtract(const Element &a, const Element &b) const {
 		// make copy of a in case Inverse() overwrites it
 		Element a1(a);
 		return this->Add(a1, Inverse(b));
 	}
 
-	//! \brief TODO
-	//! \param a first element
-	//! \param b second element
-	//! \returns TODO
+	/// \brief TODO
+	/// \param a first element
+	/// \param b second element
+	/// \returns TODO
 	virtual Element& Accumulate(Element &a, const Element &b) const {
 		return a = this->Add(a, b);
 	}
 
-	//! \brief Reduces an element in the congruence class
-	//! \param a element to reduce
-	//! \param b the congruence class
-	//! \returns the reduced element
+	/// \brief Reduces an element in the congruence class
+	/// \param a element to reduce
+	/// \param b the congruence class
+	/// \returns the reduced element
 	virtual Element& Reduce(Element &a, const Element &b) const {
 		return a = this->Subtract(a, b);
 	}
@@ -162,53 +162,53 @@ public:
 	/// \param a the element
 	virtual const Element& MultiplicativeInverse(const Element &a) const =0;
 
-	//! \brief Square an element in the group
-	//! \param a the element
-	//! \returns the element squared
+	/// \brief Square an element in the group
+	/// \param a the element
+	/// \returns the element squared
 	virtual const Element& Square(const Element &a) const {
 		return this->Multiply(a, a);
 	}
 
-	//! \brief Divides elements in the group
-	//! \param a the dividend
-	//! \param b the divisor
-	//! \returns the quotient
+	/// \brief Divides elements in the group
+	/// \param a the dividend
+	/// \param b the divisor
+	/// \returns the quotient
 	virtual const Element& Divide(const Element &a, const Element &b) const {
 		// make copy of a in case MultiplicativeInverse() overwrites it
 		Element a1(a);
 		return this->Multiply(a1, this->MultiplicativeInverse(b));
 	}
 
-	//! \brief Raises a base to an exponent in the group
-	//! \param a the base
-	//! \param e the exponent
-	//! \returns the exponentiation
+	/// \brief Raises a base to an exponent in the group
+	/// \param a the base
+	/// \param e the exponent
+	/// \returns the exponentiation
 	virtual Element Exponentiate(const Element &base, const Integer &exponent) const {
 		Element result;
 		SimultaneousExponentiate(&result, base, &exponent, 1);
 		return result;
 	}
 
-	//! \brief TODO
-	//! \param x first element
-	//! \param e1 first exponent
-	//! \param y second element
-	//! \param e2 second exponent
-	//! \returns TODO
+	/// \brief TODO
+	/// \param x first element
+	/// \param e1 first exponent
+	/// \param y second element
+	/// \param e2 second exponent
+	/// \returns TODO
 	virtual Element CascadeExponentiate(const Element &x, const Integer &e1, const Element &y, const Integer &e2) const {
 		return MultiplicativeGroup().AbstractGroup<T>::CascadeScalarMultiply(x, e1, y, e2);
 	}
 
-	//! \brief Exponentiates a base to multiple exponents in the Ring
-	//! \param results an array of Elements
-	//! \param base the base to raise to the exponents
-	//! \param exponents an array of exponents
-	//! \param exponentsCount the number of exponents in the array
-	//! \details SimultaneousExponentiate() raises the base to each exponent in the exponents array and stores the
-	//!   result at the respective position in the results array.
-	//! \details SimultaneousExponentiate() must be implemented in a derived class.
-	//! \pre <tt>COUNTOF(results) == exponentsCount</tt>
-	//! \pre <tt>COUNTOF(exponents) == exponentsCount</tt>
+	/// \brief Exponentiates a base to multiple exponents in the Ring
+	/// \param results an array of Elements
+	/// \param base the base to raise to the exponents
+	/// \param exponents an array of exponents
+	/// \param exponentsCount the number of exponents in the array
+	/// \details SimultaneousExponentiate() raises the base to each exponent in the exponents array and stores the
+	///   result at the respective position in the results array.
+	/// \details SimultaneousExponentiate() must be implemented in a derived class.
+	/// \pre <tt>COUNTOF(results) == exponentsCount</tt>
+	/// \pre <tt>COUNTOF(exponents) == exponentsCount</tt>
 	virtual void SimultaneousExponentiate(Element *results, const Element &base, const Integer *exponents, unsigned int exponentsCount) const {
 		MultiplicativeGroup().AbstractGroup<T>::SimultaneousMultiply(results, base, exponents, exponentsCount);
 	}
@@ -309,20 +309,20 @@ public:
 	/// \param d the divisor
 	virtual void DivisionAlgorithm(Element &r, Element &q, const Element &a, const Element &d) const =0;
 
-	//! \brief Performs a modular reduction in the ring
-	//! \param a the element
-	//! \param b the modulus
-	//! \returns the result of <tt>a%b</tt>.
+	/// \brief Performs a modular reduction in the ring
+	/// \param a the element
+	/// \param b the modulus
+	/// \returns the result of <tt>a%b</tt>.
 	virtual const Element& Mod(const Element &a, const Element &b) const {
 		Element q;
 		this->DivisionAlgorithm(result, q, a, b);
 		return result;
 	}
 
-	//! \brief Calculates the greatest common denominator in the ring
-	//! \param a the first element
-	//! \param b the second element
-	//! \returns the the greatest common denominator of a and b.
+	/// \brief Calculates the greatest common denominator in the ring
+	/// \param a the first element
+	/// \param b the second element
+	/// \returns the the greatest common denominator of a and b.
 	virtual const Element& Gcd(const Element &a, const Element &b) const {
 		Element g[3]={b, a};
 		unsigned int i0=0, i1=1, i2=2;
