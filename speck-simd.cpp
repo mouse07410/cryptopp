@@ -17,12 +17,6 @@
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 
-// Disable NEON/ASIMD for Cortex-A53 and A57. The shifts are too slow and C/C++ is 3 cpb
-// faster than NEON/ASIMD. Also see http://github.com/weidai11/cryptopp/issues/367.
-#if (defined(__aarch32__) || defined(__aarch64__)) && defined(CRYPTOPP_SLOW_ARMV8_SHIFT)
-# undef CRYPTOPP_ARM_NEON_AVAILABLE
-#endif
-
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
 # include <arm_neon.h>
 #endif
@@ -84,8 +78,14 @@ inline uint32x4_t RotateRight32(const uint32x4_t& val)
 template <>
 inline uint32x4_t RotateLeft32<8>(const uint32x4_t& val)
 {
-    const uint8_t maskb[16] = { 14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7 };
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8_t maskb[16] = { 14,13,12,15, 10,9,8,11, 6,5,4,7, 2,1,0,3 };
     const uint8x16_t mask = vld1q_u8(maskb);
+#else
+    const uint8_t maskb[16] = { 3,0,1,2, 7,4,5,6, 11,8,9,10, 15,12,13,14 };
+    const uint8x16_t mask = vld1q_u8(maskb);
+#endif
+
     return vreinterpretq_u32_u8(
         vqtbl1q_u8(vreinterpretq_u8_u32(val), mask));
 }
@@ -94,8 +94,14 @@ inline uint32x4_t RotateLeft32<8>(const uint32x4_t& val)
 template <>
 inline uint32x4_t RotateRight32<8>(const uint32x4_t& val)
 {
-    const uint8_t maskb[16] = { 8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1 };
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8_t maskb[16] = { 12,15,14,13, 8,11,10,9, 4,7,6,5, 0,3,2,1 };
     const uint8x16_t mask = vld1q_u8(maskb);
+#else
+    const uint8_t maskb[16] = { 1,2,3,0, 5,6,7,4, 9,10,11,8, 13,14,14,12 };
+    const uint8x16_t mask = vld1q_u8(maskb);
+#endif
+
     return vreinterpretq_u32_u8(
         vqtbl1q_u8(vreinterpretq_u8_u32(val), mask));
 }
@@ -143,12 +149,11 @@ inline void SPECK64_Enc_Block(uint32x4_t &block0, const word32 *subkeys, unsigne
     // a Zero block is provided to promote vectorizations.
     // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
     const uint32x4_t zero = {0, 0, 0, 0};
-    const uint32x4x2_t t1 = vuzpq_u32(block0, zero);
-    uint32x4_t x1 = t1.val[0];
-    uint32x4_t y1 = t1.val[1];
+    const uint32x4x2_t t0 = vuzpq_u32(block0, zero);
+    uint32x4_t x1 = t0.val[0];
+    uint32x4_t y1 = t0.val[1];
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
 
     for (size_t i=0; static_cast<int>(i)<rounds; ++i)
     {
@@ -161,13 +166,12 @@ inline void SPECK64_Enc_Block(uint32x4_t &block0, const word32 *subkeys, unsigne
         y1 = veorq_u32(y1, x1);
     }
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
 
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
-    const uint32x4x2_t t2 = vzipq_u32(x1, y1);
-    block0 = t2.val[0];
-    // block1 = t2.val[1];
+    const uint32x4x2_t t1 = vzipq_u32(x1, y1);
+    block0 = t1.val[0];
+    // block1 = t1.val[1];
 }
 
 inline void SPECK64_Dec_Block(uint32x4_t &block0, const word32 *subkeys, unsigned int rounds)
@@ -178,12 +182,11 @@ inline void SPECK64_Dec_Block(uint32x4_t &block0, const word32 *subkeys, unsigne
     // a Zero block is provided to promote vectorizations.
     // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
     const uint32x4_t zero = {0, 0, 0, 0};
-    const uint32x4x2_t t1 = vuzpq_u32(block0, zero);
-    uint32x4_t x1 = t1.val[0];
-    uint32x4_t y1 = t1.val[1];
+    const uint32x4x2_t t0 = vuzpq_u32(block0, zero);
+    uint32x4_t x1 = t0.val[0];
+    uint32x4_t y1 = t0.val[1];
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
 
     for (size_t i=rounds-1; static_cast<int>(i)>=0; --i)
     {
@@ -196,81 +199,108 @@ inline void SPECK64_Dec_Block(uint32x4_t &block0, const word32 *subkeys, unsigne
         x1 = RotateLeft32<8>(x1);
     }
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
 
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
-    const uint32x4x2_t t2 = vzipq_u32(x1, y1);
-    block0 = t2.val[0];
-    // block1 = t2.val[1];
+    const uint32x4x2_t t1 = vzipq_u32(x1, y1);
+    block0 = t1.val[0];
+    // block1 = t1.val[1];
 }
 
-inline void SPECK64_Enc_4_Blocks(uint32x4_t &block0, uint32x4_t &block1, const word32 *subkeys, unsigned int rounds)
+inline void SPECK64_Enc_4_Blocks(uint32x4_t &block0, uint32x4_t &block1,
+    uint32x4_t &block2, uint32x4_t &block3, const word32 *subkeys, unsigned int rounds)
 {
     // Rearrange the data for vectorization. The incoming data was read from
     // a big-endian byte array. Depending on the number of blocks it needs to
     // be permuted to the following. If only a single block is available then
     // a Zero block is provided to promote vectorizations.
     // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
-    const uint32x4x2_t t1 = vuzpq_u32(block0, block1);
-    uint32x4_t x1 = t1.val[0];
-    uint32x4_t y1 = t1.val[1];
+    const uint32x4x2_t t0 = vuzpq_u32(block0, block1);
+    uint32x4_t x1 = t0.val[0];
+    uint32x4_t y1 = t0.val[1];
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    const uint32x4x2_t t1 = vuzpq_u32(block2, block3);
+    uint32x4_t x2 = t1.val[0];
+    uint32x4_t y2 = t1.val[1];
+
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
+    x2 = Shuffle32(x2); y2 = Shuffle32(y2);
 
     for (size_t i=0; static_cast<int>(i)<rounds; ++i)
     {
         const uint32x4_t rk = vdupq_n_u32(subkeys[i]);
 
         x1 = RotateRight32<8>(x1);
+        x2 = RotateRight32<8>(x2);
         x1 = vaddq_u32(x1, y1);
+        x2 = vaddq_u32(x2, y2);
         x1 = veorq_u32(x1, rk);
+        x2 = veorq_u32(x2, rk);
         y1 = RotateLeft32<3>(y1);
+        y2 = RotateLeft32<3>(y2);
         y1 = veorq_u32(y1, x1);
+        y2 = veorq_u32(y2, x2);
     }
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
+    x2 = Shuffle32(x2); y2 = Shuffle32(y2);
 
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
-    const uint32x4x2_t t2 = vzipq_u32(x1, y1);
-    block0 = t2.val[0];
-    block1 = t2.val[1];
+    const uint32x4x2_t t3 = vzipq_u32(x1, y1);
+    block0 = t3.val[0];
+    block1 = t3.val[1];
+
+    const uint32x4x2_t t4 = vzipq_u32(x2, y2);
+    block2 = t4.val[0];
+    block3 = t4.val[1];
 }
 
-inline void SPECK64_Dec_4_Blocks(uint32x4_t &block0, uint32x4_t &block1, const word32 *subkeys, unsigned int rounds)
+inline void SPECK64_Dec_4_Blocks(uint32x4_t &block0, uint32x4_t &block1,
+    uint32x4_t &block2, uint32x4_t &block3, const word32 *subkeys, unsigned int rounds)
 {
     // Rearrange the data for vectorization. The incoming data was read from
     // a big-endian byte array. Depending on the number of blocks it needs to
     // be permuted to the following. If only a single block is available then
     // a Zero block is provided to promote vectorizations.
     // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
-    const uint32x4x2_t t1 = vuzpq_u32(block0, block1);
-    uint32x4_t x1 = t1.val[0];
-    uint32x4_t y1 = t1.val[1];
+    const uint32x4x2_t t0 = vuzpq_u32(block0, block1);
+    uint32x4_t x1 = t0.val[0];
+    uint32x4_t y1 = t0.val[1];
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    const uint32x4x2_t t1 = vuzpq_u32(block2, block3);
+    uint32x4_t x2 = t1.val[0];
+    uint32x4_t y2 = t1.val[1];
+
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
+    x2 = Shuffle32(x2); y2 = Shuffle32(y2);
 
     for (size_t i=rounds-1; static_cast<int>(i)>=0; --i)
     {
         const uint32x4_t rk = vdupq_n_u32(subkeys[i]);
 
         y1 = veorq_u32(y1, x1);
+        y2 = veorq_u32(y2, x2);
         y1 = RotateRight32<3>(y1);
+        y2 = RotateRight32<3>(y2);
         x1 = veorq_u32(x1, rk);
+        x2 = veorq_u32(x2, rk);
         x1 = vsubq_u32(x1, y1);
+        x2 = vsubq_u32(x2, y2);
         x1 = RotateLeft32<8>(x1);
+        x2 = RotateLeft32<8>(x2);
     }
 
-    x1 = Shuffle32(x1);
-    y1 = Shuffle32(y1);
+    x1 = Shuffle32(x1); y1 = Shuffle32(y1);
+    x2 = Shuffle32(x2); y2 = Shuffle32(y2);
 
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
-    const uint32x4x2_t t2 = vzipq_u32(x1, y1);
-    block0 = t2.val[0];
-    block1 = t2.val[1];
+    const uint32x4x2_t t3 = vzipq_u32(x1, y1);
+    block0 = t3.val[0];
+    block1 = t3.val[1];
+
+    const uint32x4x2_t t4 = vzipq_u32(x2, y2);
+    block2 = t4.val[0];
+    block3 = t4.val[1];
 }
 
 template <typename F1, typename F4>
@@ -283,112 +313,136 @@ inline size_t SPECK64_AdvancedProcessBlocks_NEON(F1 func1, F4 func4,
     CRYPTOPP_ASSERT(outBlocks);
     CRYPTOPP_ASSERT(length >= 8);
 
-    const size_t blockSize = 8;
-    size_t inIncrement = (flags & (BlockTransformation::BT_InBlockIsCounter|BlockTransformation::BT_DontIncrementInOutPointers)) ? 0 : blockSize;
-    size_t xorIncrement = xorBlocks ? blockSize : 0;
-    size_t outIncrement = (flags & BlockTransformation::BT_DontIncrementInOutPointers) ? 0 : blockSize;
+    const size_t neonBlockSize = 16;
+    size_t inIncrement = (flags & (BlockTransformation::BT_InBlockIsCounter|BlockTransformation::BT_DontIncrementInOutPointers)) ? 0 : neonBlockSize;
+    size_t xorIncrement = xorBlocks ? neonBlockSize : 0;
+    size_t outIncrement = (flags & BlockTransformation::BT_DontIncrementInOutPointers) ? 0 : neonBlockSize;
 
     if (flags & BlockTransformation::BT_ReverseDirection)
     {
-        inBlocks += length - blockSize;
-        xorBlocks += length - blockSize;
-        outBlocks += length - blockSize;
+        inBlocks += length - neonBlockSize;
+        xorBlocks += length - neonBlockSize;
+        outBlocks += length - neonBlockSize;
         inIncrement = 0-inIncrement;
         xorIncrement = 0-xorIncrement;
         outIncrement = 0-outIncrement;
-
-        // Hack... Disable parallel for decryption. It is buggy.
-        // What needs to happen is, move pointer one more block size to get
-        // a full 128-bit word, then swap N-bit words, and then swap the
-        // Xor block if it is being used. Its a real kludge and it is
-        // being side stepped at the moment.
-        flags &= ~BlockTransformation::BT_AllowParallel;
     }
 
     if (flags & BlockTransformation::BT_AllowParallel)
     {
-        while (length >= 4*blockSize)
+        while (length >= 4*neonBlockSize)
         {
-            uint32x4_t block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks)), block1;
+            uint32x4_t block0, block1, block2, block3;
+            block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks));
+
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
                 const uint32x4_t be1 = vld1q_u32(s_one64);
                 block1 = vaddq_u32(block0, be1);
-                vst1q_u8(const_cast<byte *>(inBlocks),
-                    vreinterpretq_u8_u32(vaddq_u32(block1, be1)));
+                block2 = vaddq_u32(block1, be1);
+                block3 = vaddq_u32(block2, be1);
+                vst1q_u8(const_cast<byte*>(inBlocks),
+                    vreinterpretq_u8_u32(vaddq_u32(block3, be1)));
             }
             else
             {
-                inBlocks += 2*inIncrement;
-                block1 = vreinterpretq_u32_u8(vld1q_u8(inBlocks));
-                inBlocks += 2*inIncrement;
+                const int inc = static_cast<int>(inIncrement);
+                block1 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+1*inc));
+                block2 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+2*inc));
+                block3 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+3*inc));
+                inBlocks += 4*inc;
             }
 
             if (flags & BlockTransformation::BT_XorInput)
             {
-                // Coverity finding, appears to be false positive. Assert the condition.
-                CRYPTOPP_ASSERT(xorBlocks);
-                block0 = veorq_u32(block0, vreinterpretq_u32_u8(vld1q_u8(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
-                block1 = veorq_u32(block1, vreinterpretq_u32_u8(vld1q_u8(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                const int inc = static_cast<int>(xorIncrement);
+                block0 = veorq_u32(block0, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+0*inc)));
+                block1 = veorq_u32(block1, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+1*inc)));
+                block2 = veorq_u32(block2, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+2*inc)));
+                block3 = veorq_u32(block3, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+3*inc)));
+                xorBlocks += 4*inc;
             }
 
-            func4(block0, block1, subKeys, static_cast<unsigned int>(rounds));
+            func4(block0, block1, block2, block3, subKeys, static_cast<unsigned int>(rounds));
 
             if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
             {
-                block0 = veorq_u32(block0, vreinterpretq_u32_u8(vld1q_u8(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
-                block1 = veorq_u32(block1, vreinterpretq_u32_u8(vld1q_u8(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                const int inc = static_cast<int>(xorIncrement);
+                block0 = veorq_u32(block0, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+0*inc)));
+                block1 = veorq_u32(block1, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+1*inc)));
+                block2 = veorq_u32(block2, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+2*inc)));
+                block3 = veorq_u32(block3, vreinterpretq_u32_u8(vld1q_u8(xorBlocks+3*inc)));
+                xorBlocks += 4*inc;
             }
 
-            vst1q_u8(outBlocks, vreinterpretq_u8_u32(block0));
-            outBlocks += 2*outIncrement;
-            vst1q_u8(outBlocks, vreinterpretq_u8_u32(block1));
-            outBlocks += 2*outIncrement;
+            const int inc = static_cast<int>(outIncrement);
+            vst1q_u8(outBlocks+0*inc, vreinterpretq_u8_u32(block0));
+            vst1q_u8(outBlocks+1*inc, vreinterpretq_u8_u32(block1));
+            vst1q_u8(outBlocks+2*inc, vreinterpretq_u8_u32(block2));
+            vst1q_u8(outBlocks+3*inc, vreinterpretq_u8_u32(block3));
 
-            length -= 4*blockSize;
+            outBlocks += 4*inc;
+            length -= 4*neonBlockSize;
         }
     }
 
-    while (length >= blockSize)
+    if (length)
     {
-        uint32x4_t block;
-        block = vsetq_lane_u32(Ptr32(inBlocks)[0], block, 0);
-        block = vsetq_lane_u32(Ptr32(inBlocks)[1], block, 1);
-
-        if (flags & BlockTransformation::BT_XorInput)
+        // Adjust to real block size
+        const size_t blockSize = 8;
+        if (flags & BlockTransformation::BT_ReverseDirection)
         {
-            uint32x4_t x;
-            x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
-            x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
-            block = veorq_u32(block, x);
+            inIncrement += inIncrement ? blockSize : 0;
+            xorIncrement += xorIncrement ? blockSize : 0;
+            outIncrement += outIncrement ? blockSize : 0;
+            inBlocks -= inIncrement;
+            xorBlocks -= xorIncrement;
+            outBlocks -= outIncrement;
+        }
+        else
+        {
+            inIncrement -= inIncrement ? blockSize : 0;
+            xorIncrement -= xorIncrement ? blockSize : 0;
+            outIncrement -= outIncrement ? blockSize : 0;
         }
 
-        if (flags & BlockTransformation::BT_InBlockIsCounter)
-            const_cast<byte *>(inBlocks)[7]++;
-
-        func1(block, subKeys, static_cast<unsigned int>(rounds));
-
-        if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+        while (length >= blockSize)
         {
-            uint32x4_t x;
-            x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
-            x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
-            block = veorq_u32(block, x);
+            uint32x4_t block;
+            block = vsetq_lane_u32(Ptr32(inBlocks)[0], block, 0);
+            block = vsetq_lane_u32(Ptr32(inBlocks)[1], block, 1);
+
+            if (flags & BlockTransformation::BT_XorInput)
+            {
+                uint32x4_t x;
+                x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
+                x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
+                block = veorq_u32(block, x);
+            }
+
+            if (flags & BlockTransformation::BT_InBlockIsCounter)
+                const_cast<byte *>(inBlocks)[7]++;
+
+            func1(block, subKeys, static_cast<unsigned int>(rounds));
+
+            if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+            {
+                uint32x4_t x;
+                x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
+                x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
+                block = veorq_u32(block, x);
+            }
+
+            word32 t[2];
+            t[0] = vgetq_lane_u32(block, 0);
+            t[1] = vgetq_lane_u32(block, 1);
+            std::memcpy(outBlocks, t, sizeof(t));
+
+            inBlocks += inIncrement;
+            outBlocks += outIncrement;
+            xorBlocks += xorIncrement;
+            length -= blockSize;
         }
-
-        word32 t[2];
-        t[0] = vgetq_lane_u32(block, 0);
-        t[1] = vgetq_lane_u32(block, 1);
-        std::memcpy(outBlocks, t, sizeof(t));
-
-        inBlocks += inIncrement;
-        outBlocks += outIncrement;
-        xorBlocks += xorIncrement;
-        length -= blockSize;
     }
 
     return length;
@@ -443,8 +497,14 @@ inline uint64x2_t RotateRight64(const uint64x2_t& val)
 template <>
 inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 {
+#if defined(CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7 };
     const uint8x16_t mask = vld1q_u8(maskb);
+#else
+    const uint8_t maskb[16] = { 7,0,1,2, 3,4,5,6, 15,8,9,10, 11,12,13,14 };
+    const uint8x16_t mask = vld1q_u8(maskb);
+#endif
+
     return vreinterpretq_u64_u8(
         vqtbl1q_u8(vreinterpretq_u8_u64(val), mask));
 }
@@ -453,8 +513,14 @@ inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 template <>
 inline uint64x2_t RotateRight64<8>(const uint64x2_t& val)
 {
+#if defined(CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1 };
     const uint8x16_t mask = vld1q_u8(maskb);
+#else
+    const uint8_t maskb[16] = { 1,2,3,4, 5,6,7,0, 9,10,11,12, 13,14,15,8 };
+    const uint8x16_t mask = vld1q_u8(maskb);
+#endif
+
     return vreinterpretq_u64_u8(
         vqtbl1q_u8(vreinterpretq_u8_u64(val), mask));
 }
@@ -481,8 +547,7 @@ inline void SPECK128_Enc_Block(uint64x2_t &block0, const word64 *subkeys, unsign
     uint64x2_t x1 = UnpackLow64(block0, block1);
     uint64x2_t y1 = UnpackHigh64(block0, block1);
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
 
     for (size_t i=0; static_cast<int>(i)<rounds; ++i)
     {
@@ -495,8 +560,7 @@ inline void SPECK128_Enc_Block(uint64x2_t &block0, const word64 *subkeys, unsign
         y1 = veorq_u64(y1, x1);
     }
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
 
     // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
     block0 = UnpackLow64(x1, y1);
@@ -519,12 +583,9 @@ inline void SPECK128_Enc_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t x3 = UnpackLow64(block4, block5);
     uint64x2_t y3 = UnpackHigh64(block4, block5);
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
-    x2 = Shuffle64(x2);
-    y2 = Shuffle64(y2);
-    x3 = Shuffle64(x3);
-    y3 = Shuffle64(y3);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
+    x2 = Shuffle64(x2); y2 = Shuffle64(y2);
+    x3 = Shuffle64(x3); y3 = Shuffle64(y3);
 
     for (size_t i=0; static_cast<int>(i)<rounds; ++i)
     {
@@ -547,12 +608,9 @@ inline void SPECK128_Enc_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
         y3 = veorq_u64(y3, x3);
     }
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
-    x2 = Shuffle64(x2);
-    y2 = Shuffle64(y2);
-    x3 = Shuffle64(x3);
-    y3 = Shuffle64(y3);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
+    x2 = Shuffle64(x2); y2 = Shuffle64(y2);
+    x3 = Shuffle64(x3); y3 = Shuffle64(y3);
 
     // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
     block0 = UnpackLow64(x1, y1);
@@ -574,8 +632,7 @@ inline void SPECK128_Dec_Block(uint64x2_t &block0, const word64 *subkeys, unsign
     uint64x2_t x1 = UnpackLow64(block0, block1);
     uint64x2_t y1 = UnpackHigh64(block0, block1);
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
 
     for (size_t i=rounds-1; static_cast<int>(i)>=0; --i)
     {
@@ -588,8 +645,7 @@ inline void SPECK128_Dec_Block(uint64x2_t &block0, const word64 *subkeys, unsign
         x1 = RotateLeft64<8>(x1);
     }
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
 
     // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
     block0 = UnpackLow64(x1, y1);
@@ -612,12 +668,9 @@ inline void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t x3 = UnpackLow64(block4, block5);
     uint64x2_t y3 = UnpackHigh64(block4, block5);
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
-    x2 = Shuffle64(x2);
-    y2 = Shuffle64(y2);
-    x3 = Shuffle64(x3);
-    y3 = Shuffle64(y3);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
+    x2 = Shuffle64(x2); y2 = Shuffle64(y2);
+    x3 = Shuffle64(x3); y3 = Shuffle64(y3);
 
     for (size_t i=rounds-1; static_cast<int>(i)>=0; --i)
     {
@@ -640,12 +693,9 @@ inline void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
         x3 = RotateLeft64<8>(x3);
     }
 
-    x1 = Shuffle64(x1);
-    y1 = Shuffle64(y1);
-    x2 = Shuffle64(x2);
-    y2 = Shuffle64(y2);
-    x3 = Shuffle64(x3);
-    y3 = Shuffle64(y3);
+    x1 = Shuffle64(x1); y1 = Shuffle64(y1);
+    x2 = Shuffle64(x2); y2 = Shuffle64(y2);
+    x3 = Shuffle64(x3); y3 = Shuffle64(y3);
 
     // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
     block0 = UnpackLow64(x1, y1);
@@ -1224,7 +1274,8 @@ inline void SPECK64_Dec_Block(__m128i &block0, const word32 *subkeys, unsigned i
     // block1 = _mm_unpackhigh_epi32(x1, y1);
 }
 
-inline void SPECK64_Enc_4_Blocks(__m128i &block0, __m128i &block1, const word32 *subkeys, unsigned int rounds)
+inline void SPECK64_Enc_4_Blocks(__m128i &block0, __m128i &block1, __m128i &block2,
+                __m128i &block3, const word32 *subkeys, unsigned int rounds)
 {
     // Rearrange the data for vectorization. The incoming data was read from
     // a big-endian byte array. Depending on the number of blocks it needs to
@@ -1237,31 +1288,48 @@ inline void SPECK64_Enc_4_Blocks(__m128i &block0, __m128i &block1, const word32 
     __m128i x1 = _mm_castps_si128(_mm_shuffle_ps(t0, t1, _MM_SHUFFLE(2,0,2,0)));
     __m128i y1 = _mm_castps_si128(_mm_shuffle_ps(t0, t1, _MM_SHUFFLE(3,1,3,1)));
 
+    const __m128 t2 = _mm_castsi128_ps(block2);
+    const __m128 t3 = _mm_castsi128_ps(block3);
+    __m128i x2 = _mm_castps_si128(_mm_shuffle_ps(t2, t3, _MM_SHUFFLE(2,0,2,0)));
+    __m128i y2 = _mm_castps_si128(_mm_shuffle_ps(t2, t3, _MM_SHUFFLE(3,1,3,1)));
+
     const __m128i mask = _mm_set_epi8(12,13,14,15, 8,9,10,11, 4,5,6,7, 0,1,2,3);
     x1 = _mm_shuffle_epi8(x1, mask);
     y1 = _mm_shuffle_epi8(y1, mask);
+    x2 = _mm_shuffle_epi8(x2, mask);
+    y2 = _mm_shuffle_epi8(y2, mask);
 
     for (size_t i=0; static_cast<int>(i)<rounds; ++i)
     {
         const __m128i rk = _mm_set1_epi32(subkeys[i]);
 
         x1 = RotateRight32<8>(x1);
+        x2 = RotateRight32<8>(x2);
         x1 = _mm_add_epi32(x1, y1);
+        x2 = _mm_add_epi32(x2, y2);
         x1 = _mm_xor_si128(x1, rk);
+        x2 = _mm_xor_si128(x2, rk);
         y1 = RotateLeft32<3>(y1);
+        y2 = RotateLeft32<3>(y2);
         y1 = _mm_xor_si128(y1, x1);
+        y2 = _mm_xor_si128(y2, x2);
     }
 
     x1 = _mm_shuffle_epi8(x1, mask);
     y1 = _mm_shuffle_epi8(y1, mask);
+    x2 = _mm_shuffle_epi8(x2, mask);
+    y2 = _mm_shuffle_epi8(y2, mask);
 
     // The is roughly the SSE equivalent to ARM vzp32
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
     block0 = _mm_unpacklo_epi32(x1, y1);
     block1 = _mm_unpackhi_epi32(x1, y1);
+    block2 = _mm_unpacklo_epi32(x2, y2);
+    block3 = _mm_unpackhi_epi32(x2, y2);
 }
 
-inline void SPECK64_Dec_4_Blocks(__m128i &block0, __m128i &block1, const word32 *subkeys, unsigned int rounds)
+inline void SPECK64_Dec_4_Blocks(__m128i &block0, __m128i &block1, __m128i &block2,
+                __m128i &block3, const word32 *subkeys, unsigned int rounds)
 {
     // Rearrange the data for vectorization. The incoming data was read from
     // a big-endian byte array. Depending on the number of blocks it needs to
@@ -1274,28 +1342,44 @@ inline void SPECK64_Dec_4_Blocks(__m128i &block0, __m128i &block1, const word32 
     __m128i x1 = _mm_castps_si128(_mm_shuffle_ps(t0, t1, _MM_SHUFFLE(2,0,2,0)));
     __m128i y1 = _mm_castps_si128(_mm_shuffle_ps(t0, t1, _MM_SHUFFLE(3,1,3,1)));
 
+    const __m128 t2 = _mm_castsi128_ps(block2);
+    const __m128 t3 = _mm_castsi128_ps(block3);
+    __m128i x2 = _mm_castps_si128(_mm_shuffle_ps(t2, t3, _MM_SHUFFLE(2,0,2,0)));
+    __m128i y2 = _mm_castps_si128(_mm_shuffle_ps(t2, t3, _MM_SHUFFLE(3,1,3,1)));
+
     const __m128i mask = _mm_set_epi8(12,13,14,15, 8,9,10,11, 4,5,6,7, 0,1,2,3);
     x1 = _mm_shuffle_epi8(x1, mask);
     y1 = _mm_shuffle_epi8(y1, mask);
+    x2 = _mm_shuffle_epi8(x2, mask);
+    y2 = _mm_shuffle_epi8(y2, mask);
 
     for (size_t i=rounds-1; static_cast<int>(i)>=0; --i)
     {
         const __m128i rk = _mm_set1_epi32(subkeys[i]);
 
         y1 = _mm_xor_si128(y1, x1);
+        y2 = _mm_xor_si128(y2, x2);
         y1 = RotateRight32<3>(y1);
+        y2 = RotateRight32<3>(y2);
         x1 = _mm_xor_si128(x1, rk);
+        x2 = _mm_xor_si128(x2, rk);
         x1 = _mm_sub_epi32(x1, y1);
+        x2 = _mm_sub_epi32(x2, y2);
         x1 = RotateLeft32<8>(x1);
+        x2 = RotateLeft32<8>(x2);
     }
 
     x1 = _mm_shuffle_epi8(x1, mask);
     y1 = _mm_shuffle_epi8(y1, mask);
+    x2 = _mm_shuffle_epi8(x2, mask);
+    y2 = _mm_shuffle_epi8(y2, mask);
 
     // The is roughly the SSE equivalent to ARM vzp32
     // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
     block0 = _mm_unpacklo_epi32(x1, y1);
     block1 = _mm_unpackhi_epi32(x1, y1);
+    block2 = _mm_unpacklo_epi32(x2, y2);
+    block3 = _mm_unpackhi_epi32(x2, y2);
 }
 
 template <typename F1, typename F4>
@@ -1308,45 +1392,45 @@ inline size_t SPECK64_AdvancedProcessBlocks_SSE41(F1 func1, F4 func4,
     CRYPTOPP_ASSERT(outBlocks);
     CRYPTOPP_ASSERT(length >= 8);
 
-    const size_t blockSize = 8;
-    size_t inIncrement = (flags & (BlockTransformation::BT_InBlockIsCounter|BlockTransformation::BT_DontIncrementInOutPointers)) ? 0 : blockSize;
-    size_t xorIncrement = xorBlocks ? blockSize : 0;
-    size_t outIncrement = (flags & BlockTransformation::BT_DontIncrementInOutPointers) ? 0 : blockSize;
-    word32 temp[2];
+    // Fake block size to match XMM word
+    const size_t xmmBlockSize = 16;
+    size_t inIncrement = (flags & (BlockTransformation::BT_InBlockIsCounter|BlockTransformation::BT_DontIncrementInOutPointers)) ? 0 : xmmBlockSize;
+    size_t xorIncrement = xorBlocks ? xmmBlockSize : 0;
+    size_t outIncrement = (flags & BlockTransformation::BT_DontIncrementInOutPointers) ? 0 : xmmBlockSize;
+    CRYPTOPP_ALIGN_DATA(16) word32 temp[4];
 
     if (flags & BlockTransformation::BT_ReverseDirection)
     {
-        inBlocks += length - blockSize;
-        xorBlocks += length - blockSize;
-        outBlocks += length - blockSize;
+        inBlocks += length - xmmBlockSize;
+        xorBlocks += length - xmmBlockSize;
+        outBlocks += length - xmmBlockSize;
         inIncrement = 0-inIncrement;
         xorIncrement = 0-xorIncrement;
         outIncrement = 0-outIncrement;
-
-        // Hack... Disable parallel for decryption. It is buggy.
-        // What needs to happen is, move pointer one more block size to get
-        // a full 128-bit word, then swap N-bit words, and then swap the
-        // Xor block if it is being used. Its a real kludge and it is
-        // being side stepped at the moment.
-        flags &= ~BlockTransformation::BT_AllowParallel;
     }
 
     if (flags & BlockTransformation::BT_AllowParallel)
     {
-        while (length >= 4*blockSize)
+        while (length >= 4*xmmBlockSize)
         {
-            __m128i block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks)), block1;
+            __m128i block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks)), block1, block2, block3;
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
                 const __m128i be1 = *CONST_M128_CAST(s_one64);
                 block1 = _mm_add_epi32(block0, be1);
-                _mm_storeu_si128(M128_CAST(inBlocks), _mm_add_epi32(block1, be1));
+                block2 = _mm_add_epi32(block1, be1);
+                block3 = _mm_add_epi32(block2, be1);
+                _mm_storeu_si128(M128_CAST(inBlocks), _mm_add_epi32(block3, be1));
             }
             else
             {
-                inBlocks += 2*inIncrement;
+                inBlocks += inIncrement;
                 block1 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
-                inBlocks += 2*inIncrement;
+                inBlocks += inIncrement;
+                block2 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
+                inBlocks += inIncrement;
+                block3 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
+                inBlocks += inIncrement;
             }
 
             if (flags & BlockTransformation::BT_XorInput)
@@ -1354,63 +1438,93 @@ inline size_t SPECK64_AdvancedProcessBlocks_SSE41(F1 func1, F4 func4,
                 // Coverity finding, appears to be false positive. Assert the condition.
                 CRYPTOPP_ASSERT(xorBlocks);
                 block0 = _mm_xor_si128(block0, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                xorBlocks += xorIncrement;
                 block1 = _mm_xor_si128(block1, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                xorBlocks += xorIncrement;
+                block2 = _mm_xor_si128(block2, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
+                xorBlocks += xorIncrement;
+                block3 = _mm_xor_si128(block3, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
+                xorBlocks += xorIncrement;
             }
 
-            func4(block0, block1, subKeys, static_cast<unsigned int>(rounds));
+            func4(block0, block1, block2, block3, subKeys, static_cast<unsigned int>(rounds));
 
             if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
             {
                 block0 = _mm_xor_si128(block0, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                xorBlocks += xorIncrement;
                 block1 = _mm_xor_si128(block1, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
-                xorBlocks += 2*xorIncrement;
+                xorBlocks += xorIncrement;
+                block2 = _mm_xor_si128(block2, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
+                xorBlocks += xorIncrement;
+                block3 = _mm_xor_si128(block3, _mm_loadu_si128(CONST_M128_CAST(xorBlocks)));
+                xorBlocks += xorIncrement;
             }
 
             _mm_storeu_si128(M128_CAST(outBlocks), block0);
-            outBlocks += 2*outIncrement;
+            outBlocks += outIncrement;
             _mm_storeu_si128(M128_CAST(outBlocks), block1);
-            outBlocks += 2*outIncrement;
+            outBlocks += outIncrement;
+            _mm_storeu_si128(M128_CAST(outBlocks), block2);
+            outBlocks += outIncrement;
+            _mm_storeu_si128(M128_CAST(outBlocks), block3);
+            outBlocks += outIncrement;
 
-            length -= 4*blockSize;
+            length -= 4*xmmBlockSize;
         }
     }
 
-    while (length >= blockSize)
+    if (length)
     {
-        std::memcpy(&temp, inBlocks, sizeof(temp));
-        __m128i block = _mm_insert_epi32(_mm_setzero_si128(), temp[0], 0);
-        block = _mm_insert_epi32(block, temp[1], 1);
-
-        if (flags & BlockTransformation::BT_XorInput)
+        // Adjust to real block size
+        const size_t blockSize = 8;
+        if (flags & BlockTransformation::BT_ReverseDirection)
         {
-            std::memcpy(&temp, xorBlocks, sizeof(temp));
-            __m128i x = _mm_insert_epi32(_mm_setzero_si128(), temp[0], 0);
-            block = _mm_xor_si128(block, _mm_insert_epi32(x, temp[1], 1));
+            inIncrement += inIncrement ? blockSize : 0;
+            xorIncrement += xorIncrement ? blockSize : 0;
+            outIncrement += outIncrement ? blockSize : 0;
+            inBlocks -= inIncrement;
+            xorBlocks -= xorIncrement;
+            outBlocks -= outIncrement;
+        }
+        else
+        {
+            inIncrement -= inIncrement ? blockSize : 0;
+            xorIncrement -= xorIncrement ? blockSize : 0;
+            outIncrement -= outIncrement ? blockSize : 0;
         }
 
-        if (flags & BlockTransformation::BT_InBlockIsCounter)
-            const_cast<byte *>(inBlocks)[7]++;
-
-        func1(block, subKeys, static_cast<unsigned int>(rounds));
-
-        if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+        while (length >= blockSize)
         {
-            std::memcpy(&temp, xorBlocks, sizeof(temp));
-            __m128i x = _mm_insert_epi32(_mm_setzero_si128(), temp[0], 0);
-            block = _mm_xor_si128(block, _mm_insert_epi32(x, temp[1], 1));
+            // temp[] is an aligned array
+            std::memcpy(temp, inBlocks, 8);
+            __m128i block = _mm_load_si128(CONST_M128_CAST(temp));
+
+            if (flags & BlockTransformation::BT_XorInput)
+            {
+                std::memcpy(temp, xorBlocks, 8);
+                block = _mm_xor_si128(block, _mm_load_si128(CONST_M128_CAST(temp)));
+            }
+
+            if (flags & BlockTransformation::BT_InBlockIsCounter)
+                const_cast<byte *>(inBlocks)[7]++;
+
+            func1(block, subKeys, static_cast<unsigned int>(rounds));
+
+            if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
+            {
+                std::memcpy(temp, xorBlocks, 8);
+                block = _mm_xor_si128(block, _mm_load_si128(CONST_M128_CAST(temp)));
+            }
+
+            _mm_store_si128(M128_CAST(temp), block);
+            std::memcpy(outBlocks, temp, 8);
+
+            inBlocks += inIncrement;
+            outBlocks += outIncrement;
+            xorBlocks += xorIncrement;
+            length -= blockSize;
         }
-
-        temp[0] = _mm_extract_epi32(block, 0);
-        temp[1] = _mm_extract_epi32(block, 1);
-        std::memcpy(outBlocks, temp, sizeof(temp));
-
-        inBlocks += inIncrement;
-        outBlocks += outIncrement;
-        xorBlocks += xorIncrement;
-        length -= blockSize;
     }
 
     return length;
