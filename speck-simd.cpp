@@ -22,6 +22,7 @@
 #endif
 
 #if (CRYPTOPP_SSSE3_AVAILABLE)
+# include <pmmintrin.h>
 # include <tmmintrin.h>
 #endif
 
@@ -38,6 +39,16 @@
 #define M128_CAST(x) ((__m128i *)(void *)(x))
 #define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
 
+// GCC118 (AMD Opteron Aarch64) and GCC 7 issue. The 6x and 2x blocks produce
+// a bad result. The same code works fine with Speck (it was copied/pasted).
+// The same code is also fine on other Aarch64 test devices and A-32 NEON.
+// It may affect more versions, but we can only test GCC 7.2, 4.8 and 4.9.
+#if defined(__aarch32__) || defined(__aarch64__)
+# if defined(__GNUC__) && (__GNUC__ >= 7)
+#  define WORKAROUND_GCC_OPTERON_ISSUE 1
+# endif
+#endif
+
 ANONYMOUS_NAMESPACE_BEGIN
 
 using CryptoPP::byte;
@@ -50,9 +61,13 @@ using CryptoPP::BlockTransformation;
 #if defined(CRYPTOPP_ARM_NEON_AVAILABLE)
 
 #if defined(CRYPTOPP_LITTLE_ENDIAN)
-const word32 s_one64[] = {0, 1<<24, 0, 1<<24};
+const word32 s_zero[]     = {0, 0, 0, 0};
+const word32 s_one64_1b[] = {0, 0, 0, 1<<24};      // Only second 8-byte block is incremented after loading
+const word32 s_one64_2b[] = {0, 2<<24, 0, 2<<24};  // Routine step. Both 8-byte block are incremented
 #else
-const word32 s_one64[] = {0, 1, 0, 1};
+const word32 s_zero[]     = {0, 0, 0, 0};
+const word32 s_one64_1b[] = {0, 0, 0, 1};
+const word32 s_one64_2b[] = {0, 2, 0, 2};
 #endif
 
 template <unsigned int R>
@@ -115,30 +130,6 @@ inline uint32x4_t Shuffle32(const uint32x4_t& val)
 #else
     return val;
 #endif
-}
-
-template <typename T>
-inline word32* Ptr32(T* ptr)
-{
-    return reinterpret_cast<word32*>(ptr);
-}
-
-template <typename T>
-inline const word32* Ptr32(const T* ptr)
-{
-    return reinterpret_cast<const word32*>(ptr);
-}
-
-template <typename T>
-inline word64* Ptr64(T* ptr)
-{
-    return reinterpret_cast<word64*>(ptr);
-}
-
-template <typename T>
-inline const word64* Ptr64(const T* ptr)
-{
-    return reinterpret_cast<const word64*>(ptr);
 }
 
 inline void SPECK64_Enc_Block(uint32x4_t &block0, uint32x4_t &block1,
@@ -358,27 +349,46 @@ inline size_t SPECK64_AdvancedProcessBlocks_NEON(F2 func2, F6 func6,
         outIncrement = 0-outIncrement;
     }
 
+#if defined(WORKAROUND_GCC_OPTERON_ISSUE)
+    flags &= ~BlockTransformation::BT_AllowParallel;
+#endif
+
     if (flags & BlockTransformation::BT_AllowParallel)
     {
+        // Load these magic values once. Analysis claims be1 and be2
+        // may be uninitialized, but they are when the block is a ctr.
+        uint32x4_t be1, be2;
+        if (flags & BlockTransformation::BT_InBlockIsCounter)
+        {
+            be1 = vld1q_u32(s_one64_1b);
+            be2 = vld1q_u32(s_one64_2b);
+        }
+
         while (length >= 6*neonBlockSize)
         {
             uint32x4_t block0, block1, block2, block3, block4, block5;
-            block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks));
-
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
-                const uint32x4_t be1 = vld1q_u32(s_one64);
-                block1 = vaddq_u32(block0, be1);
-                block2 = vaddq_u32(block1, be1);
-                block3 = vaddq_u32(block2, be1);
-                block4 = vaddq_u32(block3, be1);
-                block5 = vaddq_u32(block4, be1);
-                vst1q_u8(const_cast<byte*>(inBlocks),
-                    vreinterpretq_u8_u32(vaddq_u32(block5, be1)));
+                // For 64-bit block ciphers we need to load the initial single CTR block.
+                // After the dup load we have two counters in the NEON word. Then we need
+                // to increment the low ctr by 0 and the high ctr by 1.
+                const uint8x8_t c = vld1_u8(inBlocks);
+                block0 = vaddq_u32(be1, vreinterpretq_u32_u8(vcombine_u8(c,c)));
+
+                // After initial increment of {0,1} remaining counters increment by {1,1}.
+                block1 = vaddq_u32(be2, block0);
+                block2 = vaddq_u32(be2, block1);
+                block3 = vaddq_u32(be2, block2);
+                block4 = vaddq_u32(be2, block3);
+                block5 = vaddq_u32(be2, block4);
+
+                vst1_u8(const_cast<byte*>(inBlocks), vget_low_u8(
+                    vreinterpretq_u8_u32(vaddq_u32(be2, block5))));
             }
             else
             {
                 const int inc = static_cast<int>(inIncrement);
+                block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+0*inc));
                 block1 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+1*inc));
                 block2 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+2*inc));
                 block3 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+3*inc));
@@ -428,18 +438,24 @@ inline size_t SPECK64_AdvancedProcessBlocks_NEON(F2 func2, F6 func6,
         while (length >= 2*neonBlockSize)
         {
             uint32x4_t block0, block1;
-            block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks));
-
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
-                const uint32x4_t be1 = vld1q_u32(s_one64);
-                block1 = vaddq_u32(block0, be1);
-                vst1q_u8(const_cast<byte*>(inBlocks),
-                    vreinterpretq_u8_u32(vaddq_u32(block1, be1)));
+                // For 64-bit block ciphers we need to load the initial single CTR block.
+                // After the dup load we have two counters in the NEON word. Then we need
+                // to increment the low ctr by 0 and the high ctr by 1.
+                const uint8x8_t c = vld1_u8(inBlocks);
+                block0 = vaddq_u32(be1, vreinterpretq_u32_u8(vcombine_u8(c,c)));
+
+                // After initial increment of {0,1} remaining counters increment by {1,1}.
+                block1 = vaddq_u32(be2, block0);
+
+                vst1_u8(const_cast<byte*>(inBlocks), vget_low_u8(
+                    vreinterpretq_u8_u32(vaddq_u32(be2, block1))));
             }
             else
             {
                 const int inc = static_cast<int>(inIncrement);
+                block0 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+0*inc));
                 block1 = vreinterpretq_u32_u8(vld1q_u8(inBlocks+1*inc));
                 inBlocks += 2*inc;
             }
@@ -493,16 +509,15 @@ inline size_t SPECK64_AdvancedProcessBlocks_NEON(F2 func2, F6 func6,
 
         while (length >= blockSize)
         {
-            uint32x4_t block, zero = {0,0,0,0};
-            block = vsetq_lane_u32(Ptr32(inBlocks)[0], block, 0);
-            block = vsetq_lane_u32(Ptr32(inBlocks)[1], block, 1);
+            uint32x4_t block, zero = vld1q_u32(s_zero);
+
+            const uint8x8_t v = vld1_u8(inBlocks);
+            block = vreinterpretq_u32_u8(vcombine_u8(v,v));
 
             if (flags & BlockTransformation::BT_XorInput)
             {
-                uint32x4_t x;
-                x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
-                x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
-                block = veorq_u32(block, x);
+                const uint8x8_t x = vld1_u8(xorBlocks);
+                block = veorq_u32(block, vreinterpretq_u32_u8(vcombine_u8(x,x)));
             }
 
             if (flags & BlockTransformation::BT_InBlockIsCounter)
@@ -512,16 +527,12 @@ inline size_t SPECK64_AdvancedProcessBlocks_NEON(F2 func2, F6 func6,
 
             if (xorBlocks && !(flags & BlockTransformation::BT_XorInput))
             {
-                uint32x4_t x;
-                x = vsetq_lane_u32(Ptr32(xorBlocks)[0], x, 0);
-                x = vsetq_lane_u32(Ptr32(xorBlocks)[1], x, 1);
-                block = veorq_u32(block, x);
+                const uint8x8_t x = vld1_u8(xorBlocks);
+                block = veorq_u32(block, vreinterpretq_u32_u8(vcombine_u8(x,x)));
             }
 
-            word32 t[2];
-            t[0] = vgetq_lane_u32(block, 0);
-            t[1] = vgetq_lane_u32(block, 1);
-            std::memcpy(outBlocks, t, sizeof(t));
+            vst1_u8(const_cast<byte*>(outBlocks),
+                vget_low_u8(vreinterpretq_u8_u32(block)));
 
             inBlocks += inIncrement;
             outBlocks += outIncrement;
@@ -959,7 +970,9 @@ size_t SPECK128_AdvancedProcessBlocks_NEON(F2 func2, F6 func6,
 #if defined(CRYPTOPP_SSSE3_AVAILABLE)
 
 CRYPTOPP_ALIGN_DATA(16)
-const word32 s_one64[] = {0, 1<<24, 0, 1<<24};
+const word32 s_one64_1b[] = {0, 0, 0, 1<<24};      // Only second 8-byte block is incremented after loading
+CRYPTOPP_ALIGN_DATA(16)
+const word32 s_one64_2b[] = {0, 2<<24, 0, 2<<24};  // Routine step. Both 8-byte block are incremented
 
 CRYPTOPP_ALIGN_DATA(16)
 const word32 s_one128[] = {0, 0, 0, 1<<24};
@@ -1656,22 +1669,40 @@ inline size_t SPECK64_AdvancedProcessBlocks_SSE41(F2 func2, F6 func6,
 
     if (flags & BlockTransformation::BT_AllowParallel)
     {
+        // Load these magic values once. Analysis claims be1 and be2
+        // may be uninitialized, but they are when the block is a ctr.
+        __m128i be1, be2;
+        if (flags & BlockTransformation::BT_InBlockIsCounter)
+        {
+            be1 = *CONST_M128_CAST(s_one64_1b);
+            be2 = *CONST_M128_CAST(s_one64_2b);
+        }
+
         while (length >= 6*xmmBlockSize)
         {
             __m128i block0, block1, block2, block3, block4, block5;
-            block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
-                const __m128i be1 = *CONST_M128_CAST(s_one64);
-                block1 = _mm_add_epi32(block0, be1);
-                block2 = _mm_add_epi32(block1, be1);
-                block3 = _mm_add_epi32(block2, be1);
-                block4 = _mm_add_epi32(block3, be1);
-                block5 = _mm_add_epi32(block4, be1);
-                _mm_storeu_si128(M128_CAST(inBlocks), _mm_add_epi32(block5, be1));
+                // For 64-bit block ciphers we need to load the initial single CTR block.
+                // After the dup load we have two counters in the XMM word. Then we need
+                // to increment the low ctr by 0 and the high ctr by 1.
+                block0 = _mm_add_epi32(be1, _mm_castpd_si128(
+                    _mm_loaddup_pd(reinterpret_cast<const double*>(inBlocks))));
+
+                // After initial increment of {0,1} remaining counters increment by {1,1}.
+                block1 = _mm_add_epi32(be2, block0);
+                block2 = _mm_add_epi32(be2, block1);
+                block3 = _mm_add_epi32(be2, block2);
+                block4 = _mm_add_epi32(be2, block3);
+                block5 = _mm_add_epi32(be2, block4);
+
+                // Store the next counter.
+                _mm_store_sd(reinterpret_cast<double*>(const_cast<byte*>(inBlocks)),
+                    _mm_castsi128_pd(_mm_add_epi32(be2, block5)));
             }
             else
             {
+                block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
                 inBlocks += inIncrement;
                 block1 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
                 inBlocks += inIncrement;
@@ -1739,15 +1770,25 @@ inline size_t SPECK64_AdvancedProcessBlocks_SSE41(F2 func2, F6 func6,
 
         while (length >= 2*xmmBlockSize)
         {
-            __m128i block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks)), block1;
+            __m128i block0, block1;
             if (flags & BlockTransformation::BT_InBlockIsCounter)
             {
-                const __m128i be1 = *CONST_M128_CAST(s_one64);
-                block1 = _mm_add_epi32(block0, be1);
-                _mm_storeu_si128(M128_CAST(inBlocks), _mm_add_epi32(block1, be1));
+                // For 64-bit block ciphers we need to load the initial single CTR block.
+                // After the dup load we have two counters in the XMM word. Then we need
+                // to increment the low ctr by 0 and the high ctr by 1.
+                block0 = _mm_add_epi32(be1, _mm_castpd_si128(
+                    _mm_loaddup_pd(reinterpret_cast<const double*>(inBlocks))));
+
+                // After initial increment of {0,1} remaining counters increment by {1,1}.
+                block1 = _mm_add_epi32(be2, block0);
+
+                // Store the next counter.
+                _mm_store_sd(reinterpret_cast<double*>(const_cast<byte*>(inBlocks)),
+                    _mm_castsi128_pd(_mm_add_epi64(be2, block1)));
             }
             else
             {
+                block0 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
                 inBlocks += inIncrement;
                 block1 = _mm_loadu_si128(CONST_M128_CAST(inBlocks));
                 inBlocks += inIncrement;
