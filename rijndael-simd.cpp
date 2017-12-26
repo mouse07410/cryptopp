@@ -63,6 +63,10 @@
 # define EXCEPTION_EXECUTE_HANDLER 1
 #endif
 
+// Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
+#define M128_CAST(x) ((__m128i *)(void *)(x))
+#define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
+
 NAMESPACE_BEGIN(CryptoPP)
 
 #ifdef CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
@@ -493,7 +497,7 @@ void Rijndael_UncheckedSetKeyRev_AESNI(word32 *key, unsigned int rounds)
     unsigned int i, j;
     __m128i temp;
 
-    vec_swap(*(__m128i *)(key), *(__m128i *)(key+4*rounds));
+    vec_swap(*M128_CAST(key), *M128_CAST(key+4*rounds));
 
     for (i = 4, j = 4*rounds-4; i < j; i += 4, j -= 4)
     {
