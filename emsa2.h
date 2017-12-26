@@ -8,6 +8,7 @@
 
 #include "cryptlib.h"
 #include "pubkey.h"
+#include "hashfwd.h"
 #include "misc.h"
 
 #ifdef CRYPTOPP_IS_DLL
@@ -47,15 +48,7 @@ public:
 };
 
 // EMSA2HashId can be instantiated with the following classes.
-class SHA1;
-class SHA224;
-class SHA256;
-class SHA384;
-class SHA512;
-class RIPEMD128;
-class RIPEMD160;
-class Whirlpool;
-// end of list
+// SHA1, SHA224, SHA256, SHA384, SHA512, RIPEMD128, RIPEMD160, Whirlpool
 
 #ifdef CRYPTOPP_IS_DLL
 CRYPTOPP_DLL_TEMPLATE_CLASS EMSA2HashId<SHA1>;
@@ -63,6 +56,16 @@ CRYPTOPP_DLL_TEMPLATE_CLASS EMSA2HashId<SHA224>;
 CRYPTOPP_DLL_TEMPLATE_CLASS EMSA2HashId<SHA256>;
 CRYPTOPP_DLL_TEMPLATE_CLASS EMSA2HashId<SHA384>;
 CRYPTOPP_DLL_TEMPLATE_CLASS EMSA2HashId<SHA512>;
+#endif
+
+// https://github.com/weidai11/cryptopp/issues/300 and
+// https://github.com/weidai11/cryptopp/issues/533
+#if defined(__clang__)
+template<> const byte EMSA2HashId<SHA1>::id;
+template<> const byte EMSA2HashId<SHA224>::id;
+template<> const byte EMSA2HashId<SHA256>::id;
+template<> const byte EMSA2HashId<SHA384>::id;
+template<> const byte EMSA2HashId<SHA512>::id;
 #endif
 
 /// \class EMSA2Pad
