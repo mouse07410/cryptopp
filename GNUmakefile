@@ -21,7 +21,6 @@ CHMOD ?= chmod
 MKDIR ?= mkdir
 LN ?= ln -sf
 LDCONF ?= /sbin/ldconfig -n
-UNAME := $(shell uname)
 
 # Solaris provides a non-Posix shell at /usr/bin
 ifneq ($(wildcard /usr/xpg4/bin),)
@@ -43,7 +42,7 @@ IS_SPARC64 := $(shell echo "$(MACHINE)" | $(GREP) -i -c "sparc64")
 
 IS_LINUX := $(shell echo "$(MACHINE)" | $(GREP) -i -c "Linux")
 IS_MINGW := $(shell echo "$(MACHINE)" | $(GREP) -i -c "MinGW")
-IS_MINGW32 := $(shell echo "$(MACHINE)" | $(GREP) -x -c "mingw32")
+IS_MINGW32 := $(shell echo "$(MACHINE)" | $(GREP) -x -i -c "mingw32")
 IS_CYGWIN := $(shell echo "$(MACHINE)" | $(GREP) -i -c "Cygwin")
 IS_DARWIN := $(shell echo "$(MACHINE)" | $(GREP) -i -c "Darwin")
 IS_NETBSD := $(shell echo "$(MACHINE)" | $(GREP) -i -c "NetBSD")
@@ -66,7 +65,7 @@ ifneq ($(MACPORTS_COMPILER)$(HOMEBREW_COMPILER),00)
 endif
 
 # Sun Studio 12.0 provides SunCC 0x0510; and Sun Studio 12.3 provides SunCC 0x0512
-SUNCC_VERSION := $(shell $(CXX) -V 2>&1)
+SUNCC_VERSION := $(subst `,',$(shell $(CXX) -V 2>&1))
 SUNCC_510_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (Sun|Studio) .* (5\.1[0-9]|5\.[2-9]|6\.)")
 SUNCC_511_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (Sun|Studio) .* (5\.1[1-9]|5\.[2-9]|6\.)")
 SUNCC_512_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (Sun|Studio) .* (5\.1[2-9]|5\.[2-9]|6\.)")
@@ -593,7 +592,8 @@ endif # Asan
 # LD gold linker testing. Triggered by 'LD=ld.gold'.
 ifeq ($(findstring ld.gold,$(LD)),ld.gold)
   ifeq ($(findstring -fuse-ld=gold,$(CXXFLAGS)),)
-    ELF_FORMAT := $(shell file `which ld.gold` 2>&1 | cut -d":" -f 2 | $(GREP) -i -c "elf")
+    LD_GOLD = $(shell command -v ld.gold)
+    ELF_FORMAT := $(shell file $(LD_GOLD) 2>&1 | cut -d":" -f 2 | $(GREP) -i -c "elf")
     ifneq ($(ELF_FORMAT),0)
       LDFLAGS += -fuse-ld=gold
     endif # ELF/ELF64
