@@ -6,6 +6,20 @@
 //    is needed because additional CXXFLAGS are required to enable the
 //    appropriate instructions sets in some build configurations.
 
+// TODO: we still need to implement Power8 SHA. Once we have Power8 SHA,
+//    we should be able to use CRYPTOPP_POWER8_AES_AVAILABLE and
+//    CRYPTOPP_POWER8_SHA_AVAILABLE instead of the broader
+//    CRYPTOPP_POWER8_AVAILABLE. The change will need to be coordinated
+//    with the defines in config.h.
+
+// TODO: Bob Wilkinson reported we are misdetecting CRYPTOPP_POWER8_AVAILABLE.
+//    The problem is, the updated compiler supports them but the down-level
+//    assembler and linker do not. We will probably need to fix it through
+//    the makefile, similar to the way x86 AES and SHA are handled. For the time
+//    being CRYPTOPP_DISABLE_POWER8 will have to be applied manually. Another
+//    twist is, we don't have access to a test machine and it must be fixed
+//    for two compilers (IBM XL C/C++ and GCC). Ugh...
+
 #include "pch.h"
 #include "config.h"
 #include "stdcpp.h"
@@ -157,14 +171,14 @@ bool CPU_ProbePower8()
 # endif
 #else
     return false;
-#endif  // CRYPTOPP_ALTIVEC_AVAILABLE
+#endif  // CRYPTOPP_POWER8_AVAILABLE
 }
 
 bool CPU_ProbeAES()
 {
 #if defined(CRYPTOPP_NO_CPU_FEATURE_PROBES)
     return false;
-#elif (CRYPTOPP_POWER8_AES_AVAILABLE)
+#elif (CRYPTOPP_POWER8_AVAILABLE)
 # if defined(CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY)
 
     // longjmp and clobber warnings. Volatile is required.
@@ -213,7 +227,7 @@ bool CPU_ProbeSHA256()
 {
 #if defined(CRYPTOPP_NO_CPU_FEATURE_PROBES)
     return false;
-#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
+#elif (CRYPTOPP_POWER8_AVAILABLE)
 # if defined(CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY)
 
     // longjmp and clobber warnings. Volatile is required.
@@ -257,7 +271,7 @@ bool CPU_ProbeSHA512()
 {
 #if defined(CRYPTOPP_NO_CPU_FEATURE_PROBES)
     return false;
-#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
+#elif (CRYPTOPP_POWER8_AVAILABLE)
 # if defined(CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY)
 
     // longjmp and clobber warnings. Volatile is required.
@@ -294,7 +308,7 @@ bool CPU_ProbeSHA512()
 # endif
 #else
     return false;
-#endif  // CRYPTOPP_ALTIVEC_AVAILABLE
+#endif  // CRYPTOPP_POWER8_AVAILABLE
 }
 # endif  // CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64
 NAMESPACE_END
