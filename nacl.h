@@ -229,7 +229,7 @@ int crypto_box_open_afternm(uint8_t *m,const uint8_t *c,uint64_t d,const uint8_t
 /// \returns 0 on success, non-0 otherwise
 /// \warning This version of crypto_box() does not check for small order elements. It should not
 ///   be used in new software.
-/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>, 
+/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>,
 ///   <A HREF="https://eprint.iacr.org/2017/806.pdf">May the Fourth Be With You: A Microarchitectural
 ///   Side Channel Attack on Several Real-World Applications of Curve25519</A>,
 ///   <A HREF="https://github.com/jedisct1/libsodium/commit/675149b9b8b66ff4">libsodium commit
@@ -253,7 +253,7 @@ int crypto_box_unchecked(uint8_t *c,const uint8_t *m,uint64_t d,const uint8_t *n
 /// \returns 0 on success, non-0 otherwise
 /// \warning This version of crypto_box_open() does not check for small order elements. It should not
 ///   be used in new software.
-/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>, 
+/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>,
 ///   <A HREF="https://eprint.iacr.org/2017/806.pdf">May the Fourth Be With You: A Microarchitectural
 ///   Side Channel Attack on Several Real-World Applications of Curve25519</A>,
 ///   <A HREF="https://github.com/jedisct1/libsodium/commit/675149b9b8b66ff4">libsodium commit
@@ -275,7 +275,7 @@ int crypto_box_open_unchecked(uint8_t *m,const uint8_t *c,uint64_t d,const uint8
 /// \returns 0 on success, non-0 otherwise
 /// \warning This version of crypto_box_beforenm() does not check for small order elements. It should not
 ///   be used in new software.
-/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>, 
+/// \sa <A HREF="https://nacl.cr.yp.to/box.html">NaCl crypto_box documentation</A>,
 ///   <A HREF="https://eprint.iacr.org/2017/806.pdf">May the Fourth Be With You: A Microarchitectural
 ///   Side Channel Attack on Several Real-World Applications of Curve25519</A>,
 ///   <A HREF="https://github.com/jedisct1/libsodium/commit/675149b9b8b66ff4">libsodium commit
@@ -361,7 +361,7 @@ int crypto_sign(uint8_t *sm,uint64_t *smlen,const uint8_t *m,uint64_t n,const ui
 /// \param m output byte buffer
 /// \param mlen size of the output byte buffer
 /// \param sm input byte buffer
-/// \param smlen size of the input byte buffer
+/// \param n size of the input byte buffer
 /// \param pk public key
 /// \returns 0 on success, non-0 otherwise
 /// \sa <A HREF="https://nacl.cr.yp.to/sign.html">NaCl crypto_sign documentation</A>
@@ -369,8 +369,8 @@ int crypto_sign(uint8_t *sm,uint64_t *smlen,const uint8_t *m,uint64_t n,const ui
 int crypto_sign_open(uint8_t *m,uint64_t *mlen,const uint8_t *sm,uint64_t n,const uint8_t *pk);
 
 /// \brief Generate a keypair for signing
-/// \param y public key byte buffer
-/// \param x private key byte buffer
+/// \param pk public key byte buffer
+/// \param sk private key byte buffer
 /// \details crypto_sign_keypair() creates an ed25519 keypair.
 /// \returns 0 on success, non-0 otherwise
 /// \sa <A HREF="https://nacl.cr.yp.to/sign.html">NaCl crypto_sign documentation</A>
