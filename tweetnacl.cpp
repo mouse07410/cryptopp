@@ -12,7 +12,7 @@
 
 // Don't destroy const time properties when squashing warnings.
 #if CRYPTOPP_MSC_VERSION
-# pragma warning(disable: 4242 4244 4245)
+# pragma warning(disable: 4146 4242 4244 4245)
 #endif
 
 #ifndef CRYPTOPP_DISABLE_NACL
@@ -861,7 +861,7 @@ static int unpackneg(gf r[4],const uint8_t p[32])
 
 int crypto_sign_open(uint8_t *m,uint64_t *mlen,const uint8_t *sm,uint64_t n,const uint8_t *pk)
 {
-  int i;
+  uint32_t i;
   uint8_t t[32],h[64];
   gf p[4],q[4];
 
@@ -895,3 +895,6 @@ NAMESPACE_END  // CryptoPP
 NAMESPACE_END  // NaCl
 
 #endif  // NO_OS_DEPENDENCE
+
+
+

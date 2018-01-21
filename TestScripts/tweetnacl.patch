@@ -1,5 +1,5 @@
---- tweetnacl.c	2018-01-19 18:25:34.736456382 -0500
-+++ tweetnacl.cpp	2018-01-19 18:25:34.738456422 -0500
+--- tweetnacl.c	2018-01-20 17:05:17.670515984 -0500
++++ tweetnacl.cpp	2018-01-20 17:05:17.671515970 -0500
 @@ -1,19 +1,33 @@
 -#include "tweetnacl.h"
 -#define FOR(i,n) for (i = 0;i < n;++i)
@@ -25,7 +25,7 @@
 +
 +// Don't destroy const time properties when squashing warnings.
 +#if CRYPTOPP_MSC_VERSION
-+# pragma warning(disable: 4242 4244 4245)
++# pragma warning(disable: 4146 4242 4244 4245)
 +#endif
 +
 +#ifndef CRYPTOPP_DISABLE_NACL
@@ -526,11 +526,14 @@
    }
 -  FOR(a,16) o[a]=c[a];
 +  for(a=0; a<16; ++a) o[a]=c[a];
-+}
-+
+ }
+
+-int crypto_scalarmult(u8 *q,const u8 *n,const u8 *p)
 +// https://github.com/jedisct1/libsodium/blob/master/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c
 +static int has_small_order(const uint8_t s[32])
-+{
+ {
+-  u8 z[32];
+-  i64 x[80],r,i;
 +  CRYPTOPP_ALIGN_DATA(16)
 +  const uint8_t blacklist[][32] = {
 +    { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
@@ -561,13 +564,10 @@
 +  }
 +
 +  return (int) ((k >> 8) & 1);
- }
-
--int crypto_scalarmult(u8 *q,const u8 *n,const u8 *p)
++}
++
 +int crypto_scalarmult(uint8_t *q,const uint8_t *n,const uint8_t *p)
- {
--  u8 z[32];
--  i64 x[80],r,i;
++{
 +  uint8_t z[32];
 +  int64_t x[80],r,i;
    gf a,b,c,d,e,f;
@@ -992,8 +992,9 @@
 -int crypto_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
 +int crypto_sign_open(uint8_t *m,uint64_t *mlen,const uint8_t *sm,uint64_t n,const uint8_t *pk)
  {
-   int i;
+-  int i;
 -  u8 t[32],h[64];
++  uint32_t i;
 +  uint8_t t[32],h[64];
    gf p[4],q[4];
 
@@ -1009,7 +1010,7 @@
    crypto_hash(h,m,n);
    reduce(h);
    scalarmult(p,q,h);
-@@ -799,11 +882,16 @@
+@@ -799,11 +882,19 @@
 
    n -= 64;
    if (crypto_verify_32(sm, t)) {
@@ -1028,3 +1029,6 @@
 +NAMESPACE_END  // NaCl
 +
 +#endif  // NO_OS_DEPENDENCE
++
++
++

@@ -39,11 +39,14 @@
 # include <wmmintrin.h>
 #endif
 
-#if (CRYPTOPP_ARM_NEON_AVAILABLE || CRYPTOPP_ARM_PMULL_AVAILABLE)
+#if (CRYPTOPP_ARM_NEON_AVAILABLE)
 # include <arm_neon.h>
 #endif
 
+// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
+// compilers don't follow ACLE conventions for the include.
 #if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+# include <stdint.h>
 # include <arm_acle.h>
 #endif
 
@@ -59,6 +62,10 @@
 // Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
 #define M128_CAST(x) ((__m128i *)(void *)(x))
 #define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
+
+// GCC cast warning
+#define UINT64X2_CAST(x) ((uint64x2_t *)(void *)(x))
+#define CONST_UINT64X2_CAST(x) ((const uint64x2_t *)(const void *)(x))
 
 ANONYMOUS_NAMESPACE_BEGIN
 
@@ -282,7 +289,7 @@ void GCM_Xor16_NEON(byte *a, const byte *b, const byte *c)
     CRYPTOPP_ASSERT(IsAlignedOn(a,GetAlignmentOf<uint64x2_t>()));
     CRYPTOPP_ASSERT(IsAlignedOn(b,GetAlignmentOf<uint64x2_t>()));
     CRYPTOPP_ASSERT(IsAlignedOn(c,GetAlignmentOf<uint64x2_t>()));
-    *(uint64x2_t*)a = veorq_u64(*(uint64x2_t*)b, *(uint64x2_t*)c);
+    *UINT64X2_CAST(a) = veorq_u64(*CONST_UINT64X2_CAST(b), *CONST_UINT64X2_CAST(c));
 }
 #endif
 
