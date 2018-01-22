@@ -287,7 +287,7 @@ const lword LWORD_MAX = W64LIT(0xffffffffffffffff);
 #else
 	#define CRYPTOPP_NATIVE_DWORD_AVAILABLE 1
 	#if defined(__alpha__) || defined(__ia64__) || defined(_ARCH_PPC64) || defined(__x86_64__) || defined(__mips64) || defined(__sparc64__)
-#if defined(__GNUC__) && !defined(__INTEL_COMPILER) && !(CRYPTOPP_GCC_VERSION == 40001 && defined(__APPLE__)) && !(defined(__GNUC__) && CRYPTOPP_GCC_VERSION < 50000 && defined(_ARCH_PPC64)) && CRYPTOPP_GCC_VERSION >= 30400
+		#if ((CRYPTOPP_GCC_VERSION >= 30400) || (CRYPTOPP_LLVM_CLANG_VERSION >= 30000) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40300)) && (__SIZEOF_INT128__ >= 16)
 			// GCC 4.0.1 on MacOS X is missing __umodti3 and __udivti3
 			// GCC 4.8.3 and bad uint128_t ops on PPC64/POWER7 (Issue 421)
 			// mode(TI) division broken on amd64 with GCC earlier than GCC 3.4
@@ -337,15 +337,6 @@ NAMESPACE_END
 		#define CRYPTOPP_ALIGN_DATA(x) __attribute__((aligned(x)))
 	#else
 		#define CRYPTOPP_ALIGN_DATA(x)
-	#endif
-#endif
-
-#ifndef CRYPTOPP_SECTION_ALIGN16
-#if defined(__GNUC__) && !defined(__APPLE__)
-		// the alignment attribute doesn't seem to work without this section attribute when -fdata-sections is turned on
-		#define CRYPTOPP_SECTION_ALIGN16 __attribute__((section ("CryptoPP_Align16")))
-	#else
-		#define CRYPTOPP_SECTION_ALIGN16
 	#endif
 #endif
 
@@ -704,7 +695,9 @@ NAMESPACE_END
 	#define CRYPTOPP_MM_MALLOC_AVAILABLE
 #elif defined(__APPLE__)
 	#define CRYPTOPP_APPLE_MALLOC_AVAILABLE
-#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(_AIX)
+#elif defined(_AIX)
+	#define CRYPTOPP_POSIX_MEMALIGN_AVAILABLE
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 	#define CRYPTOPP_MALLOC_ALIGNMENT_IS_16
 #elif defined(__linux__) || defined(__sun__) || defined(__CYGWIN__)
 	#define CRYPTOPP_MEMALIGN_AVAILABLE
@@ -891,10 +884,14 @@ NAMESPACE_END
 #define CRYPTOPP_DLL
 #endif
 
+// C++ makes const internal linkage
+#define CRYPTOPP_TABLE extern
 #define CRYPTOPP_API __cdecl
 
 #else	// not CRYPTOPP_WIN32_AVAILABLE
 
+// C++ makes const internal linkage
+#define CRYPTOPP_TABLE extern
 #define CRYPTOPP_DLL
 #define CRYPTOPP_API
 
