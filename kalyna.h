@@ -53,7 +53,7 @@ struct CRYPTOPP_NO_VTABLE Kalyna512_Info : public FixedBlockSize<64>, FixedKeyLe
     }
 };
 
-/// \brief Kalyna block cipher
+/// \brief Kalyna block cipher base class
 /// \since Crypto++ 6.0
 class CRYPTOPP_NO_VTABLE Kalyna_Base
 {
@@ -68,6 +68,9 @@ protected:
     unsigned int     m_kl, m_nb, m_nk;   // number 64-bit blocks and keys
 };
 
+/// \brief Kalyna 128-bit block cipher
+/// \details Kalyna128 provides 128-bit block size. The valid key sizes are 128-bit and 256-bit.
+/// \since Crypto++ 6.0
 class Kalyna128 : public Kalyna128_Info, public BlockCipherDocumentation
 {
 public:
@@ -89,6 +92,9 @@ public:
             return std::string("Kalyna-128") + "(" + IntToString(m_kl*8) + ")";
         }
 
+        /// \brief Provides input and output data alignment for optimal performance.
+        /// \return the input data alignment that provides optimal performance
+        /// \sa GetAlignment() and OptimalBlockSize()
         unsigned int OptimalDataAlignment() const {
             return GetAlignmentOf<word64>();
         }
@@ -102,12 +108,15 @@ public:
         void SetKey_24(const word64 key[4]);
         void ProcessBlock_22(const word64 inBlock[2], const word64 xorBlock[2], word64 outBlock[2]) const;
         void ProcessBlock_24(const word64 inBlock[2], const word64 xorBlock[2] ,word64 outBlock[2]) const;
-	};
+    };
 
     typedef BlockCipherFinal<ENCRYPTION, Base> Encryption;
     typedef BlockCipherFinal<DECRYPTION, Base> Decryption;
 };
 
+/// \brief Kalyna 256-bit block cipher
+/// \details Kalyna256 provides 256-bit block size. The valid key sizes are 256-bit and 512-bit.
+/// \since Crypto++ 6.0
 class Kalyna256 : public Kalyna256_Info, public BlockCipherDocumentation
 {
 public:
@@ -129,6 +138,9 @@ public:
             return std::string("Kalyna-256") + "(" + IntToString(m_kl*8) + ")";
         }
 
+        /// \brief Provides input and output data alignment for optimal performance.
+        /// \return the input data alignment that provides optimal performance
+        /// \sa GetAlignment() and OptimalBlockSize()
         unsigned int OptimalDataAlignment() const {
             return GetAlignmentOf<word64>();
         }
@@ -148,6 +160,9 @@ public:
     typedef BlockCipherFinal<DECRYPTION, Base> Decryption;
 };
 
+/// \brief Kalyna 512-bit block cipher
+/// \details Kalyna512 provides 512-bit block size. The valid key size is 512-bit.
+/// \since Crypto++ 6.0
 class Kalyna512 : Kalyna512_Info, public BlockCipherDocumentation
 {
 public:
@@ -169,6 +184,9 @@ public:
             return std::string("Kalyna-512") + "(" + IntToString(m_kl*8) + ")";
         }
 
+        /// \brief Provides input and output data alignment for optimal performance.
+        /// \return the input data alignment that provides optimal performance
+        /// \sa GetAlignment() and OptimalBlockSize()
         unsigned int OptimalDataAlignment() const {
             return GetAlignmentOf<word64>();
         }
