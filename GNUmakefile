@@ -3,6 +3,8 @@
 ###########################################################
 
 # https://www.gnu.org/software/make/manual/make.html#Makefile-Conventions
+# and https://www.gnu.org/prep/standards/standards.html
+
 SHELL = /bin/sh
 
 # If needed
@@ -10,7 +12,7 @@ TMPDIR ?= /tmp
 # Used for ARMv7 and NEON.
 FP_ABI ?= hard
 
-# Command ard arguments
+# Command and arguments
 AR ?= ar
 ARFLAGS ?= -cr # ar needs the dash on OpenBSD
 RANLIB ?= ranlib
@@ -19,9 +21,14 @@ CP ?= cp
 MV ?= mv
 RM ?= rm -f
 CHMOD ?= chmod
-MKDIR ?= mkdir
+MKDIR ?= mkdir -p
+
 LN ?= ln -sf
 LDCONF ?= /sbin/ldconfig -n
+
+INSTALL = install
+INSTALL_PROGRAM = $(INSTALL)
+INSTALL_DATA = $(INSTALL) -m 644
 
 # Solaris provides a non-Posix shell at /usr/bin
 ifneq ($(wildcard /usr/xpg4/bin),)
@@ -835,7 +842,7 @@ clean:
 .PHONY: distclean
 distclean: clean
 	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt cryptest-*.txt
-	@-$(RM) cryptopp.tgz *.o *.bc *.ii *~
+	@-$(RM) libcryptopp.pc cryptopp.tgz *.o *.bc *.ii *~
 	@-$(RM) -r $(SRCS:.cpp=.obj) cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
 	@-$(RM) -r $(DOCUMENT_DIRECTORY)/
 	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
@@ -846,44 +853,40 @@ distclean: clean
 	@-$(RM) cryptopp$(LIB_VER)\.*
 	@-$(RM) CryptoPPRef.zip
 
+# Some users already have a libcryptopp.pc. We install it if the file
+# is present. If you want one, then issue 'make libcryptopp.pc'.
 .PHONY: install
 install:
-	@-$(MKDIR) -p $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	$(CP) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	-$(CHMOD) 0755 $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	-$(CHMOD) 0644 $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
+	@-$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
+	$(INSTALL_DATA) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
 ifneq ($(wildcard libcryptopp.a),)
-	@-$(MKDIR) -p $(DESTDIR)$(LIBDIR)
-	$(CP) libcryptopp.a $(DESTDIR)$(LIBDIR)
-	-$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/libcryptopp.a
+	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
+	$(INSTALL_DATA) libcryptopp.a $(DESTDIR)$(LIBDIR)
 endif
 ifneq ($(wildcard cryptest.exe),)
-	@-$(MKDIR) -p $(DESTDIR)$(BINDIR)
-	$(CP) cryptest.exe $(DESTDIR)$(BINDIR)
-	-$(CHMOD) 0755 $(DESTDIR)$(BINDIR)/cryptest.exe
-	$(MKDIR) -p $(DESTDIR)$(DATADIR)/cryptopp
-	$(CP) -r TestData $(DESTDIR)$(DATADIR)/cryptopp
-	$(CP) -r TestVectors $(DESTDIR)$(DATADIR)/cryptopp
-	-$(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp
-	-$(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp/TestData
-	-$(CHMOD) 0755 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
-	-$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestData/*.dat
-	-$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors/*.txt
+	@-$(MKDIR) $(DESTDIR)$(BINDIR)
+	$(INSTALL_PROGRAM) cryptest.exe $(DESTDIR)$(BINDIR)
+	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestData
+	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
+	$(INSTALL_DATA) TestData/*.dat $(DESTDIR)$(DATADIR)/cryptopp/TestData
+	$(INSTALL_DATA) TestVectors/*.txt $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
 endif
 ifneq ($(wildcard libcryptopp.dylib),)
-	@-$(MKDIR) -p $(DESTDIR)$(LIBDIR)
-	$(CP) libcryptopp.dylib $(DESTDIR)$(LIBDIR)
+	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
+	$(INSTALL_PROGRAM) libcryptopp.dylib $(DESTDIR)$(LIBDIR)
 	-install_name_tool -id $(DESTDIR)$(LIBDIR)/libcryptopp.dylib $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
-	-$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
 endif
 ifneq ($(wildcard libcryptopp.so$(SOLIB_VERSION_SUFFIX)),)
-	@-$(MKDIR) -p $(DESTDIR)$(LIBDIR)
-	$(CP) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)
-	@-$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_VERSION_SUFFIX)
+	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
+	$(INSTALL_PROGRAM) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)
 ifeq ($(HAS_SOLIB_VERSION),1)
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)/libcryptopp.so
 	$(LDCONF) $(DESTDIR)$(LIBDIR)
 endif
+endif
+ifneq ($(wildcard libcryptopp.pc),)
+	@-$(MKDIR) $(DESTDIR)$(LIBDIR)/pkgconfig
+	$(INSTALL_DATA) libcryptopp.pc $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
 endif
 
 .PHONY: remove uninstall
@@ -895,6 +898,7 @@ remove uninstall:
 	@-$(RM) $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_VERSION_SUFFIX)
 	@-$(RM) $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
 	@-$(RM) $(DESTDIR)$(LIBDIR)/libcryptopp.so
+	@-$(RM) $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
 	@-$(RM) -r $(DESTDIR)$(DATADIR)/cryptopp
 
 libcryptopp.a: $(LIBOBJS)
@@ -946,6 +950,24 @@ cryptest.import.exe: cryptopp.dll libcryptopp.import.a $(TESTIMPORTOBJS)
 dlltest.exe: cryptopp.dll $(DLLTESTOBJS)
 	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(DLLTESTOBJS) -L. -lcryptopp.dll $(LDFLAGS) $(LDLIBS)
 
+# Some users already have a libcryptopp.pc. We install it if the file
+# is present. If you want one, then issue 'make libcryptopp.pc'. Be sure
+# to use/verify PREFIX and LIBDIR below after writing the file.
+libcryptopp.pc:
+	@echo '# Crypto++ package configuration file' > libcryptopp.pc
+	@echo '' >> libcryptopp.pc
+	@echo 'prefix=$(PREFIX)' >> libcryptopp.pc
+	@echo 'libdir=$(LIBDIR)' >> libcryptopp.pc
+	@echo 'includedir=$${prefix}/include' >> libcryptopp.pc
+	@echo '' >> libcryptopp.pc
+	@echo 'Name: Crypto++' >> libcryptopp.pc
+	@echo 'Description: Crypto++ cryptographic library' >> libcryptopp.pc
+	@echo 'Version: 6.1.0' >> libcryptopp.pc
+	@echo 'URL: https://cryptopp.com/' >> libcryptopp.pc
+	@echo '' >> libcryptopp.pc
+	@echo 'Cflags: -I$${includedir}' >> libcryptopp.pc
+	@echo 'Libs: -L$${libdir} -lcryptopp' >> libcryptopp.pc
+
 # This recipe prepares the distro files
 TEXT_FILES := *.h *.cpp adhoc.cpp.proto License.txt Readme.txt Install.txt Filelist.txt Doxyfile cryptest* cryptlib* dlltest* cryptdll* *.sln *.vcxproj *.filters cryptopp.rc TestVectors/*.txt TestData/*.dat TestScripts/*.sh TestScripts/*.cmd
 EXEC_FILES := GNUmakefile GNUmakefile-cross TestData/ TestVectors/ TestScripts/
@@ -987,12 +1009,12 @@ zip dist: | distclean convert
 .PHONY: iso
 iso: | zip
 ifneq ($(IS_DARWIN),0)
-	$(MKDIR) -p $(PWD)/cryptopp$(LIB_VER)
+	$(MKDIR) $(PWD)/cryptopp$(LIB_VER)
 	$(CP) cryptopp$(LIB_VER).zip $(PWD)/cryptopp$(LIB_VER)
 	hdiutil makehybrid -iso -joliet -o cryptopp$(LIB_VER).iso $(PWD)/cryptopp$(LIB_VER)
 	@-$(RM) -r $(PWD)/cryptopp$(LIB_VER)
 else ifneq ($(IS_LINUX),0)
-	$(MKDIR) -p $(PWD)/cryptopp$(LIB_VER)
+	$(MKDIR) $(PWD)/cryptopp$(LIB_VER)
 	$(CP) cryptopp$(LIB_VER).zip $(PWD)/cryptopp$(LIB_VER)
 	genisoimage -q -o cryptopp$(LIB_VER).iso $(PWD)/cryptopp$(LIB_VER)
 	@-$(RM) -r $(PWD)/cryptopp$(LIB_VER)
@@ -1016,14 +1038,6 @@ endif
 ifeq ($(wildcard GNUmakefile.deps),GNUmakefile.deps)
 -include GNUmakefile.deps
 endif # Dependencies
-
-# Run rdrand-nasm.sh to create the object files
-ifeq ($(USE_NASM),1)
-rdrand.o: rdrand.h rdrand.cpp rdrand.s
-	$(CXX) $(strip $(CXXFLAGS) -DNASM_RDRAND_ASM_AVAILABLE=1 -DNASM_RDSEED_ASM_AVAILABLE=1 -c rdrand.cpp)
-rdrand-%.o:
-	./rdrand-nasm.sh
-endif
 
 # IBM XLC -O3 optimization bug
 ifeq ($(XLC_COMPILER),1)
