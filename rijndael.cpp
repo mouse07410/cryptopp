@@ -284,7 +284,7 @@ void Rijndael::Base::FillDecTable()
 }
 
 #if (CRYPTOPP_AESNI_AVAILABLE)
-extern void Rijndael_UncheckedSetKey_SSE4_AESNI(const byte *userKey, size_t keyLen, word32* rk, unsigned int rounds);
+extern void Rijndael_UncheckedSetKey_SSE4_AESNI(const byte *userKey, size_t keyLen, word32* rk);
 extern void Rijndael_UncheckedSetKeyRev_AESNI(word32 *key, unsigned int rounds);
 
 extern size_t Rijndael_Enc_AdvancedProcessBlocks_AESNI(const word32 *subkeys, size_t rounds,
@@ -302,7 +302,7 @@ extern size_t Rijndael_Dec_AdvancedProcessBlocks_ARMV8(const word32 *subkeys, si
 
 #if (CRYPTOPP_POWER8_AES_AVAILABLE)
 extern void Rijndael_UncheckedSetKey_POWER8(const byte* userKey, size_t keyLen,
-        word32* rk, const word32* rc, const byte* Se);
+        word32* rk, const byte* Se);
 
 extern size_t Rijndael_Enc_AdvancedProcessBlocks128_6x1_ALTIVEC(const word32 *subkeys, size_t rounds,
         const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
@@ -331,7 +331,7 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 	{
 		// TODO: Add non-SSE4.1 variant for low-end Atoms. The low-end
 		//  Atoms have SSE2-SSSE3 and AES-NI, but not SSE4.1 or SSE4.2.
-		Rijndael_UncheckedSetKey_SSE4_AESNI(userKey, keyLen, rk, m_rounds);
+		Rijndael_UncheckedSetKey_SSE4_AESNI(userKey, keyLen, rk);
 		if (!IsForwardTransformation())
 			Rijndael_UncheckedSetKeyRev_AESNI(m_key, m_rounds);
 
@@ -344,7 +344,7 @@ void Rijndael::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLen, c
 	{
 		// We still need rcon and Se to fallback to C/C++ for AES-192 and AES-256.
 		// The IBM docs on AES sucks. Intel's docs on AESNI puts IBM to shame.
-		Rijndael_UncheckedSetKey_POWER8(userKey, keyLen, rk, rcon, Se);
+		Rijndael_UncheckedSetKey_POWER8(userKey, keyLen, rk, Se);
 		return;
 	}
 #endif
