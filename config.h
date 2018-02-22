@@ -79,7 +79,7 @@
 //   the version of the library the headers came from. It is not
 //   necessarily the version of the library built as a shared object if
 //   versions are inadvertently mixed and matched.
-#define CRYPTOPP_VERSION 610
+#define CRYPTOPP_VERSION 620
 
 // Define this if you want to set a prefix for TestData/ and TestVectors/
 //   Be mindful of the trailing slash since its simple concatenation.
@@ -1073,8 +1073,9 @@ NAMESPACE_END
 
 // ***************** C++17 related ********************
 
+// C++17 macro version, https://stackoverflow.com/q/38456127/608639
 #if !defined(CRYPTOPP_NO_CXX17)
-#  if ((_MSC_VER >= 1900) || (__cplusplus >= 201402L)) && !defined(_STLPORT_VERSION)
+#  if ((_MSC_VER >= 1900) || (__cplusplus >= 201703L)) && !defined(_STLPORT_VERSION)
 #    define CRYPTOPP_CXX17 1
 #  endif
 #endif
