@@ -2495,70 +2495,8 @@ bool TestHuffmanCodes()
 #if defined(CRYPTOPP_EXTENDED_VALIDATION)
 bool TestIntegerBitops()
 {
-    std::cout << "\nTesting Integer operations...\n\n";
-    bool pass;
+    std::cout << "\nTesting Integer bit operations...\n\n";
 
-    // Integer is missing a couple of tests...
-    try {
-        Integer x = Integer::Two().Power2(128) / Integer::Zero();
-        pass=false;
-    } catch (const Exception&) {
-        pass=true;
-    }
-
-    if (pass)
-        std::cout << "passed:";
-    else
-        std::cout << "FAILED:";
-    std::cout << "  Integer DivideByZero\n";
-
-    // Integer is missing a couple of tests...
-    pass=true;
-    try {
-        // A run of 71 composites; see http://en.wikipedia.org/wiki/Prime_gap
-        Integer x = Integer(GlobalRNG(), 31398, 31468, Integer::PRIME);
-        pass=false;
-    } catch (const Exception&) { }
-
-    if (pass)
-        std::cout << "passed:";
-    else
-        std::cout << "FAILED:";
-    std::cout << "  Integer RandomNumberNotFound\n";
-
-    // Carmichael pseudo-primes
-    pass=true;
-    if (IsPrime(Integer("561")))
-        pass = false;
-    if (IsPrime(Integer("41041")))
-        pass = false;
-    if (IsPrime(Integer("321197185")))
-        pass = false;
-    if (IsPrime(Integer("5394826801")))
-        pass = false;
-    if (IsPrime(Integer("232250619601")))
-        pass = false;
-    if (IsPrime(Integer("974637772161")))
-        pass = false;
-
-    if (pass)
-        std::cout << "passed:";
-    else
-        std::cout << "FAILED:";
-    std::cout << "  Carmichael pseudo-primes\n";
-
-    // Integer is missing a couple of tests...
-    try {
-        Integer x = Integer::One().Doubled();
-        pass=(x == Integer::Two());
-    } catch (const Exception&) {
-        pass=false;
-    }
-
-    if (!pass)
-        std::cout << "FAILED:  Integer Doubled\n";
-
-    // Now onto the meat and potatoes...
     struct Bitops_TestTuple
     {
         // m,n are operands; a,o,x are and,or,xor results
@@ -3192,6 +3130,381 @@ bool TestIntegerBitops()
     std::cout << "  Bitwise XOR over 32-bits to 1024-bits\n";
 
     return opa && opo && opx;
+}
+
+bool TestIntegerOps()
+{
+    std::cout << "\nTesting Integer operations...\n\n";
+    bool pass=true, result;
+    RandomNumberGenerator& prng = GlobalRNG();
+
+    // ****************************** DivideByZero ******************************
+
+    try {
+        Integer x = Integer::Two().Power2(128) / Integer::Zero();
+        pass=false;
+    } catch (const Exception&) {
+        pass=true;
+    }
+
+    if (pass)
+        std::cout << "passed:";
+    else
+        std::cout << "FAILED:";
+    std::cout << "  Integer DivideByZero\n";
+
+    // ****************************** RandomNumberNotFound ******************************
+
+    try {
+        // A run of 71 composites; see http://en.wikipedia.org/wiki/Prime_gap
+        Integer x = Integer(GlobalRNG(), 31398, 31468, Integer::PRIME);
+        pass=false;
+    } catch (const Exception&) {
+        pass=true;
+    }
+
+    if (pass)
+        std::cout << "passed:";
+    else
+        std::cout << "FAILED:";
+    std::cout << "  Integer RandomNumberNotFound\n";
+
+    // ****************************** Carmichael pseudo-primes ******************************
+
+    pass=true;
+    if (IsPrime(Integer("561")))
+        pass = false;
+    if (IsPrime(Integer("41041")))
+        pass = false;
+    if (IsPrime(Integer("321197185")))
+        pass = false;
+    if (IsPrime(Integer("5394826801")))
+        pass = false;
+    if (IsPrime(Integer("232250619601")))
+        pass = false;
+    if (IsPrime(Integer("974637772161")))
+        pass = false;
+
+    if (pass)
+        std::cout << "passed:";
+    else
+        std::cout << "FAILED:";
+    std::cout << "  Carmichael pseudo-primes\n";
+
+    // ****************************** Integer::Double ******************************
+
+    try {
+        Integer x = Integer::One().Doubled();
+        pass=(x == Integer::Two());
+    } catch (const Exception&) {
+        pass=false;
+    }
+
+    if (!pass)
+        std::cout << "FAILED:  Integer Doubled\n";
+
+    // ****************************** Integer::Square ******************************
+
+    try {
+        Integer x = Integer::Two().Squared();
+        pass=(x == 4);
+    } catch (const Exception&) {
+        pass=false;
+    }
+
+    if (!pass)
+        std::cout << "FAILED:  Integer Squared\n";
+
+    try {
+        Integer x = Integer::Two().Squared();
+        pass=(x == 4) && x.IsSquare();
+    } catch (const Exception&) {
+        pass=false;
+    }
+
+    if (!pass)
+        std::cout << "FAILED:  Integer IsSquare\n";
+
+    if (pass)
+       std::cout << "passed:";
+    else
+       std::cout << "FAILED:";
+    std::cout << "  Squaring operations\n";
+
+    // ****************************** Integer::GCD ******************************
+
+    {
+        for (unsigned int i=0; i<128; ++i)
+        {
+            Integer x, y;
+            AlgorithmParameters params =
+                MakeParameters("BitLength", 256)("RandomNumberType", Integer::PRIME);
+
+            x.GenerateRandom(prng, params);
+            y.GenerateRandom(prng, params);
+
+            if (x != y)
+            {
+                result = (Integer::Gcd(x,y) == 1);
+                pass = result && pass;
+            }
+        }
+
+        if (pass)
+           std::cout << "passed:";
+        else
+           std::cout << "FAILED:";
+        std::cout << "  GCD operations\n";
+    }
+
+    // ******************** Integer::Modulo and Integer::InverseMod ********************
+
+    {
+           // http://github.com/weidai11/cryptopp/issues/602
+        Integer a("0x2F0500010000018000000000001C1C000000000000000A000B0000000000000000000000000000FDFFFFFF00000000");
+        Integer b("0x3D2F050001");
+
+        result = (Integer("0x3529E4FEBC") == a.InverseMod(b));
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  InverseMod operation\n";
+    }
+
+    for (unsigned int i=0; i<128+64; ++i)
+    {
+        Integer a(prng, 1024), m(prng, 1024);
+        a++, m++;  // make non-0
+
+        // Corner cases
+        switch (i)
+        {
+        case 0:
+            a = -1; break;
+        case 1:
+            a = 0; break;
+        case 2:
+            a = 1; break;
+        case 3:
+            a = m-1; break;
+        case 4:
+            a = m; break;
+        case 5:
+            a = m+1; break;
+        case 6:
+            a = 2*m-1; break;
+        case 7:
+            a = 2*m; break;
+        case 8:
+            a = 2*m+1; break;
+        case 9:
+            a = (m<<256)-1; break;
+        case 10:
+            a = (m<<256); break;
+        case 11:
+            a = (m<<256)+1; break;
+        default:
+            ;;
+        }
+
+        Integer x = a.InverseMod(m);
+        Integer y = (a % m).InverseMod(m);
+        Integer z = (a * y).Modulo(m);
+
+        if (GCD(a,m) == 1)  // coprime?
+            result = (x == y) && (z == 1) && (a_times_b_mod_c(a, x, m) == 1);
+        else
+            result = (x == y);
+
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  InverseMod operation\n";
+    }
+
+    for (unsigned int i=0; i<128; ++i)
+    {
+        Integer m(prng, 32);
+        m++; // make non-0
+
+        for (unsigned int j=0; j<256; j+=4)
+        {
+            Integer a((m << j)-1);
+
+            Integer x = a.InverseMod(m);
+            Integer y = (a % m).InverseMod(m);
+            Integer z = (a * y).Modulo(m);
+
+            if (GCD(a,m) == 1)  // coprime?
+                result = (x == y) && (z == 1) && (a_times_b_mod_c(a, x, m) == 1);
+            else
+                result = (x == y);
+
+            pass = result && pass;
+            if (!result)
+                std::cout << "FAILED:  InverseMod operation\n";
+        }
+    }
+
+    for (unsigned int i=0; i<128; ++i)
+    {
+        Integer a(prng, 4096), m(prng, 32);
+        a++, m++; // make non-0
+
+        Integer x = a.InverseMod(m);
+        Integer y = (a % m).InverseMod(m);
+        Integer z = (a * y).Modulo(m);
+
+        if (GCD(a,m) == 1)  // coprime?
+            result = (x == y) && (z == 1) && (a_times_b_mod_c(a, x, m) == 1);
+        else
+            result = (x == y);
+
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  InverseMod operation\n";
+    }
+
+    for (unsigned int i=0; i<128; ++i)
+    {
+        Integer a(prng, 4096); word m;
+        prng.GenerateBlock((byte*)&m, sizeof(m));
+
+        a++; // make non-0
+        if (m == 0) m++;
+
+        // Avoid the conversion from word to long
+        Integer mi = Integer(Integer::POSITIVE, 0, m);
+        Integer ri = a % Integer(Integer::POSITIVE, 0, m);
+
+        Integer x = Integer(Integer::POSITIVE, 0, a.InverseMod(m));
+        Integer y = Integer(Integer::POSITIVE, 0, ri.InverseMod(m));
+        Integer z = Integer(Integer::POSITIVE, 0, (a * y).Modulo(m));
+
+        if (GCD(a,mi) == 1)  // coprime?
+            result = (x == y) && (z == 1);
+        else
+            result = (x == y);
+
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  InverseMod operation\n";
+    }
+
+    if (pass)
+       std::cout << "passed:";
+    else
+       std::cout << "FAILED:";
+    std::cout << "  InverseMod operations\n";
+
+    // ****************************** Integer::Power2 ******************************
+
+    {
+        Integer x, y;
+
+        x = Integer::Power2(0);
+        result = (x == 1);
+
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  Power2 (0) operation\n";
+
+        x = Integer::Power2(1);
+        result = (x == 2);
+
+        pass = result && pass;
+        if (!result)
+            std::cout << "FAILED:  Power2 (1) operation\n";
+    }
+
+    for (unsigned int i=0; i<128; i+=2)
+    {
+        Integer b = 2, m(prng, 2048);
+
+        Integer x = EuclideanDomainOf<Integer>().Exponentiate(b, i) % m;
+        Integer y = Integer::Power2(i) % m;
+
+        pass = (x == y) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    if (pass)
+       std::cout << "passed:";
+    else
+       std::cout << "FAILED:";
+    std::cout << "  Power2 operations\n";
+
+    // ****************************** Integer Exponentiation ******************************
+
+    // Be careful with EuclideanDomainOf<Integer>().Exponentiate(). It can easily consume
+    // all machine memory because it is an exponentiation without a modular reduction.
+
+    {
+        word32  m = prng.GenerateWord32();
+        Integer z = Integer::Zero();
+        Integer x = a_exp_b_mod_c(z, z, m);
+        Integer y = EuclideanDomainOf<Integer>().Exponentiate(0, 0) % m;
+
+        pass = (x == y) && (x == 1) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    for (unsigned int i=0; i<128; i+=2)
+    {
+        Integer b = 0, m(prng, 2048);
+
+        Integer x = a_exp_b_mod_c(b, i, m);
+        Integer y = EuclideanDomainOf<Integer>().Exponentiate(b, i) % m;
+
+        pass = (x == y) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    for (unsigned int i=0; i<128; i+=2)
+    {
+        Integer b = 1, m(prng, 2048);
+
+        Integer x = a_exp_b_mod_c(b, i, m);
+        Integer y = EuclideanDomainOf<Integer>().Exponentiate(b, i) % m;
+
+        pass = (x == y) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    for (unsigned int i=0; i<128; i+=2)
+    {
+        Integer b = 2, m(prng, 2048);
+
+        Integer x = a_exp_b_mod_c(b, i, m);
+        Integer y = EuclideanDomainOf<Integer>().Exponentiate(b, i) % m;
+
+        pass = (x == y) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    // Run the exponent 0 to 24
+    for (unsigned int i=0; i<24; ++i)
+    {
+        Integer b(prng, 32), m(prng, 2048);
+
+        Integer x = a_exp_b_mod_c(b, i, m);
+        Integer y = EuclideanDomainOf<Integer>().Exponentiate(b, i) % m;
+
+        pass = (x == y) && pass;
+        if (!result)
+            std::cout << "FAILED:  Exponentiation operation\n";
+    }
+
+    if (pass)
+       std::cout << "passed:";
+    else
+       std::cout << "FAILED:";
+    std::cout << "  Exponentiation operations\n";
+
+    return pass;
 }
 #endif
 
