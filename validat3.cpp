@@ -570,7 +570,7 @@ struct PBKDF_TestTuple
 	const char *hexPassword, *hexSalt, *hexDerivedKey;
 };
 
-bool TestPBKDF(PasswordBasedKeyDerivationFunction &pbkdf, const PBKDF_TestTuple *testSet, unsigned int testSetSize)
+bool TestPBKDF(KeyDerivationFunction &pbkdf, const PBKDF_TestTuple *testSet, unsigned int testSetSize)
 {
 	bool pass = true;
 
@@ -583,8 +583,13 @@ bool TestPBKDF(PasswordBasedKeyDerivationFunction &pbkdf, const PBKDF_TestTuple 
 		StringSource(tuple.hexSalt, true, new HexDecoder(new StringSink(salt)));
 		StringSource(tuple.hexDerivedKey, true, new HexDecoder(new StringSink(derivedKey)));
 
+		double timeInSeconds = 0.0f;
+		AlgorithmParameters params = MakeParameters("Purpose", (int)tuple.purpose)
+		    (Name::Salt(), ConstByteArrayParameter((const byte*)&salt[0], salt.size()))
+		    ("Iterations", (int)tuple.iterations)("TimeInSeconds", timeInSeconds);
+
 		SecByteBlock derived(derivedKey.size());
-		pbkdf.DeriveKey(derived, derived.size(), tuple.purpose, (byte *)password.data(), password.size(), (byte *)salt.data(), salt.size(), tuple.iterations);
+		pbkdf.DeriveKey(derived, derived.size(), (const byte *)password.data(), password.size(), params);
 		bool fail = !!memcmp(derived, derivedKey.data(), derived.size()) != 0;
 		pass = pass && !fail;
 
@@ -662,15 +667,18 @@ bool TestHKDF(KeyDerivationFunction &kdf, const HKDF_TestTuple *testSet, unsigne
 		StringSource(tuple.hexSalt ? tuple.hexSalt : "", true, new HexDecoder(new StringSink(salt)));
 		StringSource(tuple.hexInfo ? tuple.hexInfo : "", true, new HexDecoder(new StringSink(info)));
 		StringSource(tuple.hexExpected, true, new HexDecoder(new StringSink(expected)));
-
 		SecByteBlock derived(expected.size());
-		unsigned int ret = kdf.DeriveKey(derived, derived.size(),
-                                         reinterpret_cast<const unsigned char*>(secret.data()), secret.size(),
-                                         (tuple.hexSalt ? reinterpret_cast<const unsigned char*>(salt.data()) : NULLPTR), salt.size(),
-                                         (tuple.hexInfo ? reinterpret_cast<const unsigned char*>(info.data()) : NULLPTR), info.size());
 
-		bool fail = !VerifyBufsEqual(derived, reinterpret_cast<const unsigned char*>(expected.data()), derived.size());
-		pass = pass && (ret == tuple.len) && !fail;
+		AlgorithmParameters params;
+		if (tuple.hexSalt)
+			params.operator()(Name::Salt(), ConstByteArrayParameter((const byte*)&salt[0], salt.size()));
+		if (tuple.hexSalt)
+			params.operator()("Info", ConstByteArrayParameter((const byte*)&info[0], info.size()));
+
+		kdf.DeriveKey((byte*)&derived[0], derived.size(), (const byte*)&secret[0], secret.size(), params);
+
+		bool fail = !VerifyBufsEqual(derived, (const byte*)&expected[0], derived.size());
+		pass = pass && !fail;
 
 		HexEncoder enc(new FileSink(std::cout));
 		std::cout << (fail ? "FAILED   " : "passed   ");
@@ -747,8 +755,6 @@ bool ValidateHKDF()
 	std::cout << "\nRFC 5869 HKDF(SHA-512) validation suite running...\n\n";
 	pass = TestHKDF(hkdf, testSet, COUNTOF(testSet)) && pass;
 	}
-
-
 
 	{
 	// Whirlpool, Crypto++ generated, based on RFC 5869, https://tools.ietf.org/html/rfc5869
