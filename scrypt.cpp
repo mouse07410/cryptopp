@@ -1,5 +1,6 @@
 // scrypt.cpp - written and placed in public domain by Jeffrey Walton.
-//              Based on reference source code by Colin Percival.
+//              Based on reference source code by Colin Percival for
+//              Scrypt and Daniel Bernstein for Salsa20 core.
 
 #include "pch.h"
 
@@ -22,6 +23,7 @@ ANONYMOUS_NAMESPACE_BEGIN
 using CryptoPP::byte;
 using CryptoPP::word32;
 using CryptoPP::word64;
+using CryptoPP::Salsa20_Core;
 using CryptoPP::rotlConstant;
 using CryptoPP::AlignedSecByteBlock;
 using CryptoPP::LITTLE_ENDIAN_ORDER;
@@ -51,14 +53,14 @@ static inline word64 LE64DEC(const byte* in)
 
 static inline void BlockCopy(byte* dest, byte* src, size_t len)
 {
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; ++i)
         dest[i] = src[i];
 }
 
 static inline void BlockXOR(byte* dest, byte* src, size_t len)
 {
     #pragma omp simd
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; ++i)
         dest[i] ^= src[i];
 }
 
@@ -75,62 +77,14 @@ static inline void PBKDF2_SHA256(byte* buf, size_t dkLen,
 
 static inline void Salsa20_8(byte B[64])
 {
-    word32 B32[16], x[16];
+    word32 B32[16];
 
-    for (size_t i = 0; i < 16; i++)
+    for (size_t i = 0; i < 16; ++i)
         B32[i] = LE32DEC(&B[i * 4]);
 
-    for (size_t i = 0; i < 16; i++)
-        x[i] = B32[i];
+    Salsa20_Core(B32, 8);
 
-    for (size_t i = 0; i < 8; i += 2)
-    {
-        x[ 4] ^= rotlConstant< 7>(x[ 0]+x[12]);
-        x[ 8] ^= rotlConstant< 9>(x[ 4]+x[ 0]);
-        x[12] ^= rotlConstant<13>(x[ 8]+x[ 4]);
-        x[ 0] ^= rotlConstant<18>(x[12]+x[ 8]);
-
-        x[ 9] ^= rotlConstant< 7>(x[ 5]+x[ 1]);
-        x[13] ^= rotlConstant< 9>(x[ 9]+x[ 5]);
-        x[ 1] ^= rotlConstant<13>(x[13]+x[ 9]);
-        x[ 5] ^= rotlConstant<18>(x[ 1]+x[13]);
-
-        x[14] ^= rotlConstant< 7>(x[10]+x[ 6]);
-        x[ 2] ^= rotlConstant< 9>(x[14]+x[10]);
-        x[ 6] ^= rotlConstant<13>(x[ 2]+x[14]);
-        x[10] ^= rotlConstant<18>(x[ 6]+x[ 2]);
-
-        x[ 3] ^= rotlConstant< 7>(x[15]+x[11]);
-        x[ 7] ^= rotlConstant< 9>(x[ 3]+x[15]);
-        x[11] ^= rotlConstant<13>(x[ 7]+x[ 3]);
-        x[15] ^= rotlConstant<18>(x[11]+x[ 7]);
-
-        x[ 1] ^= rotlConstant< 7>(x[ 0]+x[ 3]);
-        x[ 2] ^= rotlConstant< 9>(x[ 1]+x[ 0]);
-        x[ 3] ^= rotlConstant<13>(x[ 2]+x[ 1]);
-        x[ 0] ^= rotlConstant<18>(x[ 3]+x[ 2]);
-
-        x[ 6] ^= rotlConstant< 7>(x[ 5]+x[ 4]);
-        x[ 7] ^= rotlConstant< 9>(x[ 6]+x[ 5]);
-        x[ 4] ^= rotlConstant<13>(x[ 7]+x[ 6]);
-        x[ 5] ^= rotlConstant<18>(x[ 4]+x[ 7]);
-
-        x[11] ^= rotlConstant< 7>(x[10]+x[ 9]);
-        x[ 8] ^= rotlConstant< 9>(x[11]+x[10]);
-        x[ 9] ^= rotlConstant<13>(x[ 8]+x[11]);
-        x[10] ^= rotlConstant<18>(x[ 9]+x[ 8]);
-
-        x[12] ^= rotlConstant< 7>(x[15]+x[14]);
-        x[13] ^= rotlConstant< 9>(x[12]+x[15]);
-        x[14] ^= rotlConstant<13>(x[13]+x[12]);
-        x[15] ^= rotlConstant<18>(x[14]+x[13]);
-    }
-
-    #pragma omp simd
-    for (size_t i = 0; i < 16; i++)
-        B32[i] += x[i];
-
-    for (size_t i = 0; i < 16; i++)
+    for (size_t i = 0; i < 16; ++i)
         LE32ENC(&B[4 * i], B32[i]);
 }
 
@@ -142,7 +96,7 @@ static inline void BlockMix(byte* B, byte* Y, size_t r)
     BlockCopy(X, &B[(2 * r - 1) * 64], 64);
 
     // 2: for i = 0 to 2r - 1 do
-    for (size_t i = 0; i < 2 * r; i++)
+    for (size_t i = 0; i < 2 * r; ++i)
     {
         // 3: X <-- H(X \xor B_i)
         BlockXOR(X, &B[i * 64], 64);
@@ -153,10 +107,10 @@ static inline void BlockMix(byte* B, byte* Y, size_t r)
     }
 
     // 6: B' <-- (Y_0, Y_2 ... Y_{2r-2}, Y_1, Y_3 ... Y_{2r-1})
-    for (size_t i = 0; i < r; i++)
+    for (size_t i = 0; i < r; ++i)
         BlockCopy(&B[i * 64], &Y[(i * 2) * 64], 64);
 
-    for (size_t i = 0; i < r; i++)
+    for (size_t i = 0; i < r; ++i)
         BlockCopy(&B[(i + r) * 64], &Y[(i * 2 + 1) * 64], 64);
 }
 
@@ -175,7 +129,7 @@ static inline void Smix(byte* B, size_t r, word64 N, byte* V, byte* XY)
     BlockCopy(X, B, 128 * r);
 
     // 2: for i = 0 to N - 1 do
-    for (word64 i = 0; i < N; i++)
+    for (word64 i = 0; i < N; ++i)
     {
         // 3: V_i <-- X
         BlockCopy(&V[i * (128 * r)], X, 128 * r);
@@ -185,7 +139,7 @@ static inline void Smix(byte* B, size_t r, word64 N, byte* V, byte* XY)
     }
 
     // 6: for i = 0 to N - 1 do
-    for (word64 i = 0; i < N; i++)
+    for (word64 i = 0; i < N; ++i)
     {
         // 7: j <-- Integerify(X) mod N
         word64 j = Integerify(X, r) & (N - 1);
@@ -212,7 +166,7 @@ size_t Scrypt::GetValidDerivedLength(size_t keylength) const
 
 void Scrypt::ValidateParameters(size_t derivedLen, word64 cost, word64 blockSize, word64 parallelization) const
 {
-    // Optimizer should remove this on 64-bit platforms
+    // Optimizer should remove this on 32-bit platforms
     if (std::numeric_limits<size_t>::max() > std::numeric_limits<word32>::max())
     {
         const word64 maxLen = ((static_cast<word64>(1) << 32) - 1) * 32;
@@ -297,29 +251,20 @@ size_t Scrypt::DeriveKey(byte*derived, size_t derivedLen, const byte*secret, siz
     // 1: (B_0 ... B_{p-1}) <-- PBKDF2(P, S, 1, p * MFLen)
     PBKDF2_SHA256(B, B.size(), secret, secretLen, salt, saltLen, 1);
 
-    if (parallel == 1)
+    // http://stackoverflow.com/q/49604260/608639
+    #pragma omp parallel
     {
+        // Each thread gets its own copy
         AlignedSecByteBlock XY(static_cast<size_t>(blockSize * 256U));
         AlignedSecByteBlock  V(static_cast<size_t>(blockSize * cost * 128U));
 
         // 2: for i = 0 to p - 1 do
-        // 3: B_i <-- MF(B_i, N)
-        Smix(B, static_cast<size_t>(blockSize), cost, V, XY);
-        XY.SetMark(16); V.SetMark(16);
-    }
-    else
-    {
-        // 2: for i = 0 to p - 1 do
-        #pragma omp parallel for
-        for (unsigned int i = 0; i < parallel; i++)
+        #pragma omp for
+        for (size_t i = 0; i < static_cast<size_t>(parallel); ++i)
         {
-            AlignedSecByteBlock XY(static_cast<size_t>(blockSize * 256U));
-            AlignedSecByteBlock  V(static_cast<size_t>(blockSize * cost * 128U));
-
             // 3: B_i <-- MF(B_i, N)
             const ptrdiff_t offset = static_cast<ptrdiff_t>(blockSize*i*128);
             Smix(B+offset, static_cast<size_t>(blockSize), cost, V, XY);
-            XY.SetMark(16); V.SetMark(16);
         }
     }
 
