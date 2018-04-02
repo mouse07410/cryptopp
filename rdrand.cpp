@@ -134,7 +134,7 @@ inline void RDRAND32(void* output)
         : "=a" (*reinterpret_cast<word32*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40700)
+#elif (defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40700)) || CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER
     __asm__ __volatile__
     (
         INTEL_NOPREFIX
@@ -176,7 +176,7 @@ inline void RDRAND64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40700)
+#elif defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40700) && !defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
     __asm__ __volatile__
     (
         INTEL_NOPREFIX
@@ -187,7 +187,7 @@ inline void RDRAND64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 30200)
+#elif defined(GCC_RDRAND_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 30200) && !defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
     __asm__ __volatile__
     (
         "1:\n"
@@ -196,7 +196,7 @@ inline void RDRAND64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(ALL_RDRAND_INTRIN_AVAILABLE)
+#elif defined(ALL_RDRAND_INTRIN_AVAILABLE) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
     while(!_rdrand64_step(reinterpret_cast<unsigned long long*>(output))) {}
 #else
     // RDRAND not detected at compile time, or no suitable compiler found
@@ -333,7 +333,7 @@ inline void RDSEED64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40800)
+#elif (defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40800)) && !defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
     __asm__ __volatile__
     (
         INTEL_NOPREFIX
@@ -344,7 +344,7 @@ inline void RDSEED64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 30200)
+#elif (defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 30200)) && !defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
     __asm__ __volatile__
     (
         "1:\n"
@@ -354,7 +354,7 @@ inline void RDSEED64(void* output)
         : : "cc"
     );
 #elif defined(ALL_RDSEED_INTRIN_AVAILABLE)
-    while(!_rdseed64_step(reinterpret_cast<unsigned long long*>(output))) {}
+    while(!_rdseed64_step(reinterpret_cast<unsigned long long *>(output))) {}
 #else
     // RDSEED not detected at compile time, or no suitable compiler found
     CRYPTOPP_UNUSED(output);
