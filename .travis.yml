@@ -106,7 +106,11 @@ script:
         ./cryptest.exe v
         ./cryptest.exe tv all
     else
-        CXXFLAGS="$CXXFLAGS" make "$BUILD_MODE" -j "$BUILD_JOBS"
+        if [ $TRAVIS_OS_NAME == osx ]; then
+            CXXFLAGS="-mrdrnd -mrdseed -msse2 -msse4" make "$BUILD_MODE" -j "$BUILD_JOBS"
+        else
+            make "$BUILD_MODE" -j "$BUILD_JOBS"
+        fi
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
