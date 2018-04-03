@@ -99,6 +99,10 @@ script:
         TestScripts/cryptest-android.sh
     elif [[ "$BUILD_MODE" == "debug" ]]; then
         CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
+        sudo mkdir -p /opt/local/share
+        sudo mkdir -p /opt/local/lib
+        sudo mkdir -p /opt/local/bin
+        sudo make install PREFIX=/opt/local
         ./cryptest.exe v
         ./cryptest.exe tv all
     else
