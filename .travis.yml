@@ -52,34 +52,6 @@ matrix:
     - os: linux
       env:
         - BUILD_MODE=android
-        - PLATFORM=armeabi
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=armeabi-v7a
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=armv7a-neon
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=aarch64
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=mipsel
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=mipsel64
-    - os: linux
-      env:
-        - BUILD_MODE=android
-        - PLATFORM=x86
-    - os: linux
-      env:
-        - BUILD_MODE=android
         - PLATFORM=x86_64
     - os: osx
       env:
@@ -88,10 +60,6 @@ matrix:
     - os: osx
       env:
           BUILD_MODE=all
-          CXXFLAGS="-mrdrnd -mrdseed -msse2"
-    - os: osx
-      env:
-          BUILD_MODE=debug
           CXXFLAGS="-mrdrnd -mrdseed -msse2"
     - os: osx
       env:
@@ -135,6 +103,10 @@ script:
         ./cryptest.exe tv all
     else
         make "$BUILD_MODE" -j "$BUILD_JOBS"
+	sudo mkdir -p /opt/local/share
+        sudo mkdir -p /opt/local/lib
+        sudo mkdir -p /opt/local/bin
+        sudo make install PREFIX=/opt/local
         ./cryptest.exe v
         ./cryptest.exe tv all
     fi
