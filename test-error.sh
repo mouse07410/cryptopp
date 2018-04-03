@@ -38,7 +38,7 @@ fi
 # Test what we built
 make test
 if [ $? != 0 ]; then
-	echo "Failed test (compile with ${CXX})!"
+	echo "Failed test (compiled with ${CXX})!"
 	exit 1
 fi
 
@@ -48,14 +48,14 @@ make distclean
 # Now - does it work with Macports-installed GCC?
 CXX=g++ make all
 if [ $? != 0 ]; then
-	echo "Failed to compile with ${CXX}!"
+	echo "Failed to compile with g++!"
 	exit 1
 fi
 
 # Now - the actual test-run
-make test
+CXX=g++ make test
 if [ $? != 0 ]; then
-	echo "Failed test (compile with ${CXX})!"
+	echo "Failed test (compiled with g++)!"
 	exit 1
 fi
 
