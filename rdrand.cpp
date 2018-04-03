@@ -196,7 +196,7 @@ inline void RDRAND64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(ALL_RDRAND_INTRIN_AVAILABLE) || defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+#elif defined(ALL_RDRAND_INTRIN_AVAILABLE) || (defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER) && defined(__APPLE__))
     while(!_rdrand64_step(reinterpret_cast<unsigned long long*>(output))) {}
 #else
     // RDRAND not detected at compile time, or no suitable compiler found
