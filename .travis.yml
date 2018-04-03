@@ -103,7 +103,7 @@ script:
         ./cryptest.exe tv all
     else
         make "$BUILD_MODE" -j "$BUILD_JOBS"
-	sudo mkdir -p /opt/local/share
+        sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
         sudo make install PREFIX=/opt/local
