@@ -9,7 +9,7 @@
 
 #include "cryptlib.h"
 
-#if defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+#if defined(__APPLE__) && defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
 #include <x86intrin.h>
 #endif /* CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER */
 
