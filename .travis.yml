@@ -102,7 +102,7 @@ script:
             CXXFLAGS="-DDEBUG -g2 -O1 -mrdrnd -mrdseed -msse2" make -j "$BUILD_JOBS"
         else
             CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
-	fi
+        fi
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
