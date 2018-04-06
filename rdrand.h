@@ -9,7 +9,8 @@
 
 #include "cryptlib.h"
 
-#if defined(__APPLE__) && defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
+#if defined(__APPLE__) && defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER) \
+  && !(TARGET_OS_IPHONE || TARGET_OS_IOS || TARGET_OS_WATCH || TARGET_OS_TV)
 #include <x86intrin.h>
 #endif /* CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER */
 
