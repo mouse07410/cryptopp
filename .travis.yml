@@ -82,18 +82,7 @@ matrix:
     # Ignore problems with old toolchains
     - env: BUILD_MODE="ubsan"
     - env: BUILD_MODE="asan"
-    - os: osx
-        - BUILD_MODE=ios
-        - PLATFORM=iPhoneOS
-    - os: osx
-        - BUILD_MODE=ios
-        - PLATFORM=WatchOS
-    - os: osx
-        - BUILD_MODE=ios
-        - PLATFORM=AppleTVOS
-    - os: osx
-        - BUILD_MODE=ios
-        - PLATFORM=iPhoneSimulator
+    - env: BUILD_MODE=ios
     
 before_install:
   - |
