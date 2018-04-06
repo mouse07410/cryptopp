@@ -291,7 +291,7 @@ inline void RDSEED32(void* output)
         : "=a" (*reinterpret_cast<word32*>(output))
         : : "cc"
     );
-#elif defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40800)
+#elif (defined(GCC_RDSEED_ASM_AVAILABLE) && (CRYPTOPP_GCC_VERSION >= 40800)) || CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER
     __asm__ __volatile__
     (
         INTEL_NOPREFIX
@@ -353,7 +353,7 @@ inline void RDSEED64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(ALL_RDSEED_INTRIN_AVAILABLE)
+#elif defined(ALL_RDSEED_INTRIN_AVAILABLE) || (CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER && defined(__APPLE__))
     while(!_rdseed64_step(reinterpret_cast<unsigned long long *>(output))) {}
 #else
     // RDSEED not detected at compile time, or no suitable compiler found
