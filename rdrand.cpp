@@ -353,7 +353,7 @@ inline void RDSEED64(void* output)
         : "=a" (*reinterpret_cast<word64*>(output))
         : : "cc"
     );
-#elif defined(ALL_RDSEED_INTRIN_AVAILABLE) || (CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER && defined(__APPLE__))
+#elif defined(ALL_RDSEED_INTRIN_AVAILABLE) || (CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER && defined(__APPLE__) && defined(__RDSEED__))
     while(!_rdseed64_step(reinterpret_cast<unsigned long long *>(output))) {}
 #else
     // RDSEED not detected at compile time, or no suitable compiler found
