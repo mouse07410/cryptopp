@@ -79,6 +79,7 @@ matrix:
     - env: BUILD_MODE="ubsan"
     - env: BUILD_MODE="asan"
     - env: BUILD_MODE="ios"
+    - env: BUILD_MODE="android"
     
 before_install:
   - |
