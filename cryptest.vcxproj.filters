@@ -50,6 +50,9 @@
     <None Include="TestVectors\chacha.txt">
       <Filter>TestVectors</Filter>
     </None>
+    <None Include="TestVectors\cham.txt">
+      <Filter>TestVectors</Filter>
+    </None>
     <None Include="TestVectors\cmac.txt">
       <Filter>TestVectors</Filter>
     </None>
@@ -81,6 +84,9 @@
       <Filter>TestVectors</Filter>
     </None>
     <None Include="TestVectors\kalyna.txt">
+      <Filter>TestVectors</Filter>
+    </None>
+    <None Include="TestVectors\lea.txt">
       <Filter>TestVectors</Filter>
     </None>
     <None Include="TestVectors\mars.txt">

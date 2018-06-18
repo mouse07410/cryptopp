@@ -42,6 +42,7 @@
 #include "shacal2.h"
 #include "camellia.h"
 #include "aria.h"
+#include "lea.h"
 #include "osrng.h"
 #include "drbg.h"
 #include "rdrand.h"
@@ -170,6 +171,8 @@ bool ValidateAll(bool thorough)
 	pass=ValidateSerpent() && pass;
 	pass=ValidateSHACAL2() && pass;
 	pass=ValidateARIA() && pass;
+	pass=ValidateCHAM() && pass;
+	pass=ValidateLEA() && pass;
 	pass=ValidateCamellia() && pass;
 	pass=ValidateSalsa() && pass;
 	pass=ValidateSosemanuk() && pass;
@@ -366,11 +369,20 @@ bool TestSettings()
 	bool hasSSSE3 = HasSSSE3();
 	bool hasSSE41 = HasSSE41();
 	bool hasSSE42 = HasSSE42();
+	bool hasAVX = HasAVX();
+	bool hasAVX2 = HasAVX2();
+	bool hasAESNI = HasAESNI();
+	bool hasCLMUL = HasCLMUL();
+	bool hasRDRAND = HasRDRAND();
+	bool hasRDSEED = HasRDSEED();
+	bool hasSHA = HasSHA();
 	bool isP4 = IsP4();
 
-	std::cout << "hasSSE2 == " << hasSSE2 << ", hasSSSE3 == " << hasSSSE3 << ", hasSSE4.1 == " << hasSSE41 << ", hasSSE4.2 == " << hasSSE42;
-	std::cout << ", hasAESNI == " << HasAESNI() << ", hasCLMUL == " << HasCLMUL() << ", hasRDRAND == " << HasRDRAND() << ", hasRDSEED == " << HasRDSEED();
-	std::cout << ", hasSHA == " << HasSHA() << ", isP4 == " << isP4 << "\n";
+	std::cout << "hasSSE2 == " << hasSSE2 << ", hasSSSE3 == " << hasSSSE3 << ", hasSSE4.1 == " << hasSSE41;
+	std::cout << ", hasSSE4.2 == " << hasSSE42 << ", hasAVX == " << hasAVX << ", hasAVX2 == " << hasAVX2;
+	std::cout << ", hasAESNI == " << hasAESNI << ", hasCLMUL == " << hasCLMUL << ", hasRDRAND == " << hasRDRAND;
+	std::cout << ", hasRDSEED == " << hasRDSEED << ", hasSHA == " << hasSHA << ", isP4 == " << isP4;
+	std::cout << "\n";
 
 #elif (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 	bool hasNEON = HasNEON();
@@ -3384,6 +3396,20 @@ bool ValidateARIA()
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<ARIAEncryption, ARIADecryption>(24), valdata, 15) && pass3;
 	pass3 = BlockTransformationTest(FixedRoundsCipherFactory<ARIAEncryption, ARIADecryption>(32), valdata, 15) && pass3;
 	return pass1 && pass2 && pass3;
+}
+
+bool ValidateCHAM()
+{
+	std::cout << "\nCHAM validation suite running...\n";
+
+	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/cham.txt");
+}
+
+bool ValidateLEA()
+{
+	std::cout << "\nLEA validation suite running...\n";
+
+	return RunTestDataFile(CRYPTOPP_DATA_DIR "TestVectors/lea.txt");
 }
 
 bool ValidateCamellia()
