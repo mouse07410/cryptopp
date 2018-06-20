@@ -121,7 +121,33 @@ inline __m128i UnpackXMM<3>(__m128i a, __m128i b, __m128i c, __m128i d)
 template <unsigned int IDX>
 inline __m128i UnpackXMM(__m128i v)
 {
-    return UnpackXMM<IDX>(v, v, v, v);
+    // Should not be instantiated
+    CRYPTOPP_ASSERT(0);;
+    return _mm_setzero_si128();
+}
+
+template <>
+inline __m128i UnpackXMM<0>(__m128i v)
+{
+    return _mm_shuffle_epi8(v, _mm_set_epi8(0,1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3));
+}
+
+template <>
+inline __m128i UnpackXMM<1>(__m128i v)
+{
+    return _mm_shuffle_epi8(v, _mm_set_epi8(4,5,6,7, 4,5,6,7, 4,5,6,7, 4,5,6,7));
+}
+
+template <>
+inline __m128i UnpackXMM<2>(__m128i v)
+{
+    return _mm_shuffle_epi8(v, _mm_set_epi8(8,9,10,11, 8,9,10,11, 8,9,10,11, 8,9,10,11));
+}
+
+template <>
+inline __m128i UnpackXMM<3>(__m128i v)
+{
+    return _mm_shuffle_epi8(v, _mm_set_epi8(12,13,14,15, 12,13,14,15, 12,13,14,15, 12,13,14,15));
 }
 
 template <unsigned int IDX>
@@ -129,12 +155,11 @@ inline __m128i RepackXMM(__m128i a, __m128i b, __m128i c, __m128i d)
 {
     return UnpackXMM<IDX>(a, b, c, d);
 }
-#endif
 
 template <unsigned int IDX>
 inline __m128i RepackXMM(__m128i v)
 {
-    return RepackXMM<IDX>(v, v, v, v);
+    return UnpackXMM<IDX>(v);
 }
 
 inline void GCC_NO_UBSAN CHAM128_Enc_Block(__m128i &block0,
@@ -155,9 +180,10 @@ inline void GCC_NO_UBSAN CHAM128_Enc_Block(__m128i &block0,
     const unsigned int MASK = (rounds == 80 ? 7 : 15);
     for (int i=0; i<static_cast<int>(rounds); i+=4)
     {
-        __m128i t1, t2, k, k1, k2;
+        __m128i k, k1, k2, t1, t2;
 
-        k = _mm_loadu_si128((const __m128i*) &subkeys[i & MASK]);
+        // This is a better pattern than loading 4 words via _mm_loadu_si128
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i+0) & MASK]));
         k1 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
         k2 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
 
@@ -173,8 +199,9 @@ inline void GCC_NO_UBSAN CHAM128_Enc_Block(__m128i &block0,
 
         counter = _mm_add_epi32(counter, increment);
 
-        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(11,10,9,8, 11,10,9,8, 11,10,9,8, 11,10,9,8));
-        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(15,14,13,12, 15,14,13,12, 15,14,13,12, 15,14,13,12));
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i+2) & MASK]));
+        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
+        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
 
         t1 = _mm_xor_si128(c, counter);
         t2 = _mm_xor_si128(RotateLeft32<1>(d), k1);
@@ -189,7 +216,6 @@ inline void GCC_NO_UBSAN CHAM128_Enc_Block(__m128i &block0,
         counter = _mm_add_epi32(counter, increment);
     }
 
-    // Repack
     // [A1 B1 C1 D1][A2 B2 C2 D2] ... => [A1 A2 A3 A4][B1 B2 B3 B4] ...
     block0 = RepackXMM<0>(a,b,c,d);
 }
@@ -212,11 +238,12 @@ inline void GCC_NO_UBSAN CHAM128_Dec_Block(__m128i &block0,
     const unsigned int MASK = (rounds == 80 ? 7 : 15);
     for (int i = static_cast<int>(rounds)-1; i >= 0; i-=4)
     {
-        __m128i t1, t2, k, k1, k2;
+        __m128i k, k1, k2, t1, t2;
 
-        k = _mm_loadu_si128((const __m128i*) &subkeys[(i-3) & MASK]);
-        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(15,14,13,12, 15,14,13,12, 15,14,13,12, 15,14,13,12));
-        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(11,10,9,8, 11,10,9,8, 11,10,9,8, 11,10,9,8));
+        // This is a better pattern than loading 4 words via _mm_loadu_si128
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i-1) & MASK]));
+        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
+        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
 
         // Odd round
         t1 = RotateRight32<1>(d);
@@ -232,6 +259,7 @@ inline void GCC_NO_UBSAN CHAM128_Dec_Block(__m128i &block0,
 
         counter = _mm_sub_epi32(counter, decrement);
 
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i-3) & MASK]));
         k1 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
         k2 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
 
@@ -250,7 +278,6 @@ inline void GCC_NO_UBSAN CHAM128_Dec_Block(__m128i &block0,
         counter = _mm_sub_epi32(counter, decrement);
     }
 
-    // Repack
     // [A1 B1 C1 D1][A2 B2 C2 D2] ... => [A1 A2 A3 A4][B1 B2 B3 B4] ...
     block0 = RepackXMM<0>(a,b,c,d);
 }
@@ -273,9 +300,10 @@ inline void GCC_NO_UBSAN CHAM128_Enc_4_Blocks(__m128i &block0, __m128i &block1,
     const unsigned int MASK = (rounds == 80 ? 7 : 15);
     for (int i=0; i<static_cast<int>(rounds); i+=4)
     {
-        __m128i t1, t2, k, k1, k2;
+        __m128i k, k1, k2, t1, t2;
 
-        k = _mm_loadu_si128((const __m128i*) &subkeys[i & MASK]);
+        // This is a better pattern than loading 4 words via _mm_loadu_si128
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i+0) & MASK]));
         k1 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
         k2 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
 
@@ -291,8 +319,9 @@ inline void GCC_NO_UBSAN CHAM128_Enc_4_Blocks(__m128i &block0, __m128i &block1,
 
         counter = _mm_add_epi32(counter, increment);
 
-        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(11,10,9,8, 11,10,9,8, 11,10,9,8, 11,10,9,8));
-        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(15,14,13,12, 15,14,13,12, 15,14,13,12, 15,14,13,12));
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i+2) & MASK]));
+        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
+        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
 
         t1 = _mm_xor_si128(c, counter);
         t2 = _mm_xor_si128(RotateLeft32<1>(d), k1);
@@ -307,7 +336,6 @@ inline void GCC_NO_UBSAN CHAM128_Enc_4_Blocks(__m128i &block0, __m128i &block1,
         counter = _mm_add_epi32(counter, increment);
     }
 
-    // Repack
     // [A1 B1 C1 D1][A2 B2 C2 D2] ... => [A1 A2 A3 A4][B1 B2 B3 B4] ...
     block0 = RepackXMM<0>(a,b,c,d);
     block1 = RepackXMM<1>(a,b,c,d);
@@ -333,11 +361,12 @@ inline void GCC_NO_UBSAN CHAM128_Dec_4_Blocks(__m128i &block0, __m128i &block1,
     const unsigned int MASK = (rounds == 80 ? 7 : 15);
     for (int i = static_cast<int>(rounds)-1; i >= 0; i-=4)
     {
-        __m128i t1, t2, k, k1, k2;
+        __m128i k, k1, k2, t1, t2;
 
-        k = _mm_loadu_si128((const __m128i*) &subkeys[(i-3) & MASK]);
-        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(15,14,13,12, 15,14,13,12, 15,14,13,12, 15,14,13,12));
-        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(11,10,9,8, 11,10,9,8, 11,10,9,8, 11,10,9,8));
+        // This is a better pattern than loading 4 words via _mm_loadu_si128
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i-1) & MASK]));
+        k1 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
+        k2 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
 
         // Odd round
         t1 = RotateRight32<1>(d);
@@ -353,6 +382,7 @@ inline void GCC_NO_UBSAN CHAM128_Dec_4_Blocks(__m128i &block0, __m128i &block1,
 
         counter = _mm_sub_epi32(counter, decrement);
 
+        k = _mm_castpd_si128(_mm_loadu_pd((const double*) &subkeys[(i-3) & MASK]));
         k1 = _mm_shuffle_epi8(k, _mm_set_epi8(7,6,5,4, 7,6,5,4, 7,6,5,4, 7,6,5,4));
         k2 = _mm_shuffle_epi8(k, _mm_set_epi8(3,2,1,0, 3,2,1,0, 3,2,1,0, 3,2,1,0));
 
@@ -371,13 +401,14 @@ inline void GCC_NO_UBSAN CHAM128_Dec_4_Blocks(__m128i &block0, __m128i &block1,
         counter = _mm_sub_epi32(counter, decrement);
     }
 
-    // Repack
     // [A1 B1 C1 D1][A2 B2 C2 D2] ... => [A1 A2 A3 A4][B1 B2 B3 B4] ...
     block0 = RepackXMM<0>(a,b,c,d);
     block1 = RepackXMM<1>(a,b,c,d);
     block2 = RepackXMM<2>(a,b,c,d);
     block3 = RepackXMM<3>(a,b,c,d);
 }
+
+#endif
 
 ANONYMOUS_NAMESPACE_END
 
