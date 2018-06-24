@@ -22,6 +22,11 @@
 # include <tmmintrin.h>
 #endif
 
+#if defined(__AVX512F__) && defined(__AVX512VL__)
+# define CRYPTOPP_AVX512_ROTATE 1
+# include <immintrin.h>
+#endif
+
 ANONYMOUS_NAMESPACE_BEGIN
 
 using CryptoPP::word16;
@@ -78,7 +83,7 @@ inline __m128i UnpackXMM<0>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpacklo_epi16(a, b);
     const __m128i r2 = _mm_unpacklo_epi16(c, d);
@@ -97,7 +102,7 @@ inline __m128i UnpackXMM<1>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpacklo_epi16(a, b);
     const __m128i r2 = _mm_unpacklo_epi16(c, d);
@@ -116,7 +121,7 @@ inline __m128i UnpackXMM<2>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpacklo_epi16(a, b);
     const __m128i r2 = _mm_unpacklo_epi16(c, d);
@@ -135,7 +140,7 @@ inline __m128i UnpackXMM<3>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpacklo_epi16(a, b);
     const __m128i r2 = _mm_unpacklo_epi16(c, d);
@@ -154,7 +159,7 @@ inline __m128i UnpackXMM<4>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpackhi_epi16(a, b);
     const __m128i r2 = _mm_unpackhi_epi16(c, d);
@@ -173,7 +178,7 @@ inline __m128i UnpackXMM<5>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpackhi_epi16(a, b);
     const __m128i r2 = _mm_unpackhi_epi16(c, d);
@@ -192,7 +197,7 @@ inline __m128i UnpackXMM<6>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpackhi_epi16(a, b);
     const __m128i r2 = _mm_unpackhi_epi16(c, d);
@@ -211,7 +216,7 @@ inline __m128i UnpackXMM<7>(const __m128i& a, const __m128i& b, const __m128i& c
 {
     // The shuffle converts to and from little-endian for SSE. A specialized
     // CHAM implementation can avoid the shuffle by framing the data for
-    // encryption, decrementryption and benchmarks. The library cannot take the
+    // encryption, decryption and benchmarks. The library cannot take the
     // speed-up because of the byte oriented API.
     const __m128i r1 = _mm_unpackhi_epi16(a, b);
     const __m128i r2 = _mm_unpackhi_epi16(c, d);
@@ -775,15 +780,23 @@ NAMESPACE_BEGIN(W32)  // CHAM128, 32-bit word size
 template <unsigned int R>
 inline __m128i RotateLeft32(const __m128i& val)
 {
+#if defined(CRYPTOPP_AVX512_ROTATE)
+    return _mm_rol_epi32(val, R);
+#else
     return _mm_or_si128(
         _mm_slli_epi32(val, R), _mm_srli_epi32(val, 32-R));
+#endif
 }
 
 template <unsigned int R>
 inline __m128i RotateRight32(const __m128i& val)
 {
+#if defined(CRYPTOPP_AVX512_ROTATE)
+    return _mm_ror_epi32(val, R);
+#else
     return _mm_or_si128(
         _mm_slli_epi32(val, 32-R), _mm_srli_epi32(val, R));
+#endif
 }
 
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.

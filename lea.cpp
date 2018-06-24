@@ -4,7 +4,7 @@
 //           Kwon Ho Ryu, and Dong-Geon Lee.
 //
 //           This implementation is based on source files found in a zip file at the
-//           Korea Internet and Security Association (https://www.kisa.or.kr/eng/main.jsp).
+//           Korea Internet and Security Agency (https://www.kisa.or.kr/eng/main.jsp).
 //           The zip files was downloaded from the Korean language area of the site so we
 //           don't have a url or english zip filename to cite. The source filename from
 //           the zip is lea_core.c.
@@ -556,13 +556,21 @@ inline void SetKey256(word32 rkey[192], const word32 key[8])
 NAMESPACE_BEGIN(CryptoPP)
 
 #if CRYPTOPP_LEA_ADVANCED_PROCESS_BLOCKS
-extern void LEA_SplatKeys_SSSE3(SecBlock<word32>& rkeys);
-
+# if defined(CRYPTOPP_SSSE3_AVAILABLE)
 extern size_t LEA_Enc_AdvancedProcessBlocks_SSSE3(const word32* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
 
 extern size_t LEA_Dec_AdvancedProcessBlocks_SSSE3(const word32* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
+# endif
+
+# if (CRYPTOPP_ARM_NEON_AVAILABLE)
+extern size_t LEA_Enc_AdvancedProcessBlocks_NEON(const word32* subKeys, size_t rounds,
+    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
+
+extern size_t LEA_Dec_AdvancedProcessBlocks_NEON(const word32* subKeys, size_t rounds,
+    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags);
+# endif
 #endif
 
 void LEA::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength, const NameValuePairs &params)
@@ -595,15 +603,6 @@ void LEA::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength, con
     default:
         CRYPTOPP_ASSERT(0);;
     }
-
-#if (CRYPTOPP_SSSE3_AVAILABLE)
-    if (HasSSSE3())
-    {
-        // If we pre-splat the round keys at setup then we avoid a shuffle
-        // at runtime for each subkey used during encryption and decryption.
-        LEA_SplatKeys_SSSE3(m_rkey);
-    }
-#endif
 }
 
 void LEA::Enc::ProcessAndXorBlock(const byte *inBlock, const byte *xorBlock, byte *outBlock) const
@@ -850,20 +849,34 @@ void LEA::Dec::ProcessAndXorBlock(const byte *inBlock, const byte *xorBlock, byt
 size_t LEA::Enc::AdvancedProcessBlocks(const byte *inBlocks, const byte *xorBlocks,
         byte *outBlocks, size_t length, word32 flags) const
 {
+#if defined(CRYPTOPP_SSSE3_AVAILABLE)
     if (HasSSSE3()) {
         return LEA_Enc_AdvancedProcessBlocks_SSSE3(m_rkey, m_rounds,
             inBlocks, xorBlocks, outBlocks, length, flags);
     }
+#endif
+#if (CRYPTOPP_ARM_NEON_AVAILABLE)
+    if (HasNEON())
+        return LEA_Enc_AdvancedProcessBlocks_NEON(m_rkey, (size_t)m_rounds,
+            inBlocks, xorBlocks, outBlocks, length, flags);
+#endif
     return BlockTransformation::AdvancedProcessBlocks(inBlocks, xorBlocks, outBlocks, length, flags);
 }
 
 size_t LEA::Dec::AdvancedProcessBlocks(const byte *inBlocks, const byte *xorBlocks,
         byte *outBlocks, size_t length, word32 flags) const
 {
+#if defined(CRYPTOPP_SSSE3_AVAILABLE)
     if (HasSSSE3()) {
         return LEA_Dec_AdvancedProcessBlocks_SSSE3(m_rkey, m_rounds,
             inBlocks, xorBlocks, outBlocks, length, flags);
     }
+#endif
+#if (CRYPTOPP_ARM_NEON_AVAILABLE)
+    if (HasNEON())
+        return LEA_Dec_AdvancedProcessBlocks_NEON(m_rkey, (size_t)m_rounds,
+            inBlocks, xorBlocks, outBlocks, length, flags);
+#endif
     return BlockTransformation::AdvancedProcessBlocks(inBlocks, xorBlocks, outBlocks, length, flags);
 }
 #endif  // CRYPTOPP_LEA_ADVANCED_PROCESS_BLOCKS

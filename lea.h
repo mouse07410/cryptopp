@@ -15,7 +15,7 @@
 #include "secblock.h"
 #include "algparam.h"
 
-#if (CRYPTOPP_BOOL_X64 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X86)
+#if (CRYPTOPP_BOOL_X64 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
 # define CRYPTOPP_LEA_ADVANCED_PROCESS_BLOCKS 1
 #endif
 
@@ -23,7 +23,7 @@ NAMESPACE_BEGIN(CryptoPP)
 
 /// \brief LEA block cipher information
 /// \since Crypto++ 7.1
-struct LEA_Info : public FixedBlockSize<16>, VariableKeyLength<16,16,32,8>
+struct LEA_Info : public FixedBlockSize<16>, public VariableKeyLength<16,16,32,8>
 {
     static const std::string StaticAlgorithmName()
     {

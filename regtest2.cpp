@@ -12,7 +12,7 @@
 #include "seal.h"
 #include "ttmac.h"
 #include "aria.h"
-#include "cham.h"
+#include "hight.h"
 #include "camellia.h"
 #include "shacal2.h"
 #include "tea.h"
@@ -33,6 +33,7 @@
 #include "mars.h"
 #include "kalyna.h"
 #include "threefish.h"
+#include "cham.h"
 #include "lea.h"
 #include "simon.h"
 #include "speck.h"
@@ -99,6 +100,8 @@ void RegisterFactories2()
 	RegisterSymmetricCipherDefaultFactories<SEAL<> >();
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<SHACAL2> >();
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<ARIA> >();
+	RegisterSymmetricCipherDefaultFactories<ECB_Mode<HIGHT> >();
+	RegisterSymmetricCipherDefaultFactories<CTR_Mode<HIGHT> >();
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<Camellia> >();
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<TEA> >();
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<XTEA> >();
@@ -165,7 +168,13 @@ void RegisterFactories2()
 	RegisterSymmetricCipherDefaultFactories<CTR_Mode<Threefish512> >();  // Benchmarks
 	RegisterSymmetricCipherDefaultFactories<CTR_Mode<Threefish1024> >(); // Benchmarks
 
+	RegisterSymmetricCipherDefaultFactories<ECB_Mode<CHAM64> >();  // Test Vectors
+	RegisterSymmetricCipherDefaultFactories<ECB_Mode<CHAM128> >(); // Test Vectors
+	RegisterSymmetricCipherDefaultFactories<CTR_Mode<CHAM64> >();  // Benchmarks
+	RegisterSymmetricCipherDefaultFactories<CTR_Mode<CHAM128> >(); // Benchmarks
+
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<LEA> >(); // Test Vectors
+	RegisterSymmetricCipherDefaultFactories<CBC_Mode<LEA> >(); // Test Vectors
 	RegisterSymmetricCipherDefaultFactories<CTR_Mode<LEA> >(); // Benchmarks
 
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<SIMON64> >();  // Test Vectors
@@ -181,11 +190,6 @@ void RegisterFactories2()
 	RegisterSymmetricCipherDefaultFactories<CBC_Mode<SPECK128> >(); // Test Vectors
 	RegisterSymmetricCipherDefaultFactories<CTR_Mode<SPECK64> >();  // Benchmarks
 	RegisterSymmetricCipherDefaultFactories<CTR_Mode<SPECK128> >(); // Benchmarks
-
-	RegisterSymmetricCipherDefaultFactories<ECB_Mode<CHAM64> >();  // Test Vectors
-	RegisterSymmetricCipherDefaultFactories<ECB_Mode<CHAM128> >(); // Test Vectors
-	RegisterSymmetricCipherDefaultFactories<CTR_Mode<CHAM64> >();  // Benchmarks
-	RegisterSymmetricCipherDefaultFactories<CTR_Mode<CHAM128> >(); // Benchmarks
 
 	RegisterSymmetricCipherDefaultFactories<ECB_Mode<SM4> >();  // Test Vectors
 	RegisterSymmetricCipherDefaultFactories<CBC_Mode<SM4> >();  // Test Vectors

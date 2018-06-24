@@ -584,6 +584,7 @@ void Benchmark2(double t, double hertz)
 		BenchMarkByName<SymmetricCipher>("AES/ECB", 16);
 		BenchMarkByName<SymmetricCipher>("ARIA/CTR", 16);
 		BenchMarkByName<SymmetricCipher>("ARIA/CTR", 32);
+		BenchMarkByName<SymmetricCipher>("HIGHT/CTR");
 		BenchMarkByName<SymmetricCipher>("Camellia/CTR", 16);
 		BenchMarkByName<SymmetricCipher>("Camellia/CTR", 32);
 		BenchMarkByName<SymmetricCipher>("Twofish/CTR");
