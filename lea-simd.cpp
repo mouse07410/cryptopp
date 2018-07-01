@@ -599,11 +599,21 @@ inline __m128i LoadKey(const word32 rkey[])
     return _mm_castps_si128(_mm_load_ps1(&rk));
 }
 
+/// \brief Unpack XMM words
+/// \tparam IDX the element from each XMM word
+/// \param a the first XMM word
+/// \param b the second XMM word
+/// \param c the third XMM word
+/// \param d the fourth XMM word
+/// \details UnpackXMM selects the IDX element from a, b, c, d and returns a concatenation
+///   equivalent to <tt>a[IDX] || b[IDX] || c[IDX] || d[IDX]</tt>.
 template <unsigned int IDX>
 inline __m128i UnpackXMM(const __m128i& a, const __m128i& b, const __m128i& c, const __m128i& d)
 {
     // Should not be instantiated
-    CRYPTOPP_ASSERT(0);;
+    CRYPTOPP_UNUSED(a); CRYPTOPP_UNUSED(b);
+    CRYPTOPP_UNUSED(c); CRYPTOPP_UNUSED(d);
+    CRYPTOPP_ASSERT(0);
     return _mm_setzero_si128();
 }
 
@@ -643,11 +653,16 @@ inline __m128i UnpackXMM<3>(const __m128i& a, const __m128i& b, const __m128i& c
     return _mm_unpackhi_epi64(r1, r2);
 }
 
+/// \brief Unpack a XMM word
+/// \tparam IDX the element from each XMM word
+/// \param v the first XMM word
+/// \details UnpackXMM selects the IDX element from v and returns a concatenation
+///   equivalent to <tt>v[IDX] || v[IDX] || v[IDX] || v[IDX]</tt>.
 template <unsigned int IDX>
 inline __m128i UnpackXMM(const __m128i& v)
 {
     // Should not be instantiated
-    CRYPTOPP_ASSERT(0);;
+    CRYPTOPP_UNUSED(v); CRYPTOPP_ASSERT(0);
     return _mm_setzero_si128();
 }
 
@@ -917,7 +932,7 @@ inline void LEA_Decryption(__m128i temp[4], const word32 *subkeys, unsigned int 
     temp[3] = Xor(Sub(RotateLeft<3>(temp[3]), Xor(temp[2], LoadKey<4>(subkeys))), LoadKey<5>(subkeys));
 }
 
-inline void GCC_NO_UBSAN LEA_Enc_Block(__m128i &block0,
+inline void LEA_Enc_Block(__m128i &block0,
     const word32 *subkeys, unsigned int rounds)
 {
     __m128i temp[4];
@@ -931,7 +946,7 @@ inline void GCC_NO_UBSAN LEA_Enc_Block(__m128i &block0,
     block0 = RepackXMM<0>(temp[0], temp[1], temp[2], temp[3]);
 }
 
-inline void GCC_NO_UBSAN LEA_Dec_Block(__m128i &block0,
+inline void LEA_Dec_Block(__m128i &block0,
     const word32 *subkeys, unsigned int rounds)
 {
     __m128i temp[4];
@@ -945,7 +960,7 @@ inline void GCC_NO_UBSAN LEA_Dec_Block(__m128i &block0,
     block0 = RepackXMM<0>(temp[0], temp[1], temp[2], temp[3]);
 }
 
-inline void GCC_NO_UBSAN LEA_Enc_4_Blocks(__m128i &block0, __m128i &block1,
+inline void LEA_Enc_4_Blocks(__m128i &block0, __m128i &block1,
     __m128i &block2, __m128i &block3, const word32 *subkeys, unsigned int rounds)
 {
     __m128i temp[4];
@@ -962,7 +977,7 @@ inline void GCC_NO_UBSAN LEA_Enc_4_Blocks(__m128i &block0, __m128i &block1,
     block3 = RepackXMM<3>(temp[0], temp[1], temp[2], temp[3]);
 }
 
-inline void GCC_NO_UBSAN LEA_Dec_4_Blocks(__m128i &block0, __m128i &block1,
+inline void LEA_Dec_4_Blocks(__m128i &block0, __m128i &block1,
     __m128i &block2, __m128i &block3, const word32 *subkeys, unsigned int rounds)
 {
     __m128i temp[4];
