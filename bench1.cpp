@@ -565,6 +565,10 @@ void Benchmark2(double t, double hertz)
 		BenchMarkByName<SymmetricCipher>("ChaCha12");
 		BenchMarkByName<SymmetricCipher>("ChaCha8");
 		BenchMarkByName<SymmetricCipher>("Sosemanuk");
+		BenchMarkByName<SymmetricCipher>("Rabbit");
+		BenchMarkByName<SymmetricCipher>("RabbitWithIV");
+		BenchMarkByName<SymmetricCipher>("HC-128");
+		BenchMarkByName<SymmetricCipher>("HC-256");
 		BenchMarkByName<SymmetricCipher>("MARC4");
 		BenchMarkByName<SymmetricCipher>("SEAL-3.0-LE");
 		BenchMarkByName<SymmetricCipher>("WAKE-OFB-LE");
@@ -603,8 +607,6 @@ void Benchmark2(double t, double hertz)
 		BenchMarkByName<SymmetricCipher>("IDEA/CTR");
 		BenchMarkByName<SymmetricCipher>("RC5/CTR", 0, "RC5 (r=16)");
 		BenchMarkByName<SymmetricCipher>("Blowfish/CTR");
-		BenchMarkByName<SymmetricCipher>("TEA/CTR");
-		BenchMarkByName<SymmetricCipher>("XTEA/CTR");
 		BenchMarkByName<SymmetricCipher>("SKIPJACK/CTR");
 		BenchMarkByName<SymmetricCipher>("SEED/CTR", 0, "SEED/CTR (1/2 K table)");
 		BenchMarkByName<SymmetricCipher>("SM4/CTR");
@@ -640,6 +642,9 @@ void Benchmark2(double t, double hertz)
 		BenchMarkByName<SymmetricCipher>("SPECK-128/CTR", 16, "SPECK-128(128)/CTR (128-bit key)");
 		BenchMarkByName<SymmetricCipher>("SPECK-128/CTR", 24, "SPECK-128(192)/CTR (192-bit key)");
 		BenchMarkByName<SymmetricCipher>("SPECK-128/CTR", 32, "SPECK-128(256)/CTR (256-bit key)");
+
+		BenchMarkByName<SymmetricCipher>("TEA/CTR");
+		BenchMarkByName<SymmetricCipher>("XTEA/CTR");
 	}
 
 	std::cout << "\n<TBODY style=\"background: white;\">";
