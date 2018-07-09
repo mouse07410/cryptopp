@@ -50,17 +50,53 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CipherModeBase : public SymmetricCipher
 {
 public:
 	virtual ~CipherModeBase() {}
-	size_t MinKeyLength() const {return m_cipher->MinKeyLength();}
-	size_t MaxKeyLength() const {return m_cipher->MaxKeyLength();}
-	size_t DefaultKeyLength() const {return m_cipher->DefaultKeyLength();}
-	size_t GetValidKeyLength(size_t n) const {return m_cipher->GetValidKeyLength(n);}
-	bool IsValidKeyLength(size_t n) const {return m_cipher->IsValidKeyLength(n);}
 
+	/// \brief Returns smallest valid key length
+	/// \returns the minimum key length, in bytes
+	size_t MinKeyLength() const {return m_cipher->MinKeyLength();}
+
+	/// \brief Returns largest valid key length
+	/// \returns the maximum key length, in bytes
+	size_t MaxKeyLength() const {return m_cipher->MaxKeyLength();}
+
+	/// \brief Returns default key length
+	/// \returns the default key length, in bytes
+	size_t DefaultKeyLength() const {return m_cipher->DefaultKeyLength();}
+
+	/// \brief Returns a valid key length for the algorithm
+	/// \param keylength the size of the key, in bytes
+	/// \returns the valid key length, in bytes
+	/// \details keylength is provided in bytes, not bits. If keylength is less than MIN_KEYLENGTH,
+	///   then the function returns MIN_KEYLENGTH. If keylength is greater than MAX_KEYLENGTH,
+	///   then the function returns MAX_KEYLENGTH. if If keylength is a multiple of KEYLENGTH_MULTIPLE,
+	///   then keylength is returned. Otherwise, the function returns a \a lower multiple of
+	///   KEYLENGTH_MULTIPLE.
+	size_t GetValidKeyLength(size_t keylength) const {return m_cipher->GetValidKeyLength(keylength);}
+
+	/// \brief Returns whether keylength is a valid key length
+	/// \param keylength the requested keylength
+	/// \return true if keylength is valid, false otherwise
+	/// \details Internally the function calls GetValidKeyLength()
+	bool IsValidKeyLength(size_t keylength) const {return m_cipher->IsValidKeyLength(keylength);}
+
+	/// \brief Provides input and output data alignment for optimal performance.
+	/// \return the input data alignment that provides optimal performance
+	/// \sa GetAlignment() and OptimalBlockSize()
 	unsigned int OptimalDataAlignment() const {return m_cipher->OptimalDataAlignment();}
 
+	/// \brief Returns length of the IV accepted by this object
+	/// \return the size of an IV, in bytes
+	/// \throws NotImplemented() if the object does not support resynchronization
+	/// \details The default implementation throws NotImplemented
 	unsigned int IVSize() const {return BlockSize();}
+
+	/// \brief Minimal requirement for secure IVs
+	/// \return the secure IV requirement of the algorithm
 	virtual IV_Requirement IVRequirement() const =0;
 
+	/// \brief Set external block cipher
+	/// \param cipher An external block cipher
+	/// \details The cipher should be keyed.
 	void SetCipher(BlockCipher &cipher)
 	{
 		this->ThrowIfResynchronizable();
@@ -68,6 +104,11 @@ public:
 		this->ResizeBuffers();
 	}
 
+	/// \brief Set external block cipher and IV
+	/// \param cipher An external block cipher
+	/// \param iv a byte array used to resynchronize the cipher
+	/// \param feedbackSize the feedback size, in bytes
+	/// \details The cipher should be keyed.
 	void SetCipherWithIV(BlockCipher &cipher, const byte *iv, int feedbackSize = 0)
 	{
 		this->ThrowIfInvalidIV(iv);
@@ -116,6 +157,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CFB_ModePolicy : public ModePolicyCommonTe
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "CFB";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	virtual ~CFB_ModePolicy() {}
 	IV_Requirement IVRequirement() const {return RANDOM_IV;}
@@ -150,6 +192,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE OFB_ModePolicy : public ModePolicyCommonTe
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "OFB";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	bool CipherIsRandomAccess() const {return false;}
 	IV_Requirement IVRequirement() const {return UNIQUE_IV;}
@@ -166,6 +209,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CTR_ModePolicy : public ModePolicyCommonTe
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "CTR";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	virtual ~CTR_ModePolicy() {}
 	bool CipherIsRandomAccess() const {return true;}
@@ -210,6 +254,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE ECB_OneWay : public BlockOrientedCipherMod
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "ECB";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	void SetKey(const byte *key, size_t length, const NameValuePairs &params = g_nullNameValuePairs)
 		{m_cipher->SetKey(key, length, params); BlockOrientedCipherModeBase::ResizeBuffers();}
@@ -223,6 +268,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CBC_ModeBase : public BlockOrientedCipherM
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "CBC";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	IV_Requirement IVRequirement() const {return UNPREDICTABLE_RANDOM_IV;}
 	bool RequireAlignedInput() const {return false;}
@@ -242,6 +288,7 @@ class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE CBC_CTS_Encryption : public CBC_Encryption
 {
 public:
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "CBC/CTS";}
+	std::string AlgorithmProvider() const { return m_cipher->AlgorithmProvider(); }
 
 	void SetStolenIV(byte *iv) {m_stolenIV = iv;}
 	unsigned int MinLastBlockSize() const {return BlockSize()+1;}
@@ -284,24 +331,50 @@ template <class CIPHER, class BASE>
 class CipherModeFinalTemplate_CipherHolder : protected ObjectHolder<CIPHER>, public AlgorithmImpl<BASE, CipherModeFinalTemplate_CipherHolder<CIPHER, BASE> >
 {
 public:
+	/// \brief Provides the name of this algorithm
+	/// \return the standard algorithm name
+	/// \details The standard algorithm name can be a name like \a AES or \a AES/GCM. Some algorithms
+	///   do not have standard names yet. For example, there is no standard algorithm name for
+	///   Shoup's ECIES.
 	static std::string CRYPTOPP_API StaticAlgorithmName()
 		{return CIPHER::StaticAlgorithmName() + "/" + BASE::StaticAlgorithmName();}
+	std::string AlgorithmProvider() const
+		{ return this->m_cipher->AlgorithmProvider(); }
 
+	/// \brief Construct a CipherModeFinalTemplate
 	CipherModeFinalTemplate_CipherHolder()
 	{
 		this->m_cipher = &this->m_object;
 		this->ResizeBuffers();
 	}
+
+	/// \brief Construct a CipherModeFinalTemplate
+	/// \param key a byte array used to key the cipher
+	/// \details key must be at least DEFAULT_KEYLENGTH in length. Internally, the function calls
+	///    SimpleKeyingInterface::SetKey.
 	CipherModeFinalTemplate_CipherHolder(const byte *key, size_t length)
 	{
 		this->m_cipher = &this->m_object;
 		this->SetKey(key, length);
 	}
+
+	/// \brief Construct a CipherModeFinalTemplate
+	/// \param key a byte array used to key the cipher
+	/// \param iv a byte array used to resynchronize the cipher
+	/// \details key must be at least DEFAULT_KEYLENGTH in length. iv must be IVSize() or
+	///    BLOCKSIZE in length. Internally, the function calls SimpleKeyingInterface::SetKey.
 	CipherModeFinalTemplate_CipherHolder(const byte *key, size_t length, const byte *iv)
 	{
 		this->m_cipher = &this->m_object;
 		this->SetKey(key, length, MakeParameters(Name::IV(), ConstByteArrayParameter(iv, this->m_cipher->BlockSize())));
 	}
+
+	/// \brief Construct a CipherModeFinalTemplate
+	/// \param key a byte array used to key the cipher
+	/// \param iv a byte array used to resynchronize the cipher
+	/// \param feedbackSize the feedback size, in bytes
+	/// \details key must be at least DEFAULT_KEYLENGTH in length. iv must be IVSize() or
+	///    BLOCKSIZE in length. Internally, the function calls SimpleKeyingInterface::SetKey.
 	CipherModeFinalTemplate_CipherHolder(const byte *key, size_t length, const byte *iv, int feedbackSize)
 	{
 		this->m_cipher = &this->m_object;
@@ -315,14 +388,34 @@ template <class BASE>
 class CipherModeFinalTemplate_ExternalCipher : public BASE
 {
 public:
+	/// \brief Construct a default CipherModeFinalTemplate
+	/// \details The cipher is not keyed.
 	CipherModeFinalTemplate_ExternalCipher() {}
+
+	/// \brief Construct a CipherModeFinalTemplate
+	/// \param cipher An external block cipher
+	/// \details The cipher should be keyed.
 	CipherModeFinalTemplate_ExternalCipher(BlockCipher &cipher)
 		{this->SetCipher(cipher);}
+
+	/// \brief Construct a CipherModeFinalTemplate
+	/// \param cipher An external block cipher
+	/// \param iv a byte array used to resynchronize the cipher
+	/// \param feedbackSize the feedback size, in bytes
+	/// \details The cipher should be keyed.
 	CipherModeFinalTemplate_ExternalCipher(BlockCipher &cipher, const byte *iv, int feedbackSize = 0)
 		{this->SetCipherWithIV(cipher, iv, feedbackSize);}
 
+	/// \brief Provides the name of this algorithm
+	/// \return the standard algorithm name
+	/// \details The standard algorithm name can be a name like \a AES or \a AES/GCM. Some algorithms
+	///   do not have standard names yet. For example, there is no standard algorithm name for
+	///   Shoup's ECIES.
+	/// \note  AlgorithmName is not universally implemented yet
 	std::string AlgorithmName() const
 		{return (this->m_cipher ? this->m_cipher->AlgorithmName() + "/" : std::string("")) + BASE::StaticAlgorithmName();}
+	std::string AlgorithmProvider() const
+		{ return this->m_cipher ? this->m_cipher->AlgorithmProvider() : "C++"; }
 };
 
 CRYPTOPP_DLL_TEMPLATE_CLASS CFB_CipherTemplate<AbstractPolicyHolder<CFB_CipherAbstractPolicy, CFB_ModePolicy> >;
