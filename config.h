@@ -75,8 +75,8 @@
 // this file. At the moment it should only affect std::uncaught_exceptions.
 // #define CRYPTOPP_NO_CXX17 1
 
-// Define this to allow unaligned data access. If you experience a break with
-// GCC at -O3, you should immediately suspect unaligned data accesses.
+// CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS is no longer honored. It
+// was removed at https://github.com/weidai11/cryptopp/issues/682
 // #define CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS 1
 
 // ***************** Less Important Settings ***************
@@ -649,6 +649,16 @@ NAMESPACE_END
 // to compile with "fatal error: 'arm_acle.h' file not found"
 #if defined(__ANDROID__) || defined(ANDROID) || defined(__APPLE__)
 # undef CRYPTOPP_ARM_ACLE_AVAILABLE
+#endif
+
+// Cryptogams offers an ARM asm AES implementation. Crypto++ does
+// not provide an ARM implementation. The Cryptogams implementation
+// is about 2x faster than C/C++. Define this to use the Cryptogams
+// AES implementation on GNU Linux systems. When defined, Crypto++
+// will use aes-armv4.S. LLVM miscomiles aes-armv4.S so disable
+// under Clang. See https://bugs.llvm.org/show_bug.cgi?id=38133.
+#if !defined(CRYPTOPP_DISABLE_ASM) && defined(__arm__) && defined(__GNUC__) && !defined(__clang__)
+# define CRYPTOGAMS_ARM_AES 1
 #endif
 
 #endif  // ARM32, ARM64
