@@ -111,7 +111,8 @@ void PutDecodedDatumInto(const TestData &data, const char *name, BufferedTransfo
 		int repeat = 1;
 		if (s1[0] == 'r')
 		{
-			repeat = ::atoi(s1.c_str()+1);
+			s1 = s1.erase(0, 1);
+			repeat = ::atoi(s1.c_str());
 			s1 = s1.substr(s1.find(' ')+1);
 		}
 
@@ -488,6 +489,7 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 				xorbuf(reinterpret_cast<byte*>(&keybuf[0]), reinterpret_cast<const byte*>(&encrypted[0]), keybuf.size());
 				cipher->SetKey(reinterpret_cast<const byte*>(&keybuf[0]), keybuf.size());
 			}
+
 			encrypted.assign(buf.begin(), buf.end());
 			ciphertext = GetDecodedDatum(v, test == "EncryptionMCT" ? "Ciphertext" : "Plaintext");
 			if (encrypted != ciphertext)
@@ -509,13 +511,15 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 		encFilter.MessageEnd();
 
 		if (test != "EncryptXorDigest")
+		{
 			ciphertext = GetDecodedDatum(v, "Ciphertext");
+		}
 		else
 		{
 			ciphertextXorDigest = GetDecodedDatum(v, "CiphertextXorDigest");
 			xorDigest.append(encrypted, 0, 64);
 			for (size_t i=64; i<encrypted.size(); i++)
-				xorDigest[i%64] ^= encrypted[i];
+				xorDigest[i%64] = static_cast<char>(xorDigest[i%64] ^ encrypted[i]);
 		}
 		if (test != "EncryptXorDigest" ? encrypted != ciphertext : xorDigest != ciphertextXorDigest)
 		{
