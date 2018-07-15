@@ -118,12 +118,11 @@ script:
         cp ./TestScripts/cryptest-cmake.sh .
         ./cryptest-cmake.sh
     elif [[ "$BUILD_MODE" == "debug" ]]; then
-        #if [ $TRAVIS_OS_NAME == osx ]; then
-        #    CXXFLAGS="-DDEBUG -g2 -O1 -mrdrnd -mrdseed -msse2" make -j "$BUILD_JOBS"
-        #else
-        #    CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
-        #fi
-        CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
+        if [ $TRAVIS_OS_NAME == osx ]; then
+            CXXFLAGS="-DDEBUG -g2 -O1 -mrdrnd -mrdseed -msse2" make -j "$BUILD_JOBS"
+        else
+            CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
+        fi
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
@@ -131,6 +130,11 @@ script:
         ./cryptest.exe v
         ./cryptest.exe tv all
     else
+        if [ $TRAVIS_OS_NAME == osx ]; then
+            CXXFLAGS="-DDEBUG -g2 -O1 -mrdrnd -mrdseed -msse2" make -j "$BUILD_JOBS"
+        else
+            CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
+        fi
         make "$BUILD_MODE" -j "$BUILD_JOBS"
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
