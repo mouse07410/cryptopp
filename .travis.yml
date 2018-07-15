@@ -51,6 +51,18 @@ matrix:
   include:
     - os: linux
       env:
+        - BUILD_MODE=autotools
+    - os: linux
+      env:
+        - BUILD_MODE=cmake
+    - os: osx
+      env:
+        - BUILD_MODE=autotools
+    - os: osx
+      env:
+        - BUILD_MODE=cmake
+    - os: linux
+      env:
         - BUILD_MODE=android
         - PLATFORM=x86_64
     - os: osx
@@ -84,6 +96,8 @@ matrix:
 before_install:
   - |
     if [[ "$BUILD_MODE" == "android" ]]; then
+        # https://github.com/travis-ci/travis-ci/issues/9037
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A145
         TestScripts/install-android.sh
     fi
 
@@ -91,10 +105,18 @@ script:
   - |
     if [[ "$BUILD_MODE" == "ios" ]]; then
         cp ./TestScripts/setenv-ios.sh .
-        TestScripts/cryptest-ios.sh
+        cp ./TestScripts/cryptest-ios.sh .
+        ./cryptest-ios.sh
     elif [[ "$BUILD_MODE" == "android" ]]; then
         cp ./TestScripts/setenv-android-gcc.sh .
-        TestScripts/cryptest-android.sh
+        cp ./TestScripts/cryptest-android.sh .
+        ./cryptest-android.sh
+    elif [[ "$BUILD_MODE" == "autotools" ]]; then
+        cp ./TestScripts/cryptest-autotools.sh .
+        ./cryptest-autotools.sh
+    elif [[ "$BUILD_MODE" == "cmake" ]]; then
+        cp ./TestScripts/cryptest-cmake.sh .
+        ./cryptest-cmake.sh
     elif [[ "$BUILD_MODE" == "debug" ]]; then
         if [ $TRAVIS_OS_NAME == osx ]; then
             CXXFLAGS="-DDEBUG -g2 -O1 -mrdrnd -mrdseed -msse2" make -j "$BUILD_JOBS"
@@ -108,11 +130,7 @@ script:
         ./cryptest.exe v
         ./cryptest.exe tv all
     else
-        if [ $TRAVIS_OS_NAME == osx ]; then
-            CXXFLAGS="-mrdrnd -mrdseed -msse2 -msse4" make "$BUILD_MODE" -j "$BUILD_JOBS"
-        else
-            make "$BUILD_MODE" -j "$BUILD_JOBS"
-        fi
+        make "$BUILD_MODE" -j "$BUILD_JOBS"
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
