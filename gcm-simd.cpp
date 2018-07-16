@@ -19,15 +19,10 @@
 # undef CRYPTOPP_SSE2_ASM_AVAILABLE
 #endif
 
-// SunCC 12.3 - 12.5 crash in GCM_Reduce_CLMUL
+// SunCC 12.3 - 12.6 crash in GCM_Reduce_CLMUL
 //   http://github.com/weidai11/cryptopp/issues/226
-#if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x5140)
+#if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x5150)
 # undef CRYPTOPP_CLMUL_AVAILABLE
-#endif
-
-// Clang and GCC hoops...
-#if !(defined(__ARM_FEATURE_CRYPTO) || defined(_MSC_VER))
-# undef CRYPTOPP_ARM_PMULL_AVAILABLE
 #endif
 
 #if (CRYPTOPP_SSE2_INTRIN_AVAILABLE)
@@ -43,8 +38,6 @@
 # include <arm_neon.h>
 #endif
 
-// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
-// compilers don't follow ACLE conventions for the include.
 #if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
@@ -227,8 +220,8 @@ bool CPU_ProbePMULL()
         const poly128_t r2 = vmull_high_p64((poly64x2_t)(a2), (poly64x2_t)(b2));
 
         // Linaro is missing vreinterpretq_u64_p128. Also see http://github.com/weidai11/cryptopp/issues/233.
-        const uint64x2_t& t1 = (uint64x2_t)(r1);  // {bignum,bignum}
-        const uint64x2_t& t2 = (uint64x2_t)(r2);  // {bignum,bignum}
+        const uint64x2_t t1 = (uint64x2_t)(r1);  // {bignum,bignum}
+        const uint64x2_t t2 = (uint64x2_t)(r2);  // {bignum,bignum}
 
         result = !!(vgetq_lane_u64(t1,0) == 0x5300530053005300 && vgetq_lane_u64(t1,1) == 0x5300530053005300 &&
                     vgetq_lane_u64(t2,0) == 0x6c006c006c006c00 && vgetq_lane_u64(t2,1) == 0x6c006c006c006c00);
@@ -269,8 +262,8 @@ bool CPU_ProbePMULL()
         const poly128_t r2 = VMULL_HIGH_P64((poly64x2_t)(a2), (poly64x2_t)(b2));
 
         // Linaro is missing vreinterpretq_u64_p128. Also see http://github.com/weidai11/cryptopp/issues/233.
-        const uint64x2_t& t1 = (uint64x2_t)(r1);  // {bignum,bignum}
-        const uint64x2_t& t2 = (uint64x2_t)(r2);  // {bignum,bignum}
+        const uint64x2_t t1 = (uint64x2_t)(r1);  // {bignum,bignum}
+        const uint64x2_t t2 = (uint64x2_t)(r2);  // {bignum,bignum}
 
         result = !!(vgetq_lane_u64(t1,0) == 0x5300530053005300 && vgetq_lane_u64(t1,1) == 0x5300530053005300 &&
                     vgetq_lane_u64(t2,0) == 0x6c006c006c006c00 && vgetq_lane_u64(t2,1) == 0x6c006c006c006c00);
@@ -513,7 +506,7 @@ __m128i _mm_clmulepi64_si128(const __m128i &a, const __m128i &b, int i)
 }
 #endif  // Testing
 
-__m128i GCM_Reduce_CLMUL(__m128i c0, __m128i c1, __m128i c2, const __m128i &r)
+inline __m128i GCM_Reduce_CLMUL(__m128i c0, __m128i c1, __m128i c2, const __m128i &r)
 {
     /*
     The polynomial to be reduced is c0 * x^128 + c1 * x^64 + c2. c0t below refers to the most
