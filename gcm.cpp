@@ -14,21 +14,11 @@
 
 // Clang 3.3 integrated assembler crash on Linux. Other versions produce incorrect results.
 //   Clang has never handled Intel ASM very well. I wish LLVM would fix it.
-#if defined(__clang__)
+#if defined(CRYPTOPP_DISABLE_INTEL_ASM)
 # undef CRYPTOPP_X86_ASM_AVAILABLE
 # undef CRYPTOPP_X32_ASM_AVAILABLE
 # undef CRYPTOPP_X64_ASM_AVAILABLE
 # undef CRYPTOPP_SSE2_ASM_AVAILABLE
-#endif
-
-// SunCC 12.3 - 12.5 crash in GCM_Reduce_CLMUL
-//   http://github.com/weidai11/cryptopp/issues/226
-#if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x5140)
-# undef CRYPTOPP_CLMUL_AVAILABLE
-#endif
-
-#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE)
-# include <emmintrin.h>
 #endif
 
 #include "gcm.h"
