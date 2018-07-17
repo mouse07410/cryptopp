@@ -64,6 +64,30 @@ matrix:
     - os: linux
       env:
         - BUILD_MODE=android
+        - PLATFORM=armeabi-v7a
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=armv7a-neon
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=aarch64
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=mipsel
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=mipsel64
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=x86
+    - os: linux
+      env:
+        - BUILD_MODE=android
         - PLATFORM=x86_64
     - os: osx
       env:
@@ -71,12 +95,12 @@ matrix:
         - PLATFORM=iPhoneOS
     - os: osx
       env:
-          BUILD_MODE=all
-          CXXFLAGS="-mrdrnd -mrdseed -msse2"
+        - BUILD_MODE=ios
+        - PLATFORM=Arm64
     - os: osx
       env:
-          BUILD_MODE=no-asm
-          CXXFLAGS="-mrdrnd -mrdseed -msse2"
+        - BUILD_MODE=ios
+        - PLATFORM=WatchOS
     - os: osx
       env:
         - BUILD_MODE=ios
@@ -87,12 +111,27 @@ matrix:
         - PLATFORM=iPhoneSimulator
 
   allow_failures:
-    # Ignore problems with old toolchains
-    - env: BUILD_MODE="ubsan"
-    - env: BUILD_MODE="asan"
-    - env: BUILD_MODE="ios"
-    - env: BUILD_MODE="android"
-    
+    - os: osx
+      env:
+        - BUILD_MODE=ios
+        - PLATFORM=WatchOS
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=armeabi
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=mipsel
+    - os: linux
+      env:
+        - BUILD_MODE=android
+        - PLATFORM=mipsel64
+    - os: osx
+      env:
+        - BUILD_MODE=ios
+        - PLATFORM=iPhoneSimulator
+	
 before_install:
   - |
     if [[ "$BUILD_MODE" == "android" ]]; then
