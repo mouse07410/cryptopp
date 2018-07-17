@@ -46,7 +46,13 @@
 # include <arm_neon.h>
 #endif
 
-#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE)
+#if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+# include <stdint.h>
+# include <arm_acle.h>
+#endif
+
+// SunCC needs CRYPTOPP_SSSE3_AVAILABLE, too
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSSE3_AVAILABLE)
 # include <emmintrin.h>
 # include <pmmintrin.h>
 # include <xmmintrin.h>
@@ -538,7 +544,7 @@ inline size_t AdvancedProcessBlocks128_4x1_NEON(F1 func1, F4 func4,
     {
         while (length >= 4*blockSize)
         {
-            uint64x2_t block0, block1, block2, block3, block4, block5;
+            uint64x2_t block0, block1, block2, block3;
             if (flags & BT_InBlockIsCounter)
             {
                 const uint64x2_t be = vreinterpretq_u64_u32(vld1q_u32(s_one32x4));
