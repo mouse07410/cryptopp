@@ -1058,6 +1058,8 @@ inline unsigned int GetAlignmentOf()
 	return __alignof(T);
 #elif defined(__GNUC__)
 	return __alignof__(T);
+#elif defined(__SUNPRO_CC)
+	return __alignof__(T);
 #elif CRYPTOPP_BOOL_SLOW_WORD64
 	return UnsignedMin(4U, sizeof(T));
 #else
@@ -2068,7 +2070,11 @@ inline T ConditionalByteReverse(ByteOrder order, T value)
 template <class T>
 void ByteReverse(T *out, const T *in, size_t byteCount)
 {
+	// Alignment check due to Issues 690
 	CRYPTOPP_ASSERT(byteCount % sizeof(T) == 0);
+	CRYPTOPP_ASSERT(IsAligned<T>(in));
+	CRYPTOPP_ASSERT(IsAligned<T>(out));
+
 	size_t count = byteCount/sizeof(T);
 	for (size_t i=0; i<count; i++)
 		out[i] = ByteReverse(in[i]);
