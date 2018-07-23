@@ -30,7 +30,7 @@ INSTALL = install
 INSTALL_PROGRAM = $(INSTALL)
 INSTALL_DATA = $(INSTALL) -m 644
 
-# Solaris provides a non-Posix shell at /usr/bin
+# Solaris provides a non-Posix grep at /usr/bin
 ifneq ($(wildcard /usr/xpg4/bin),)
   GREP ?= /usr/xpg4/bin/grep
 else
@@ -120,11 +120,7 @@ HAS_NEWLIB := $(shell $(CXX) -x c++ $(CXXFLAGS) -dM -E adhoc.cpp.proto 2>&1 | $(
 
 # Base CXXFLAGS used if the user did not specify them
 ifeq ($(SUN_COMPILER),1)
-  ifeq ($(SUNCC_512_OR_LATER),1)
-    CXXFLAGS ?= -DNDEBUG -g3 -xO3
-  else
-    CXXFLAGS ?= -DNDEBUG -g -xO3
-  endif
+  CXXFLAGS ?= -DNDEBUG -g -xO3
 else
   CXXFLAGS ?= -DNDEBUG -g2 -O3
 endif
@@ -216,7 +212,7 @@ endif
 ICC111_OR_LATER := $(shell $(CXX) --version 2>&1 | $(GREP) -c -E "\(ICC\) ([2-9][0-9]|1[2-9]|11\.[1-9])")
 
 # Add -fPIC for targets *except* X86, X32, Cygwin or MinGW
-ifeq ($(IS_X86)$(IS_CYGWIN)$(IS_MINGW)$(SUN_COMPILER),0000)
+ifeq ($(IS_X86)$(IS_CYGWIN)$(IS_MINGW),000)
  ifeq ($(findstring -fPIC,$(CXXFLAGS)),)
    CXXFLAGS += -fPIC
  endif
@@ -379,6 +375,11 @@ else
 # Add PIC
 ifeq ($(findstring -fPIC,$(CXXFLAGS)),)
   CXXFLAGS += -fPIC
+endif
+
+# Remove -fPIC if present. SunCC adds -KPIC
+ifeq ($(SUN_COMPILER),1)
+  CXXFLAGS := $(subst -fPIC,,$(CXXFLAGS))
 endif
 
 ifeq ($(IS_NEON),1)
@@ -566,10 +567,6 @@ CXXFLAGS += -KPIC
 endif
 # Add to all Solaris
 CXXFLAGS += -template=no%extdef
-# http://github.com/weidai11/cryptopp/issues/403
-ifneq ($(IS_SPARC32)$(IS_SPARC64),00)
-CXXFLAGS += -xmemalign=4i
-endif
 SUN_CC10_BUGGY := $(shell $(CXX) -V 2>&1 | $(GREP) -c -E "CC: Sun .* 5\.10 .* (2009|2010/0[1-4])")
 ifneq ($(SUN_CC10_BUGGY),0)
 # -DCRYPTOPP_INCLUDE_VECTOR_CC is needed for Sun Studio 12u1 Sun C++ 5.10 SunOS_i386 128229-02 2009/09/21 and was fixed in May 2010
