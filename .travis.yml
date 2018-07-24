@@ -114,7 +114,7 @@ matrix:
     - os: osx
       env:
         - BUILD_MODE=ios
-        - PLATFORM=iPhoneOS
+        - PLATFORM=WatchOS
     - os: osx
       env:
         - BUILD_MODE=autotools
