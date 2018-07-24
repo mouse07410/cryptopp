@@ -114,7 +114,19 @@ matrix:
     - os: osx
       env:
         - BUILD_MODE=ios
-        - PLATFORM=WatchOS
+        - PLATFORM=iPhoneOS
+    - os: osx
+      env:
+        - BUILD_MODE=autotools
+    - os: osx
+      env:
+        - BUILD_MODE=cmake
+    - os: linux
+      env:
+        - BUILD_MODE=autotools
+    - os: linux
+      env:
+        - BUILD_MODE=cmake
     - os: linux
       env:
         - BUILD_MODE=android
