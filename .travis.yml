@@ -143,7 +143,7 @@ matrix:
       env:
         - BUILD_MODE=ios
         - PLATFORM=iPhoneSimulator
-	
+
 before_install:
   - |
     if [[ "$BUILD_MODE" == "android" ]]; then
