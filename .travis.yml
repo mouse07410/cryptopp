@@ -157,16 +157,20 @@ script:
     if [[ "$BUILD_MODE" == "ios" ]]; then
         cp ./TestScripts/setenv-ios.sh .
         cp ./TestScripts/cryptest-ios.sh .
+        chmod +x *.sh
         ./cryptest-ios.sh
     elif [[ "$BUILD_MODE" == "android" ]]; then
         cp ./TestScripts/setenv-android-gcc.sh .
         cp ./TestScripts/cryptest-android.sh .
+        chmod +x *.sh
         ./cryptest-android.sh
     elif [[ "$BUILD_MODE" == "autotools" ]]; then
         cp ./TestScripts/cryptest-autotools.sh .
+        chmod +x *.sh
         ./cryptest-autotools.sh
     elif [[ "$BUILD_MODE" == "cmake" ]]; then
         cp ./TestScripts/cryptest-cmake.sh .
+        chmod +x *.sh
         ./cryptest-cmake.sh
     elif [[ "$BUILD_MODE" == "debug" ]]; then
         if [ $TRAVIS_OS_NAME == osx ]; then
@@ -178,6 +182,7 @@ script:
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
         sudo make install PREFIX=/opt/local
+        chmod +x *.exe
         ./cryptest.exe v
         ./cryptest.exe tv all
     else

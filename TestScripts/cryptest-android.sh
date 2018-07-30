@@ -11,6 +11,12 @@
 # ====================================================================
 set +e
 
+if [ -z $(command -v ./setenv-android-gcc.sh) ]; then
+	echo "Failed to locate setenv-android-gcc.sh"
+	ls -Al *.sh
+	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+fi
+
 if [ -z "${PLATFORM-}" ]; then
 	PLATFORMS=(armeabi armeabi-v7a armv7a-neon aarch64 mipsel mipsel64 x86 x86_64)
 else
