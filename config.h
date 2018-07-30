@@ -354,10 +354,11 @@ NAMESPACE_END
 	#endif
 #endif
 
+// Sun Studio Express 3 (December 2006) provides GCC-style attributes.
 #ifndef CRYPTOPP_ALIGN_DATA
 	#if defined(_MSC_VER)
 		#define CRYPTOPP_ALIGN_DATA(x) __declspec(align(x))
-	#elif defined(__GNUC__)
+	#elif defined(__GNUC__) || (__SUNPRO_CC >= 0x5100)
 		#define CRYPTOPP_ALIGN_DATA(x) __attribute__((aligned(x)))
 	#else
 		#define CRYPTOPP_ALIGN_DATA(x)
