@@ -326,9 +326,9 @@ SRCS := cryptlib.cpp cpu.cpp integer.cpp $(filter-out cryptlib.cpp cpu.cpp integ
 INCL := $(filter-out resource.h,$(sort $(wildcard *.h)))
 
 # Cryptogams AES for ARMv4 and above. We couple to ARMv7.
-# Disable Thumb via -marm due to unaligned byte buffers.
 ifeq ($(IS_ARM32),1)
-CRYPTOGAMS_AES_ARCH = -march=armv7-a -marm
+CRYPTOGAMS_AES_FLAG = -march=armv7-a
+CRYPTOGAMS_AES_FLAG += -Wa,--noexecstack
 SRCS += aes-armv4.S
 endif
 
@@ -337,7 +337,7 @@ OBJS := $(SRCS:.cpp=.o)
 OBJS := $(OBJS:.S=.o)
 
 # List test.cpp first to tame C++ static initialization problems.
-TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp bench3.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp datatest.cpp regtest1.cpp regtest2.cpp regtest3.cpp dlltest.cpp fipsalgt.cpp
+TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp bench3.cpp datatest.cpp dlltest.cpp fipsalgt.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp validat5.cpp validat6.cpp validat7.cpp regtest1.cpp regtest2.cpp regtest3.cpp regtest4.cpp
 TESTINCL := bench.h factory.h validate.h
 
 # Test objects
@@ -388,10 +388,10 @@ lean: static dynamic cryptest.exe
 
 .PHONY: clean
 clean:
-	-$(RM) adhoc.cpp.o adhoc.cpp.proto.o $(LIBOBJS) $(AOSP_CPU_OBJ) $(TESTOBJS) $(DLLOBJS) $(LIBIMPORTOBJS) $(TESTIMPORTOBJS) $(DLLTESTOBJS)
+	-$(RM) adhoc.cpp.o adhoc.cpp.proto.o $(LIBOBJS) $(AOSP_CPU_OBJ) rdrand-*.o $(TESTOBJS) $(DLLOBJS) $(LIBIMPORTOBJS) $(TESTIMPORTOBJS) $(DLLTESTOBJS)
 	@-$(RM) libcryptopp.a libcryptopp.dylib cryptopp.dll libcryptopp.dll.a libcryptopp.import.a
 	@-$(RM) libcryptopp.so libcryptopp.so$(SOLIB_COMPAT_SUFFIX) libcryptopp.so$(SOLIB_VERSION_SUFFIX)
-	@-$(RM) cryptest.exe dlltest.exe cryptest.import.exe cryptest.info ct rdrand-???.o
+	@-$(RM) cryptest.exe dlltest.exe cryptest.import.exe cryptest.info ct et
 	@-$(RM) *.la *.lo *.gcov *.gcno *.gcda *.stackdump core core-*
 	@-$(RM) /tmp/adhoc.exe
 	@-$(RM) -r /tmp/cryptopp_test/
@@ -399,18 +399,27 @@ clean:
 	@-$(RM) -r *.dylib.dSYM/
 	@-$(RM) -r cov-int/
 
-.PHONY: distclean
-distclean: clean
-	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt cryptest-*.txt
-	@-$(RM) cryptopp.tgz *.o *.bc *.ii *~
-	@-$(RM) -r $(SRCS:.cpp=.obj) cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
+.PHONY: autotools-clean
+autotools-clean:
 	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
-	@-$(RM) -f config.guess config.status config.sub depcomp install-sh compile
-	@-$(RM) -f stamp-h1 ar-lib *.m4 local.* lt*.sh missing libtool* libcryptopp.pc*
+	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
+	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
+	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*
 	@-$(RM) -rf m4/ auto*.cache/ .deps/ .libs/
+
+.PHONY: cmake-clean
+cmake-clean:
+	@-$(RM) -f cryptopp-config.cmake CMakeLists.txt
+	@-$(RM) -rf cmake_build/
+
+.PHONY: distclean
+distclean: clean autotools-clean cmake-clean
+	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt
+	@-$(RM) cryptest-*.txt cryptopp.tgz libcryptopp.pc *.o *.bc *.ii *~
+	@-$(RM) -r cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
+	@-$(RM) -r $(LIBOBJS:.o=.obj) $(TESTOBJS:.o=.obj) $(DOCUMENT_DIRECTORY)/
 	@-$(RM) -r TestCoverage/
-	@-$(RM) cryptopp$(LIB_VER)\.*
-	@-$(RM) CryptoPPRef.zip
+	@-$(RM) cryptopp$(LIB_VER)\.* CryptoPPRef.zip
 
 # Install cryptest.exe, libcryptopp.a and libcryptopp.so.
 # The library install was broken-out into its own recipe at GH #653.
@@ -508,9 +517,9 @@ endif # Dependencies
 cpu-features.o: cpu-features.h cpu-features.c
 	$(CXX) $(strip $(CXXFLAGS) -fpermissive -c) cpu-features.c
 
-# Cryptogams ARM asm implementation. CRYPTOGAMS_AES_ARCH includes -marm.
+# Cryptogams ARM asm implementation.
 aes-armv4.o : aes-armv4.S
-	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_AES_ARCH) -c) $<
+	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_AES_FLAG) -c) $<
 
 # SSE4.2 or NEON available
 aria-simd.o : aria-simd.cpp

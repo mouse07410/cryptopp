@@ -400,6 +400,9 @@
     <ClCompile Include="regtest3.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
+    <ClCompile Include="regtest4.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
     <ClCompile Include="test.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
@@ -416,6 +419,15 @@
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="validat4.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat5.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat6.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat7.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="fipsalgt.cpp">

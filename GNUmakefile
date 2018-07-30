@@ -92,25 +92,6 @@ SUNCC_513_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (S
 # Enable shared object versioning for Linux
 HAS_SOLIB_VERSION := $(IS_LINUX)
 
-# Fixup SunOS
-ifeq ($(IS_SUN),1)
-IS_X86 := $(shell isainfo -k 2>/dev/null | $(GREP) -i -c "i386")
-IS_X64 := $(shell isainfo -k 2>/dev/null | $(GREP) -i -c "amd64")
-endif
-
-# Fixup AIX
-ifeq ($(IS_AIX),1)
-  # https://www-01.ibm.com/support/docview.wss?uid=swg21256116
-  IS_64BIT := $(shell getconf KERNEL_BITMODE | $(GREP) -i -c "64")
-  ifeq ($(IS_64BIT),1)
-    IS_PPC32 := 0
-    IS_PPC64 := 1
-  else
-    IS_PPC32 := 1
-    IS_PPC64 := 0
-  endif
-endif
-
 # Newlib needs _XOPEN_SOURCE=600 for signals
 HAS_NEWLIB := $(shell $(CXX) -x c++ $(CXXFLAGS) -dM -E adhoc.cpp.proto 2>&1 | $(GREP) -i -c "__NEWLIB__")
 
@@ -210,13 +191,6 @@ ifneq ($(HAVE_GAS),0)
 endif
 
 ICC111_OR_LATER := $(shell $(CXX) --version 2>&1 | $(GREP) -c -E "\(ICC\) ([2-9][0-9]|1[2-9]|11\.[1-9])")
-
-# Add -fPIC for targets *except* X86, X32, Cygwin or MinGW
-ifeq ($(IS_X86)$(IS_CYGWIN)$(IS_MINGW),000)
- ifeq ($(findstring -fPIC,$(CXXFLAGS)),)
-   CXXFLAGS += -fPIC
- endif
-endif
 
 # .intel_syntax wasn't supported until GNU assembler 2.10
 ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
@@ -351,13 +325,6 @@ ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER),11)
   endif
 endif
 
-# GCC on Solaris needs -m64. Otherwise, i386 is default
-#   http://github.com/weidai11/cryptopp/issues/230
-HAVE_BITS=$(shell echo $(CXXFLAGS) | $(GREP) -i -c -E '\-m32|\-m64')
-ifeq ($(IS_SUN)$(GCC_COMPILER)$(IS_X64)$(HAVE_BITS),1110)
-  CXXFLAGS += -m64
-endif
-
 # Allow use of "/" operator for GNU Assembler.
 #   http://sourceware.org/bugzilla/show_bug.cgi?id=4572
 ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
@@ -371,16 +338,6 @@ else
 ###########################################################
 #####                 Not X86/X32/X64                 #####
 ###########################################################
-
-# Add PIC
-ifeq ($(findstring -fPIC,$(CXXFLAGS)),)
-  CXXFLAGS += -fPIC
-endif
-
-# Remove -fPIC if present. SunCC adds -KPIC
-ifeq ($(SUN_COMPILER),1)
-  CXXFLAGS := $(subst -fPIC,,$(CXXFLAGS))
-endif
 
 ifeq ($(IS_NEON),1)
   HAVE_NEON = $(shell echo | $(CXX) -x c++ $(CXXFLAGS) -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon -dM -E - 2>/dev/null | $(GREP) -i -c -E '\<__ARM_NEON\>')
@@ -505,11 +462,23 @@ endif  # X86, X64, ARM32, ARM64, PPC32, PPC64, etc
 #####                      Common                     #####
 ###########################################################
 
+# Add -fPIC for targets *except* X86, X32, Cygwin or MinGW
+ifeq ($(IS_X86)$(IS_CYGWIN)$(IS_MINGW),000)
+ ifeq ($(findstring -fPIC,$(CXXFLAGS)),)
+   CXXFLAGS += -fPIC
+ endif
+endif
+
 # Use -pthread whenever it is available. See http://www.hpl.hp.com/techreports/2004/HPL-2004-209.pdf
 #   http://stackoverflow.com/questions/2127797/gcc-significance-of-pthread-flag-when-compiling
 ifneq ($(IS_LINUX)$(GCC_COMPILER)$(CLANG_COMPILER)$(INTEL_COMPILER),0000)
   CXXFLAGS += -pthread
 endif # CXXFLAGS
+
+# Remove -fPIC if present. SunCC use -KPIC
+ifeq ($(SUN_COMPILER),1)
+  CXXFLAGS := $(subst -fPIC,-KPIC,$(CXXFLAGS))
+endif
 
 # Add -pipe for everything except IBM XL C/C++, SunCC and ARM.
 # Allow ARM-64 because they seems to have >1 GB of memory
@@ -554,17 +523,6 @@ endif
 
 # Add -errtags=yes to get the name for a warning suppression
 ifneq ($(SUN_COMPILER),0)	# override flags for CC Sun C++ compiler
-IS_64 := $(shell isainfo -b 2>/dev/null | $(GREP) -i -c "64")
-HAVE_BITS=$(shell echo $(CXXFLAGS) | $(GREP) -i -c -E '\-m32|\-m64')
-ifeq ($(IS_64)$(HAVE_BITS),10)
-CXXFLAGS += -m64
-else ifeq ($(IS_64)$(HAVE_BITS),00)
-CXXFLAGS += -m32
-endif
-# Add for non-i386
-ifneq ($(IS_X86),1)
-CXXFLAGS += -KPIC
-endif
 # Add to all Solaris
 CXXFLAGS += -template=no%extdef
 SUN_CC10_BUGGY := $(shell $(CXX) -V 2>&1 | $(GREP) -c -E "CC: Sun .* 5\.10 .* (2009|2010/0[1-4])")
@@ -738,9 +696,9 @@ INCL += resource.h
 endif
 
 # Cryptogams AES for ARMv4 and above. We couple to ARMv7.
-# Disable Thumb via -marm due to unaligned byte buffers.
 ifeq ($(IS_ARM32),1)
-CRYPTOGAMS_AES_ARCH = -march=armv7-a -marm
+CRYPTOGAMS_AES_FLAG = -march=armv7-a
+CRYPTOGAMS_AES_FLAG += -Wa,--noexecstack
 SRCS += aes-armv4.S
 endif
 
@@ -749,7 +707,7 @@ OBJS := $(SRCS:.cpp=.o)
 OBJS := $(OBJS:.S=.o)
 
 # List test.cpp first to tame C++ static initialization problems.
-TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp bench3.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp datatest.cpp regtest1.cpp regtest2.cpp regtest3.cpp dlltest.cpp fipsalgt.cpp
+TESTSRCS := adhoc.cpp test.cpp bench1.cpp bench2.cpp bench3.cpp datatest.cpp dlltest.cpp fipsalgt.cpp validat0.cpp validat1.cpp validat2.cpp validat3.cpp validat4.cpp validat5.cpp validat6.cpp validat7.cpp regtest1.cpp regtest2.cpp regtest3.cpp regtest4.cpp
 TESTINCL := bench.h factory.h validate.h
 
 # Test objects
@@ -884,19 +842,27 @@ clean:
 	@-$(RM) -r *.dylib.dSYM/
 	@-$(RM) -r cov-int/
 
+.PHONY: autotools-clean
+autotools-clean:
+	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
+	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
+	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
+	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*
+	@-$(RM) -rf m4/ auto*.cache/ .deps/ .libs/
+
+.PHONY: cmake-clean
+cmake-clean:
+	@-$(RM) -f cryptopp-config.cmake CMakeLists.txt
+	@-$(RM) -rf cmake_build/
+
 .PHONY: distclean
-distclean: clean
-	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt cryptest-*.txt
-	@-$(RM) libcryptopp.pc cryptopp.tgz *.o *.bc *.ii *~
+distclean: clean autotools-clean cmake-clean
+	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt
+	@-$(RM) cryptest-*.txt cryptopp.tgz libcryptopp.pc *.o *.bc *.ii *~
 	@-$(RM) -r cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
 	@-$(RM) -r $(LIBOBJS:.o=.obj) $(TESTOBJS:.o=.obj) $(DOCUMENT_DIRECTORY)/
-	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
-	@-$(RM) -f config.guess config.status config.sub depcomp install-sh compile
-	@-$(RM) -f stamp-h1 ar-lib *.m4 local.* lt*.sh missing libtool* libcryptopp.pc*
-	@-$(RM) -rf m4/ auto*.cache/ .deps/ .libs/
 	@-$(RM) -r TestCoverage/
-	@-$(RM) cryptopp$(LIB_VER)\.*
-	@-$(RM) CryptoPPRef.zip
+	@-$(RM) cryptopp$(LIB_VER)\.* CryptoPPRef.zip
 
 # Install cryptest.exe, libcryptopp.a, libcryptopp.so and libcryptopp.pc.
 # The library install was broken-out into its own recipe at GH #653.
@@ -1089,9 +1055,9 @@ ifeq ($(wildcard GNUmakefile.deps),GNUmakefile.deps)
 -include GNUmakefile.deps
 endif # Dependencies
 
-# Cryptogams ARM asm implementation. CRYPTOGAMS_AES_ARCH includes -marm.
+# Cryptogams ARM asm implementation.
 aes-armv4.o : aes-armv4.S
-	$(CC) $(strip $(CXXFLAGS) $(CRYPTOGAMS_AES_ARCH) -mfloat-abi=$(FP_ABI) -c) $<
+	$(CC) $(strip $(CXXFLAGS) $(CRYPTOGAMS_AES_FLAG) -mfloat-abi=$(FP_ABI) -c) $<
 
 # SSSE3 or NEON available
 aria-simd.o : aria-simd.cpp
