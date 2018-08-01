@@ -10,6 +10,12 @@
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
 # ====================================================================
 
+if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
+	echo "Failed to locate setenv-ios.sh"
+	ls -Al *.sh
+	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+fi
+
 if [ -z "${PLATFORM-}" ]; then
 	PLATFORMS=(iPhoneOS iPhoneSimulator Arm64 WatchOS WatchSimulator AppleTVOS AppleTVSimulator)
 else
@@ -25,30 +31,33 @@ do
 	echo "Testing for iOS support of $platform"
 
 	# Test if we can set the environment for the platform
-	./setenv-ios.sh "$platform"
+	./TestScripts/setenv-ios.sh "$platform"
 
-	if [ "$?" -eq "0" ]; then
-		echo
-		echo "Building for $platform using $runtime..."
-		echo
-
-		# run in subshell to not keep any env vars
-		(
-			. ./setenv-ios.sh "$platform" > /dev/null 2>&1
-			make -f GNUmakefile-cross static dynamic cryptest.exe
-			if [ "$?" -eq "0" ]; then
-				echo "$platform ==> SUCCESS" >> /tmp/build.log
-			else
-				echo "$platform ==> FAILURE" >> /tmp/build.log
-				touch /tmp/build.failed
-			fi
-		)
-	else
+	if [ "$?" -ne "0" ];
+	then
 		echo
 		echo "$platform not supported by Xcode"
 		echo "$platform ==> FAILURE" >> /tmp/build.log
+
 		touch /tmp/build.failed
+		continue
 	fi
+
+	echo
+	echo "Building for $platform using $runtime..."
+	echo
+
+	# run in subshell to not keep any env vars
+	(
+		source ./TestScripts/setenv-ios.sh "$platform" > /dev/null 2>&1
+		make -f GNUmakefile-cross static dynamic cryptest.exe
+		if [ "$?" -eq "0" ]; then
+			echo "$platform ==> SUCCESS" >> /tmp/build.log
+		else
+			echo "$platform ==> FAILURE" >> /tmp/build.log
+			touch /tmp/build.failed
+		fi
+	)
 done
 
 cat /tmp/build.log

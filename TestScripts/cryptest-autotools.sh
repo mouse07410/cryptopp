@@ -43,31 +43,47 @@ if ! wget --no-check-certificate https://raw.githubusercontent.com/noloader/cryp
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
 
-# Convert as necessary
-if [[ ! -z $(command -v dos2unix) ]]; then
-	dos2unix Makefile.am configure.ac libcryptopp.pc.in
-fi
-
-# Trim trailing whitespace
-if [[ ! -z $(command -v "$SED") ]]; then
-	"$SED" -e's/[[:space:]]*$//' Makefile.am > Makefile.am.fixed
-	"$SED" -e's/[[:space:]]*$//' configure.ac > configure.ac.fixed
-	"$SED" -e's/[[:space:]]*$//' libcryptopp.pc.in > libcryptopp.pc.in.fixed
-	mv Makefile.am.fixed Makefile.am
-	mv configure.ac.fixed configure.ac
-	mv libcryptopp.pc.in.fixed libcryptopp.pc.in
-fi
+# Run autoreconf twice on failure. Also see
+# https://github.com/tracebox/tracebox/issues/57
 
 mkdir -p m4/
-if ! autoreconf --force --install --warnings=all; then
-	echo "autoreconf failed"
+
+if [[ -z $(command -v autoupdate) ]]; then
+	echo "Cannot find autoupdate. Things will probably fail."
+fi
+
+if [[ -z $(command -v libtoolize) ]]; then
+	echo "Cannot find libtoolize. Things will probably fail."
+fi
+
+if [[ -z $(command -v autoreconf) ]]; then
+	echo "Cannot find autoreconf. Things will probably fail."
+fi
+
+if ! autoupdate; then
+	echo "autoupdate failed."
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+fi
+
+if ! libtoolize -fi; then
+	echo "libtoolize failed."
+	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+fi
+
+if ! autoreconf -fi --warnings=all; then
+	echo "autoreconf failed, running again."
+	if ! autoreconf -vfi; then
+		echo "autoreconf failed"
+		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+	fi
 fi
 
 if ! ./configure; then
 	echo "configure failed"
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
+
+make clean 2>/dev/null
 
 if ! "$MAKE" -j2 -f Makefile; then
 	echo "make failed"
@@ -80,7 +96,7 @@ if ! ./cryptestcwd v; then
 fi
 
 if ! ./cryptestcwd tv all; then
-	echo "cryptestcwd v failed"
+	echo "cryptestcwd tv all failed"
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
 

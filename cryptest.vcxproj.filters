@@ -382,6 +382,9 @@
     <ClCompile Include="bench2.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
+    <ClCompile Include="bench3.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
     <ClCompile Include="datatest.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
@@ -395,6 +398,9 @@
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="regtest3.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="regtest4.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="test.cpp">
@@ -413,6 +419,24 @@
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="validat4.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat5.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat6.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat7.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat8.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat8.cpp">
+      <Filter>Source Code</Filter>
+    </ClCompile>
+    <ClCompile Include="validat10.cpp">
       <Filter>Source Code</Filter>
     </ClCompile>
     <ClCompile Include="fipsalgt.cpp">

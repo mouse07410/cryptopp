@@ -200,20 +200,28 @@
   <!-- Source Files -->
   <ItemGroup>
     <ClCompile Include="adhoc.cpp" />
+    <ClCompile Include="test.cpp" />
     <ClCompile Include="bench1.cpp" />
     <ClCompile Include="bench2.cpp" />
+    <ClCompile Include="bench3.cpp" />
     <ClCompile Include="datatest.cpp" />
     <ClCompile Include="dlltest.cpp" />
     <ClCompile Include="fipsalgt.cpp" />
     <ClCompile Include="regtest1.cpp" />
     <ClCompile Include="regtest2.cpp" />
     <ClCompile Include="regtest3.cpp" />
-    <ClCompile Include="test.cpp" />
+    <ClCompile Include="regtest4.cpp" />
     <ClCompile Include="validat0.cpp" />
     <ClCompile Include="validat1.cpp" />
     <ClCompile Include="validat2.cpp" />
     <ClCompile Include="validat3.cpp" />
     <ClCompile Include="validat4.cpp" />
+    <ClCompile Include="validat5.cpp" />
+    <ClCompile Include="validat6.cpp" />
+    <ClCompile Include="validat7.cpp" />
+    <ClCompile Include="validat8.cpp" />
+    <ClCompile Include="validat9.cpp" />
+    <ClCompile Include="validat10.cpp" />
   </ItemGroup>
   <!-- Header Files -->
   <ItemGroup>

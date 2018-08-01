@@ -32,6 +32,7 @@ bench.h
 bds10.zip
 bench1.cpp
 bench2.cpp
+bench3.cpp
 bfinit.cpp
 blake2.cpp
 blake2-simd.cpp
@@ -253,6 +254,7 @@ rdtables.cpp
 regtest1.cpp
 regtest2.cpp
 regtest3.cpp
+regtest4.cpp
 resource.h
 rijndael.cpp
 rijndael-simd.cpp
@@ -346,6 +348,12 @@ validat1.cpp
 validat2.cpp
 validat3.cpp
 validat4.cpp
+validat5.cpp
+validat6.cpp
+validat7.cpp
+validat8.cpp
+validat9.cpp
+validat10.cpp
 validate.h
 vmac.cpp
 vmac.h
