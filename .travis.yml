@@ -155,11 +155,8 @@ before_install:
 script:
   - |
     if [[ "$BUILD_MODE" == "ios" ]]; then
-        cp ./TestScripts/setenv-ios.sh .
-        cp ./TestScripts/cryptest-ios.sh .
-        chmod +x *.sh
-        xattr -r -d com.apple.quarantine *.sh 2>/dev/null
-        ./cryptest-ios.sh
+        ./TestScripts/setenv-ios.sh
+        ./TestScripts/cryptest-ios.sh
     elif [[ "$BUILD_MODE" == "android" ]]; then
         cp ./TestScripts/setenv-android-gcc.sh .
         cp ./TestScripts/cryptest-android.sh .
@@ -167,10 +164,7 @@ script:
         xattr -r -d com.apple.quarantine *.sh 2>/dev/null
         ./cryptest-android.sh
     elif [[ "$BUILD_MODE" == "autotools" ]]; then
-        cp ./TestScripts/cryptest-autotools.sh .
-        chmod +x *.sh
-        xattr -r -d com.apple.quarantine *.sh 2>/dev/null
-        ./cryptest-autotools.sh
+        ./TestScripts/cryptest-autotools.sh
     elif [[ "$BUILD_MODE" == "cmake" ]]; then
         cp ./TestScripts/cryptest-cmake.sh .
         chmod +x *.sh
