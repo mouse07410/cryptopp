@@ -155,8 +155,8 @@ before_install:
 script:
   - |
     if [[ "$BUILD_MODE" == "ios" ]]; then
-        ./TestScripts/setenv-ios.sh
-        ./TestScripts/cryptest-ios.sh
+        . TestScripts/setenv-ios.sh
+        TestScripts/cryptest-ios.sh
     elif [[ "$BUILD_MODE" == "android" ]]; then
         cp ./TestScripts/setenv-android-gcc.sh .
         cp ./TestScripts/cryptest-android.sh .
