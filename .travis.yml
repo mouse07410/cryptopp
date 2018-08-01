@@ -8,7 +8,7 @@ dist: trusty
 sudo: required
 
 # OS X only supports one image. Use the latest.
-osx_image: xcode9.1
+osx_image: xcode9.4
 
 git:
   depth: 3
@@ -155,22 +155,20 @@ before_install:
 script:
   - |
     if [[ "$BUILD_MODE" == "ios" ]]; then
-        cp ./TestScripts/setenv-ios.sh .
-        cp ./TestScripts/cryptest-ios.sh .
-        chmod +x *.sh
-        ./cryptest-ios.sh
+        . TestScripts/setenv-ios.sh
+        TestScripts/cryptest-ios.sh
     elif [[ "$BUILD_MODE" == "android" ]]; then
         cp ./TestScripts/setenv-android-gcc.sh .
         cp ./TestScripts/cryptest-android.sh .
         chmod +x *.sh
+        xattr -r -d com.apple.quarantine *.sh 2>/dev/null
         ./cryptest-android.sh
     elif [[ "$BUILD_MODE" == "autotools" ]]; then
-        cp ./TestScripts/cryptest-autotools.sh .
-        chmod +x *.sh
-        ./cryptest-autotools.sh
+        ./TestScripts/cryptest-autotools.sh
     elif [[ "$BUILD_MODE" == "cmake" ]]; then
         cp ./TestScripts/cryptest-cmake.sh .
         chmod +x *.sh
+        xattr -r -d com.apple.quarantine *.sh 2>/dev/null
         ./cryptest-cmake.sh
     elif [[ "$BUILD_MODE" == "debug" ]]; then
         if [ $TRAVIS_OS_NAME == osx ]; then
