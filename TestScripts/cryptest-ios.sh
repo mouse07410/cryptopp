@@ -11,9 +11,11 @@
 # ====================================================================
 
 if [ -z $(command -v ./setenv-ios.sh) ]; then
-	echo "Failed to locate setenv-ios.sh"
-	ls -Al *.sh
-	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+	if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
+		echo "Failed to locate setenv-ios.sh"
+		ls -Al *.sh
+		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+	fi
 fi
 
 if [ -z "${PLATFORM-}" ]; then
@@ -31,7 +33,7 @@ do
 	echo "Testing for iOS support of $platform"
 
 	# Test if we can set the environment for the platform
-	./setenv-ios.sh "$platform"
+	./TestScripts/setenv-ios.sh "$platform"
 
 	if [ "$?" -ne "0" ];
 	then
@@ -49,7 +51,7 @@ do
 
 	# run in subshell to not keep any env vars
 	(
-		source ./setenv-ios.sh "$platform" > /dev/null 2>&1
+		source ./TestScripts/setenv-ios.sh "$platform" > /dev/null 2>&1
 		make -f GNUmakefile-cross static dynamic cryptest.exe
 		if [ "$?" -eq "0" ]; then
 			echo "$platform ==> SUCCESS" >> /tmp/build.log
