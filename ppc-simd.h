@@ -32,11 +32,11 @@
 # undef CRYPTOPP_POWER7_AVAILABLE
 #endif
 
-#if !(defined(_ARCH_PWR8) || defined(_ARCH_PWR9) || defined(_CRYPTO))
+#if !(defined(_ARCH_PWR8) || defined(_ARCH_PWR9) || defined(__CRYPTO) || defined(__CRYPTO__))
 # undef CRYPTOPP_POWER8_AVAILABLE
 # undef CRYPTOPP_POWER8_AES_AVAILABLE
-# undef CRYPTOPP_POWER8_SHA_AVAILABLE
 # undef CRYPTOPP_POWER8_PMULL_AVAILABLE
+# undef CRYPTOPP_POWER8_SHA_AVAILABLE
 #endif
 
 #if defined(CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
@@ -65,7 +65,7 @@ typedef __vector unsigned long long uint64x2_p;
 /// \tparam T vector type
 /// \param src the vector
 /// \details Reverse() endian swaps the bytes in a vector
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 template <class T>
 inline T Reverse(const T& src)
@@ -88,6 +88,20 @@ template <class T1, class T2>
 inline T1 VectorPermute(const T1& vec1, const T1& vec2, const T2& mask)
 {
     return (T1)vec_perm(vec1, vec2, (uint8x16_p)mask);
+}
+
+/// \brief AND two vectors
+/// \tparam T1 vector type
+/// \tparam T2 vector type
+/// \param vec1 the first vector
+/// \param vec2 the second vector
+/// \details VectorAnd returns a new vector from vec1 and vec2. The return
+///   vector is the same type as vec1.
+/// \since Crypto++ 6.0
+template <class T1, class T2>
+inline T1 VectorAnd(const T1& vec1, const T2& vec2)
+{
+    return (T1)vec_and(vec1, (T1)vec2);
 }
 
 /// \brief XOR two vectors
@@ -117,6 +131,36 @@ template <class T1, class T2>
 inline T1 VectorAdd(const T1& vec1, const T2& vec2)
 {
     return (T1)vec_add(vec1, (T1)vec2);
+}
+
+/// \brief Shift a vector left
+/// \tparam C shift byte count
+/// \tparam T vector type
+/// \param vec the vector
+/// \details VectorShiftLeft() returns a new vector after shifting the
+///   concatenation of the zero vector and the source vector by the specified
+///   number of bytes. The return vector is the same type as vec.
+/// \details On big endian machines VectorShiftLeft() is <tt>vec_sld(a, z,
+///   c)</tt>. On little endian machines VectorShiftLeft() is translated to
+///   <tt>vec_sld(z, a, 16-c)</tt>. You should always call the function as
+///   if on a big endian machine as shown below.
+/// <pre>
+///    uint8x16_p r1 = VectorLoad(ptr);
+///    uint8x16_p r5 = VectorShiftLeft<12>(r1);
+/// </pre>
+/// \sa <A HREF="https://stackoverflow.com/q/46341923/608639">Is vec_sld
+///   endian sensitive?</A> on Stack Overflow
+/// \since Crypto++ 6.0
+template <unsigned int C, class T>
+inline T VectorShiftLeft(const T& vec)
+{
+#if defined(CRYPTOPP_LITTLE_ENDIAN)
+    const T z = VectorXor(vec, vec);
+    return (T)vec_sld((uint8x16_p)z, (uint8x16_p)vec, 16-C);
+#else
+    const T z = VectorXor(vec, vec);
+    return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)z, C);
+#endif
 }
 
 /// \brief Shift two vectors left
@@ -151,33 +195,69 @@ inline T1 VectorShiftLeft(const T1& vec1, const T2& vec2)
 #endif
 }
 
+/// \brief Shift a vector right
+/// \tparam C shift byte count
+/// \tparam T vector type
+/// \param vec the vector
+/// \details VectorShiftRight() returns a new vector after shifting the
+///   concatenation of the zero vector and the source vector by the specified
+///   number of bytes. The return vector is the same type as vec.
+/// \details On big endian machines VectorShiftRight() is <tt>vec_sld(a, z,
+///   c)</tt>. On little endian machines VectorShiftRight() is translated to
+///   <tt>vec_sld(z, a, 16-c)</tt>. You should always call the function as
+///   if on a big endian machine as shown below.
+/// <pre>
+///    uint8x16_p r1 = VectorLoad(ptr);
+///    uint8x16_p r5 = VectorShiftRight<12>(r1);
+/// </pre>
+/// \sa <A HREF="https://stackoverflow.com/q/46341923/608639">Is vec_sld
+///   endian sensitive?</A> on Stack Overflow
+/// \since Crypto++ 6.0
+template <unsigned int C, class T>
+inline T VectorShiftRight(const T& vec)
+{
+    return (T)VectorShiftLeft<16-C>(vec);
+}
+
+/// \brief Shift two vectors right
+/// \tparam C shift byte count
+/// \tparam T1 vector type
+/// \tparam T2 vector type
+/// \param vec1 the first vector
+/// \param vec2 the second vector
+/// \details VectorShiftRight() concatenates vec1 and vec2 and returns a
+///   new vector after shifting the concatenation by the specified number
+///   of bytes. Both vec1 and vec2 are cast to uint8x16_p. The return
+///   vector is the same type as vec1.
+/// \details On big endian machines VectorShiftRight() is <tt>vec_sld(b, a,
+///   16-c)</tt>. On little endian machines VectorShiftRight() is translated to
+///   <tt>vec_sld(a, b, c)</tt>. You should always call the function as
+///   if on a big endian machine as shown below.
+/// <pre>
+///    uint8x16_p r0 = {0};
+///    uint8x16_p r1 = VectorLoad(ptr);
+///    uint8x16_p r5 = VectorShiftRight<12>(r0, r1);
+/// </pre>
+/// \sa <A HREF="https://stackoverflow.com/q/46341923/608639">Is vec_sld
+///   endian sensitive?</A> on Stack Overflow
+/// \since Crypto++ 6.0
+template <unsigned int C, class T1, class T2>
+inline T1 VectorShiftRight(const T1& vec1, const T2& vec2)
+{
+    return (T1)VectorShiftLeft<16-C>(vec2, vec1);
+}
+
 #endif  // POWER4 and above
 
 // POWER7/POWER4 load and store
 #if defined(CRYPTOPP_POWER7_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
-
-/// \brief Reverse a 16-byte array
-/// \param src the byte array
-/// \details ReverseByteArrayLE reverses a 16-byte array on a little endian
-///   system. It does nothing on a big endian system.
-/// \since Crypto++ 6.0
-inline void ReverseByteArrayLE(byte src[16])
-{
-#if defined(CRYPTOPP_XLC_VERSION) && defined(CRYPTOPP_LITTLE_ENDIAN)
-    vec_st(vec_reve(vec_ld(0, src)), 0, src);
-#elif defined(CRYPTOPP_LITTLE_ENDIAN)
-    const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
-    const uint8x16_p zero = {0};
-    vec_vsx_st(vec_perm(vec_vsx_ld(0, src), zero, mask), 0, src);
-#endif
-}
 
 /// \brief Loads a vector from a byte array
 /// \param src the byte array
 /// \details Loads a vector in big endian format from a byte array.
 ///   VectorLoadBE will swap endianess on little endian systems.
 /// \note VectorLoadBE() does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 inline uint32x4_p VectorLoadBE(const uint8_t src[16])
 {
@@ -198,7 +278,7 @@ inline uint32x4_p VectorLoadBE(const uint8_t src[16])
 /// \details Loads a vector in big endian format from a byte array.
 ///   VectorLoadBE will swap endianess on little endian systems.
 /// \note VectorLoadBE does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 inline uint32x4_p VectorLoadBE(int off, const uint8_t src[16])
 {
@@ -215,70 +295,27 @@ inline uint32x4_p VectorLoadBE(int off, const uint8_t src[16])
 
 /// \brief Loads a vector from a byte array
 /// \param src the byte array
-/// \details Loads a vector in big endian format from a byte array.
-///   VectorLoad will swap endianess on little endian systems.
+/// \details Loads a vector in native endian format from a byte array.
 /// \note VectorLoad does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 inline uint32x4_p VectorLoad(const byte src[16])
 {
-    return (uint32x4_p)VectorLoadBE(src);
+#if defined(CRYPTOPP_XLC_VERSION)
+    return (uint32x4_p)vec_xl(0, (byte*)src);
+#else
+    return (uint32x4_p)vec_vsx_ld(0, src);
+#endif
 }
 
 /// \brief Loads a vector from a byte array
 /// \param src the byte array
 /// \param off offset into the src byte array
-/// \details Loads a vector in big endian format from a byte array.
-///   VectorLoad will swap endianess on little endian systems.
+/// \details Loads a vector in native endian format from a byte array.
 /// \note VectorLoad does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 inline uint32x4_p VectorLoad(int off, const byte src[16])
-{
-    return (uint32x4_p)VectorLoadBE(off, src);
-}
-
-/// \brief Loads a vector from a byte array
-/// \param src the byte array
-/// \details Loads a vector from a byte array.
-///   VectorLoadKey does not swap endianess on little endian systems.
-/// \note VectorLoadKey does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
-/// \since Crypto++ 6.0
-inline uint32x4_p VectorLoadKey(const byte src[16])
-{
-#if defined(CRYPTOPP_XLC_VERSION)
-    return (uint32x4_p)vec_xl(0, (byte*)src);
-#else
-    return (uint32x4_p)vec_vsx_ld(0, src);
-#endif
-}
-
-/// \brief Loads a vector from a 32-bit word array
-/// \param src the 32-bit word array
-/// \details Loads a vector from a 32-bit word array.
-///   VectorLoadKey does not swap endianess on little endian systems.
-/// \note VectorLoadKey does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
-/// \since Crypto++ 6.0
-inline uint32x4_p VectorLoadKey(const word32 src[4])
-{
-#if defined(CRYPTOPP_XLC_VERSION)
-    return (uint32x4_p)vec_xl(0, (byte*)src);
-#else
-    return (uint32x4_p)vec_vsx_ld(0, src);
-#endif
-}
-
-/// \brief Loads a vector from a byte array
-/// \param src the byte array
-/// \param off offset into the src byte array
-/// \details Loads a vector from a byte array.
-///   VectorLoadKey does not swap endianess on little endian systems.
-/// \note VectorLoadKey does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
-/// \since Crypto++ 6.0
-inline uint32x4_p VectorLoadKey(int off, const byte src[16])
 {
 #if defined(CRYPTOPP_XLC_VERSION)
     return (uint32x4_p)vec_xl(off, (byte*)src);
@@ -294,7 +331,7 @@ inline uint32x4_p VectorLoadKey(int off, const byte src[16])
 /// \details Stores a vector in big endian format to a byte array.
 ///   VectorStoreBE will swap endianess on little endian systems.
 /// \note VectorStoreBE does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 template <class T>
 inline void VectorStoreBE(const T& src, uint8_t dest[16])
@@ -318,7 +355,7 @@ inline void VectorStoreBE(const T& src, uint8_t dest[16])
 /// \details Stores a vector in big endian format to a byte array.
 ///   VectorStoreBE will swap endianess on little endian systems.
 /// \note VectorStoreBE does not require an aligned array.
-/// \sa Reverse(), VectorLoadBE(), VectorLoad(), VectorLoadKey()
+/// \sa Reverse(), VectorLoadBE(), VectorLoad()
 /// \since Crypto++ 6.0
 template <class T>
 inline void VectorStoreBE(const T& src, int off, uint8_t dest[16])
@@ -338,8 +375,7 @@ inline void VectorStoreBE(const T& src, int off, uint8_t dest[16])
 /// \tparam T vector type
 /// \param src the vector
 /// \param dest the byte array
-/// \details Stores a vector in big endian format to a byte array.
-///   VectorStore will swap endianess on little endian systems.
+/// \details Stores a vector in native endian format to a byte array.
 /// \note VectorStore does not require an aligned array.
 /// \since Crypto++ 6.0
 template<class T>
@@ -347,13 +383,9 @@ inline void VectorStore(const T& src, byte dest[16])
 {
     // Do not call VectorStoreBE. It slows us down by about 0.5 cpb on LE.
 #if defined(CRYPTOPP_XLC_VERSION)
-    vec_xst_be((uint8x16_p)src, 0, dest);
+    vec_xst((uint8x16_p)src, 0, dest);
 #else
-# if defined(CRYPTOPP_LITTLE_ENDIAN)
-    vec_vsx_st(Reverse((uint8x16_p)src), 0, dest);
-# else
     vec_vsx_st((uint8x16_p)src, 0, dest);
-# endif
 #endif
 }
 
@@ -362,8 +394,7 @@ inline void VectorStore(const T& src, byte dest[16])
 /// \param src the vector
 /// \param off offset into the dest byte array
 /// \param dest the byte array
-/// \details Stores a vector in big endian format to a byte array.
-///   VectorStore will swap endianess on little endian systems.
+/// \details Stores a vector in native endian format to a byte array.
 /// \note VectorStore does not require an aligned array.
 /// \since Crypto++ 6.0
 template<class T>
@@ -371,13 +402,9 @@ inline void VectorStore(const T& src, int off, byte dest[16])
 {
     // Do not call VectorStoreBE. It slows us down by about 0.5 cpb on LE.
 #if defined(CRYPTOPP_XLC_VERSION)
-    vec_xst_be((uint8x16_p)src, off, dest);
+    vec_xst((uint8x16_p)src, off, dest);
 #else
-# if defined(CRYPTOPP_LITTLE_ENDIAN)
-    vec_vsx_st(Reverse((uint8x16_p)src), off, dest);
-# else
     vec_vsx_st((uint8x16_p)src, off, dest);
-# endif
 #endif
 }
 
