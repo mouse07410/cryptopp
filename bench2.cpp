@@ -107,6 +107,10 @@ void Benchmark2(double t, double hertz)
 		if (HasPMULL())
 			BenchMarkByName2<AuthenticatedSymmetricCipher, MessageAuthenticationCode>("AES/GCM", 0, "GMAC(AES)");
 		else
+#elif CRYPTOPP_POWER8_VMULL_AVAILABLE
+		if (HasPMULL())
+			BenchMarkByName2<AuthenticatedSymmetricCipher, MessageAuthenticationCode>("AES/GCM", 0, "GMAC(AES)");
+		else
 #endif
 		{
 			BenchMarkByName2<AuthenticatedSymmetricCipher, MessageAuthenticationCode>("AES/GCM", 0, "GMAC(AES) (2K tables)", MakeParameters(Name::TableSize(), 2048));
@@ -227,6 +231,10 @@ void Benchmark2(double t, double hertz)
 			BenchMarkByName2<AuthenticatedSymmetricCipher, AuthenticatedSymmetricCipher>("AES/GCM", 0, "AES/GCM");
 		else
 #elif CRYPTOPP_ARM_PMULL_AVAILABLE
+		if (HasPMULL())
+			BenchMarkByName2<AuthenticatedSymmetricCipher, AuthenticatedSymmetricCipher>("AES/GCM", 0, "AES/GCM");
+		else
+#elif CRYPTOPP_POWER8_VMULL_AVAILABLE
 		if (HasPMULL())
 			BenchMarkByName2<AuthenticatedSymmetricCipher, AuthenticatedSymmetricCipher>("AES/GCM", 0, "AES/GCM");
 		else
