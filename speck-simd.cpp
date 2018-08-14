@@ -845,6 +845,238 @@ inline void SPECK64_Dec_6_Blocks(__m128i &block0, __m128i &block1,
 // ***************************** Power8 ***************************** //
 
 #if defined(CRYPTOPP_POWER8_AVAILABLE)
+using CryptoPP::uint8x16_p;
+using CryptoPP::uint32x4_p;
+
+using CryptoPP::VectorAdd;
+using CryptoPP::VectorSub;
+using CryptoPP::VectorXor;
+
+// Rotate left by bit count
+template<unsigned int C>
+inline uint32x4_p RotateLeft32(const uint32x4_p val)
+{
+    const uint32x4_p m = {C, C, C, C};
+    return vec_rl(val, m);
+}
+
+// Rotate right by bit count
+template<unsigned int C>
+inline uint32x4_p RotateRight32(const uint32x4_p val)
+{
+    const uint32x4_p m = {32-C, 32-C, 32-C, 32-C};
+    return vec_rl(val, m);
+}
+
+void SPECK64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
+        const word32 *subkeys, unsigned int rounds)
+{
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+    const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+#else
+    const uint8x16_p m1 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+    const uint8x16_p m2 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+#endif
+
+    // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
+    uint32x4_p x1 = vec_perm(block0, block1, m1);
+    uint32x4_p y1 = vec_perm(block0, block1, m2);
+
+    for (int i=0; i < static_cast<int>(rounds); ++i)
+    {
+        const uint32x4_p rk = vec_splats(subkeys[i]);
+
+        x1 = RotateRight32<8>(x1);
+        x1 = VectorAdd(x1, y1);
+        x1 = VectorXor(x1, rk);
+
+        y1 = RotateLeft32<3>(y1);
+        y1 = VectorXor(y1, x1);
+    }
+
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m3 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+    const uint8x16_p m4 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+#else
+    const uint8x16_p m3 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+    const uint8x16_p m4 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+#endif
+
+    // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+}
+
+void SPECK64_Dec_Block(uint32x4_p &block0, uint32x4_p &block1,
+        const word32 *subkeys, unsigned int rounds)
+{
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+    const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+#else
+    const uint8x16_p m1 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+    const uint8x16_p m2 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+#endif
+
+    // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
+    uint32x4_p x1 = vec_perm(block0, block1, m1);
+    uint32x4_p y1 = vec_perm(block0, block1, m2);
+
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
+    {
+        const uint32x4_p rk = vec_splats(subkeys[i]);
+
+        y1 = VectorXor(y1, x1);
+        y1 = RotateRight32<3>(y1);
+
+        x1 = VectorXor(x1, rk);
+        x1 = VectorSub(x1, y1);
+        x1 = RotateLeft32<8>(x1);
+    }
+
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m3 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+    const uint8x16_p m4 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+#else
+    const uint8x16_p m3 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+    const uint8x16_p m4 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+#endif
+
+    // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+}
+
+void SPECK64_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
+            uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
+            uint32x4_p &block5, const word32 *subkeys, unsigned int rounds)
+{
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+    const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+#else
+    const uint8x16_p m1 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+    const uint8x16_p m2 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+#endif
+
+    // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
+    uint32x4_p x1 = (uint32x4_p)vec_perm(block0, block1, m1);
+    uint32x4_p y1 = (uint32x4_p)vec_perm(block0, block1, m2);
+    uint32x4_p x2 = (uint32x4_p)vec_perm(block2, block3, m1);
+    uint32x4_p y2 = (uint32x4_p)vec_perm(block2, block3, m2);
+    uint32x4_p x3 = (uint32x4_p)vec_perm(block4, block5, m1);
+    uint32x4_p y3 = (uint32x4_p)vec_perm(block4, block5, m2);
+
+    for (int i=0; i < static_cast<int>(rounds); ++i)
+    {
+        const uint32x4_p rk = vec_splats(subkeys[i]);
+
+        x1 = RotateRight32<8>(x1);
+        x2 = RotateRight32<8>(x2);
+        x3 = RotateRight32<8>(x3);
+
+        x1 = VectorAdd(x1, y1);
+        x2 = VectorAdd(x2, y2);
+        x3 = VectorAdd(x3, y3);
+
+        x1 = VectorXor(x1, rk);
+        x2 = VectorXor(x2, rk);
+        x3 = VectorXor(x3, rk);
+
+        y1 = RotateLeft32<3>(y1);
+        y2 = RotateLeft32<3>(y2);
+        y3 = RotateLeft32<3>(y3);
+
+        y1 = VectorXor(y1, x1);
+        y2 = VectorXor(y2, x2);
+        y3 = VectorXor(y3, x3);
+    }
+
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m3 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+    const uint8x16_p m4 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+#else
+    const uint8x16_p m3 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+    const uint8x16_p m4 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+#endif
+
+    // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+    block2 = (uint32x4_p)vec_perm(x2, y2, m3);
+    block3 = (uint32x4_p)vec_perm(x2, y2, m4);
+    block4 = (uint32x4_p)vec_perm(x3, y3, m3);
+    block5 = (uint32x4_p)vec_perm(x3, y3, m4);
+}
+
+void SPECK64_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
+            uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
+            uint32x4_p &block5, const word32 *subkeys, unsigned int rounds)
+{
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+    const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+#else
+    const uint8x16_p m1 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
+    const uint8x16_p m2 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
+#endif
+
+    // [A1 A2 A3 A4][B1 B2 B3 B4] ... => [A1 A3 B1 B3][A2 A4 B2 B4] ...
+    uint32x4_p x1 = (uint32x4_p)vec_perm(block0, block1, m1);
+    uint32x4_p y1 = (uint32x4_p)vec_perm(block0, block1, m2);
+    uint32x4_p x2 = (uint32x4_p)vec_perm(block2, block3, m1);
+    uint32x4_p y2 = (uint32x4_p)vec_perm(block2, block3, m2);
+    uint32x4_p x3 = (uint32x4_p)vec_perm(block4, block5, m1);
+    uint32x4_p y3 = (uint32x4_p)vec_perm(block4, block5, m2);
+
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
+    {
+        const uint32x4_p rk = vec_splats(subkeys[i]);
+
+        y1 = VectorXor(y1, x1);
+        y2 = VectorXor(y2, x2);
+        y3 = VectorXor(y3, x3);
+
+        y1 = RotateRight32<3>(y1);
+        y2 = RotateRight32<3>(y2);
+        y3 = RotateRight32<3>(y3);
+
+        x1 = VectorXor(x1, rk);
+        x2 = VectorXor(x2, rk);
+        x3 = VectorXor(x3, rk);
+
+        x1 = VectorSub(x1, y1);
+        x2 = VectorSub(x2, y2);
+        x3 = VectorSub(x3, y3);
+
+        x1 = RotateLeft32<8>(x1);
+        x2 = RotateLeft32<8>(x2);
+        x3 = RotateLeft32<8>(x3);
+    }
+
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p m3 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+    const uint8x16_p m4 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+#else
+    const uint8x16_p m3 = {3,2,1,0, 19,18,17,16, 7,6,5,4, 23,22,21,20};
+    const uint8x16_p m4 = {11,10,9,8, 27,26,25,24, 15,14,13,12, 31,30,29,28};
+#endif
+
+    // [A1 A3 B1 B3][A2 A4 B2 B4] => [A1 A2 A3 A4][B1 B2 B3 B4]
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+    block2 = (uint32x4_p)vec_perm(x2, y2, m3);
+    block3 = (uint32x4_p)vec_perm(x2, y2, m4);
+    block4 = (uint32x4_p)vec_perm(x3, y3, m3);
+    block5 = (uint32x4_p)vec_perm(x3, y3, m4);
+}
+
+#endif  // POWER8
+
+// ***************************** Power8 ***************************** //
+
+#if defined(CRYPTOPP_POWER8_AVAILABLE)
 
 using CryptoPP::uint8x16_p;
 using CryptoPP::uint32x4_p;
@@ -853,7 +1085,6 @@ using CryptoPP::uint64x2_p;
 using CryptoPP::VectorAdd;
 using CryptoPP::VectorSub;
 using CryptoPP::VectorXor;
-using CryptoPP::VectorSwapWords;
 
 // Rotate left by bit count
 template<unsigned int C>
@@ -871,16 +1102,11 @@ inline uint64x2_p RotateRight64(const uint64x2_p val)
     return vec_rl(val, m);
 }
 
-inline uint64x2_p SwapWords(const uint64x2_p val)
-{
-    return VectorSwapWords(val);
-}
-
 void SPECK128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigned int rounds)
 {
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    const uint8x16_p m1 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
-    const uint8x16_p m2 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
     const uint8x16_p m1 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
     const uint8x16_p m2 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
@@ -889,11 +1115,6 @@ void SPECK128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
     uint64x2_p x1 = (uint64x2_p)vec_perm(block, block, m1);
     uint64x2_p y1 = (uint64x2_p)vec_perm(block, block, m2);
-
-#if defined(CRYPTOPP_BIG_ENDIAN)
-    x1 = SwapWords(x1);
-    y1 = SwapWords(y1);
-#endif
 
     for (int i=0; i < static_cast<int>(rounds); ++i)
     {
@@ -908,19 +1129,22 @@ void SPECK128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
     }
 
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block = (uint32x4_p)vec_perm(y1, x1, m1);
+    const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    //const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block = (uint32x4_p)vec_perm(x1, y1, m1);
+    const uint8x16_p m3 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    //const uint8x16_p m4 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
 #endif
+
+    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
+    block = (uint32x4_p)vec_perm(x1, y1, m3);
 }
 
 void SPECK128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigned int rounds)
 {
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    const uint8x16_p m1 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
-    const uint8x16_p m2 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
     const uint8x16_p m1 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
     const uint8x16_p m2 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
@@ -929,11 +1153,6 @@ void SPECK128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
     uint64x2_p x1 = (uint64x2_p)vec_perm(block, block, m1);
     uint64x2_p y1 = (uint64x2_p)vec_perm(block, block, m2);
-
-#if defined(CRYPTOPP_BIG_ENDIAN)
-    x1 = SwapWords(x1);
-    y1 = SwapWords(y1);
-#endif
 
     for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
@@ -947,12 +1166,15 @@ void SPECK128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
     }
 
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block = (uint32x4_p)vec_perm(y1, x1, m1);
+    const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    //const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block = (uint32x4_p)vec_perm(x1, y1, m1);
+    const uint8x16_p m3 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    //const uint8x16_p m4 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
 #endif
+
+    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
+    block = (uint32x4_p)vec_perm(x1, y1, m3);
 }
 
 void SPECK128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
@@ -960,8 +1182,8 @@ void SPECK128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block5, const word64 *subkeys, unsigned int rounds)
 {
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    const uint8x16_p m1 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
-    const uint8x16_p m2 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
     const uint8x16_p m1 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
     const uint8x16_p m2 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
@@ -974,11 +1196,6 @@ void SPECK128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     uint64x2_p y2 = (uint64x2_p)vec_perm(block2, block3, m2);
     uint64x2_p x3 = (uint64x2_p)vec_perm(block4, block5, m1);
     uint64x2_p y3 = (uint64x2_p)vec_perm(block4, block5, m2);
-
-#if defined(CRYPTOPP_BIG_ENDIAN)
-    x1 = SwapWords(x1); x2 = SwapWords(x2); x3 = SwapWords(x3);
-    y1 = SwapWords(y1); y2 = SwapWords(y2); y3 = SwapWords(y3);
-#endif
 
     for (int i=0; i < static_cast<int>(rounds); ++i)
     {
@@ -1003,22 +1220,20 @@ void SPECK128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     }
 
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = (uint32x4_p)vec_perm(y1, x1, m1);
-    block1 = (uint32x4_p)vec_perm(y1, x1, m2);
-    block2 = (uint32x4_p)vec_perm(y2, x2, m1);
-    block3 = (uint32x4_p)vec_perm(y2, x2, m2);
-    block4 = (uint32x4_p)vec_perm(y3, x3, m1);
-    block5 = (uint32x4_p)vec_perm(y3, x3, m2);
+    const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = (uint32x4_p)vec_perm(x1, y1, m1);
-    block1 = (uint32x4_p)vec_perm(x1, y1, m2);
-    block2 = (uint32x4_p)vec_perm(x2, y2, m1);
-    block3 = (uint32x4_p)vec_perm(x2, y2, m2);
-    block4 = (uint32x4_p)vec_perm(x3, y3, m1);
-    block5 = (uint32x4_p)vec_perm(x3, y3, m2);
+    const uint8x16_p m3 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m4 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
 #endif
+
+    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+    block2 = (uint32x4_p)vec_perm(x2, y2, m3);
+    block3 = (uint32x4_p)vec_perm(x2, y2, m4);
+    block4 = (uint32x4_p)vec_perm(x3, y3, m3);
+    block5 = (uint32x4_p)vec_perm(x3, y3, m4);
 }
 
 void SPECK128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
@@ -1026,8 +1241,8 @@ void SPECK128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block5, const word64 *subkeys, unsigned int rounds)
 {
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    const uint8x16_p m1 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
-    const uint8x16_p m2 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
     const uint8x16_p m1 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
     const uint8x16_p m2 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
@@ -1040,11 +1255,6 @@ void SPECK128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     uint64x2_p y2 = (uint64x2_p)vec_perm(block2, block3, m2);
     uint64x2_p x3 = (uint64x2_p)vec_perm(block4, block5, m1);
     uint64x2_p y3 = (uint64x2_p)vec_perm(block4, block5, m2);
-
-#if defined(CRYPTOPP_BIG_ENDIAN)
-    x1 = SwapWords(x1); x2 = SwapWords(x2); x3 = SwapWords(x3);
-    y1 = SwapWords(y1); y2 = SwapWords(y2); y3 = SwapWords(y3);
-#endif
 
     for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
@@ -1069,25 +1279,23 @@ void SPECK128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     }
 
 #if defined(CRYPTOPP_BIG_ENDIAN)
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = (uint32x4_p)vec_perm(y1, x1, m1);
-    block1 = (uint32x4_p)vec_perm(y1, x1, m2);
-    block2 = (uint32x4_p)vec_perm(y2, x2, m1);
-    block3 = (uint32x4_p)vec_perm(y2, x2, m2);
-    block4 = (uint32x4_p)vec_perm(y3, x3, m1);
-    block5 = (uint32x4_p)vec_perm(y3, x3, m2);
+    const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
+    const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = (uint32x4_p)vec_perm(x1, y1, m1);
-    block1 = (uint32x4_p)vec_perm(x1, y1, m2);
-    block2 = (uint32x4_p)vec_perm(x2, y2, m1);
-    block3 = (uint32x4_p)vec_perm(x2, y2, m2);
-    block4 = (uint32x4_p)vec_perm(x3, y3, m1);
-    block5 = (uint32x4_p)vec_perm(x3, y3, m2);
+    const uint8x16_p m3 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
+    const uint8x16_p m4 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
 #endif
+
+    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
+    block0 = (uint32x4_p)vec_perm(x1, y1, m3);
+    block1 = (uint32x4_p)vec_perm(x1, y1, m4);
+    block2 = (uint32x4_p)vec_perm(x2, y2, m3);
+    block3 = (uint32x4_p)vec_perm(x2, y2, m4);
+    block4 = (uint32x4_p)vec_perm(x3, y3, m3);
+    block5 = (uint32x4_p)vec_perm(x3, y3, m4);
 }
 
-#endif
+#endif  // POWER8
 
 ANONYMOUS_NAMESPACE_END
 
@@ -1166,6 +1374,20 @@ size_t SPECK128_Dec_AdvancedProcessBlocks_SSSE3(const word64* subKeys, size_t ro
 // ***************************** Power8 ***************************** //
 
 #if defined(CRYPTOPP_POWER8_AVAILABLE)
+size_t SPECK64_Enc_AdvancedProcessBlocks_POWER8(const word32* subKeys, size_t rounds,
+    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
+{
+    return AdvancedProcessBlocks64_6x2_ALTIVEC(SPECK64_Enc_Block, SPECK64_Enc_6_Blocks,
+        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+}
+
+size_t SPECK64_Dec_AdvancedProcessBlocks_POWER8(const word32* subKeys, size_t rounds,
+    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
+{
+    return AdvancedProcessBlocks64_6x2_ALTIVEC(SPECK64_Dec_Block, SPECK64_Dec_6_Blocks,
+        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+}
+
 size_t SPECK128_Enc_AdvancedProcessBlocks_POWER8(const word64* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
