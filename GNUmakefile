@@ -89,8 +89,11 @@ SUNCC_511_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (S
 SUNCC_512_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (Sun|Studio) .* (5\.1[2-9]|5\.[2-9]|6\.)")
 SUNCC_513_OR_LATER := $(shell echo "$(SUNCC_VERSION)" | $(GREP) -i -c -E "CC: (Sun|Studio) .* (5\.1[3-9]|5\.[2-9]|6\.)")
 
-# Enable shared object versioning for Linux
-HAS_SOLIB_VERSION := $(IS_LINUX)
+# Enable shared object versioning for Linux and Solaris
+HAS_SOLIB_VERSION ?= 0
+ifneq ($(IS_LINUX)$(IS_SUN),00)
+HAS_SOLIB_VERSION := 1
+endif
 
 # Newlib needs _XOPEN_SOURCE=600 for signals
 HAS_NEWLIB := $(shell $(CXX) $(CXXFLAGS) -DADHOC_MAIN -dM -E adhoc.cpp 2>&1 | $(GREP) -i -c "__NEWLIB__")
@@ -546,8 +549,14 @@ endif
 
 # Use -pthread whenever it is available. See http://www.hpl.hp.com/techreports/2004/HPL-2004-209.pdf
 #   http://stackoverflow.com/questions/2127797/gcc-significance-of-pthread-flag-when-compiling
-ifneq ($(IS_LINUX)$(GCC_COMPILER)$(CLANG_COMPILER)$(INTEL_COMPILER),0000)
+# BAD_PTHREAD and HAVE_PTHREAD is due to GCC on Solaris. GCC rejects -pthread but defines
+#   39 *_PTHREAD_* related macros. Then we pickup the macros and enable the option...
+BAD_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>&1 | $(GREP) -i -c -E 'warning|illegal|unrecognized')
+HAVE_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>/dev/null | $(GREP) -i -c 'PTHREAD')
+ifeq ($(BAD_PTHREAD),0)
+ifneq ($(HAVE_PTHREAD),0)
   CXXFLAGS += -pthread
+endif # CXXFLAGS
 endif # CXXFLAGS
 
 # Remove -fPIC if present. SunCC use -KPIC
@@ -754,11 +763,22 @@ ifeq ($(strip $(LIB_PATCH)),)
 endif
 
 ifeq ($(HAS_SOLIB_VERSION),1)
-# Full version suffix for shared library
-SOLIB_VERSION_SUFFIX=.$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)
 # Different patchlevels and minors are compatible since 6.1
 SOLIB_COMPAT_SUFFIX=.$(LIB_MAJOR)
+# Linux uses -Wl,-soname
+ifeq ($(IS_LINUX),1)
+# Linux uses full version suffix for shared library
+SOLIB_VERSION_SUFFIX=.$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)
 SOLIB_FLAGS=-Wl,-soname,libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
+endif
+# Solaris uses -Wl,-h
+ifeq ($(IS_SUN),1)
+# Solaris uses major version suffix for shared library, but we use major.minor
+# The minor version allows previous version to remain and not overwritten.
+# https://blogs.oracle.com/solaris/how-to-name-a-solaris-shared-object-v2
+SOLIB_VERSION_SUFFIX=.$(LIB_MAJOR).$(LIB_MINOR)
+SOLIB_FLAGS=-Wl,-h,libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
+endif
 endif # HAS_SOLIB_VERSION
 
 ###########################################################
@@ -771,7 +791,6 @@ SRCS := cryptlib.cpp cpu.cpp integer.cpp $(filter-out cryptlib.cpp cpu.cpp integ
 INCL := $(filter-out resource.h,$(sort $(wildcard *.h)))
 
 ifneq ($(IS_MINGW),0)
-SRCS += winpipes.cpp
 INCL += resource.h
 endif
 
@@ -1222,12 +1241,6 @@ endif
 ifneq ($(findstring -fsanitize=undefined,$(CXXFLAGS)),)
 rijndael.o : rijndael.cpp
 	$(CXX) $(strip $(subst -fsanitize=undefined,,$(CXXFLAGS)) -c) $<
-endif
-
-# Don't build VMAC and friends with Asan. Too many false positives.
-ifneq ($(findstring -fsanitize=address,$(CXXFLAGS)),)
-vmac.o : vmac.cpp
-	$(CXX) $(strip $(subst -fsanitize=address,,$(CXXFLAGS)) -c) $<
 endif
 
 # Only use CRYPTOPP_DATA_DIR if its not set in CXXFLAGS
