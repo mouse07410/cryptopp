@@ -604,7 +604,11 @@ ifeq ($(IS_LINUX),1)
   endif # OpenMP
 endif # IS_LINUX
 
+# libc++ is LLVM's standard C++ library. If we add libc++
+# here then all user programs must use it too. The open
+# question is, which choice is easier on users?
 ifneq ($(IS_DARWIN),0)
+  # CXXFLAGS += -stdlib=libc++
   AR = libtool
   ARFLAGS = -static -o
   CXX ?= g++
