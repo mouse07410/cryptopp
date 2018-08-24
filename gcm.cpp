@@ -19,6 +19,11 @@
 # undef CRYPTOPP_SSE2_ASM_AVAILABLE
 #endif
 
+// Visual Studio .Net 2003 compiler crash
+#if defined(_MSC_VER) && (_MSC_VER < 1400)
+# pragma optimize("", off)
+#endif
+
 #include "gcm.h"
 #include "cpu.h"
 
@@ -378,8 +383,8 @@ unsigned int GCM_Base::OptimalDataAlignment() const
 
 #ifdef CRYPTOPP_X64_MASM_AVAILABLE
 extern "C" {
-void GCM_AuthenticateBlocks_2K(const byte *data, size_t blocks, word64 *hashBuffer, const word16 *reductionTable);
-void GCM_AuthenticateBlocks_64K(const byte *data, size_t blocks, word64 *hashBuffer);
+void GCM_AuthenticateBlocks_2K_SSE2(const byte *data, size_t blocks, word64 *hashBuffer, const word16 *reductionTable);
+void GCM_AuthenticateBlocks_64K_SSE2(const byte *data, size_t blocks, word64 *hashBuffer);
 }
 #endif
 
@@ -550,10 +555,10 @@ size_t GCM_Base::AuthenticateBlocks(const byte *data, size_t len)
 
 #ifdef CRYPTOPP_X64_MASM_AVAILABLE
     case 1:        // SSE2 and 2K tables
-        GCM_AuthenticateBlocks_2K(data, len/16, hashBuffer, s_reductionTable);
+        GCM_AuthenticateBlocks_2K_SSE2(data, len/16, hashBuffer, s_reductionTable);
         return len % 16;
     case 3:        // SSE2 and 64K tables
-        GCM_AuthenticateBlocks_64K(data, len/16, hashBuffer);
+        GCM_AuthenticateBlocks_64K_SSE2(data, len/16, hashBuffer);
         return len % 16;
 #endif
 
@@ -566,7 +571,7 @@ size_t GCM_Base::AuthenticateBlocks(const byte *data, size_t len)
             INTEL_NOPREFIX
         #elif defined(CRYPTOPP_GENERATE_X64_MASM)
             ALIGN   8
-            GCM_AuthenticateBlocks_2K    PROC FRAME
+            GCM_AuthenticateBlocks_2K_SSE2    PROC FRAME
             rex_push_reg rsi
             push_reg rdi
             push_reg rbx
@@ -734,7 +739,7 @@ size_t GCM_Base::AuthenticateBlocks(const byte *data, size_t len)
             pop rdi
             pop rsi
             ret
-            GCM_AuthenticateBlocks_2K ENDP
+            GCM_AuthenticateBlocks_2K_SSE2 ENDP
         #endif
 
         return len%16;
@@ -747,7 +752,7 @@ size_t GCM_Base::AuthenticateBlocks(const byte *data, size_t len)
             INTEL_NOPREFIX
         #elif defined(CRYPTOPP_GENERATE_X64_MASM)
             ALIGN   8
-            GCM_AuthenticateBlocks_64K    PROC FRAME
+            GCM_AuthenticateBlocks_64K_SSE2    PROC FRAME
             rex_push_reg rsi
             push_reg rdi
             .endprolog
@@ -809,7 +814,7 @@ size_t GCM_Base::AuthenticateBlocks(const byte *data, size_t len)
             pop rdi
             pop rsi
             ret
-            GCM_AuthenticateBlocks_64K ENDP
+            GCM_AuthenticateBlocks_64K_SSE2 ENDP
         #endif
 
         return len%16;

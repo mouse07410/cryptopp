@@ -551,7 +551,7 @@ endif
 #   http://stackoverflow.com/questions/2127797/gcc-significance-of-pthread-flag-when-compiling
 # BAD_PTHREAD and HAVE_PTHREAD is due to GCC on Solaris. GCC rejects -pthread but defines
 #   39 *_PTHREAD_* related macros. Then we pickup the macros and enable the option...
-BAD_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>&1 | $(GREP) -i -c -E 'warning|illegal|unrecognized')
+BAD_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -c adhoc.cpp 2>&1 | $(GREP) -i -c -E 'warning|incorrect|illegal|unrecognized')
 HAVE_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>/dev/null | $(GREP) -i -c 'PTHREAD')
 ifeq ($(BAD_PTHREAD),0)
 ifneq ($(HAVE_PTHREAD),0)
@@ -607,7 +607,7 @@ endif # IS_LINUX
 ifneq ($(IS_DARWIN),0)
   AR = libtool
   ARFLAGS = -static -o
-  CXX ?= c++
+  CXX ?= g++
 endif
 
 # Add -errtags=yes to get the name for a warning suppression
@@ -1042,7 +1042,7 @@ endif
 libcryptopp.dylib: $(LIBOBJS)
 	$(CXX) -dynamiclib -o $@ $(strip $(CXXFLAGS)) -install_name "$@" -current_version "$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)" -compatibility_version "$(LIB_MAJOR).$(LIB_MINOR)" -headerpad_max_install_names $(LDFLAGS) $(LIBOBJS)
 
-cryptest.exe:libcryptopp.a $(TESTOBJS)
+cryptest.exe:	libcryptopp.a $(TESTOBJS)
 	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(TESTOBJS) ./libcryptopp.a $(LDFLAGS) $(LDLIBS)
 
 # Makes it faster to test changes
