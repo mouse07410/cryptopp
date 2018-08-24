@@ -607,7 +607,7 @@ endif # IS_LINUX
 ifneq ($(IS_DARWIN),0)
   AR = libtool
   ARFLAGS = -static -o
-  CXX ?= c++
+  CXX ?= g++
 endif
 
 # Add -errtags=yes to get the name for a warning suppression
@@ -1042,7 +1042,7 @@ endif
 libcryptopp.dylib: $(LIBOBJS)
 	$(CXX) -dynamiclib -o $@ $(strip $(CXXFLAGS)) -install_name "$@" -current_version "$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)" -compatibility_version "$(LIB_MAJOR).$(LIB_MINOR)" -headerpad_max_install_names $(LDFLAGS) $(LIBOBJS)
 
-cryptest.exe:libcryptopp.a $(TESTOBJS)
+cryptest.exe:	libcryptopp.a $(TESTOBJS)
 	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(TESTOBJS) ./libcryptopp.a $(LDFLAGS) $(LDLIBS)
 
 # Makes it faster to test changes
