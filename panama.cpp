@@ -329,7 +329,7 @@ void CRYPTOPP_NOINLINE Panama_SSE2_Pull(size_t count, word32 *state, word32 *z, 
 #else
 }
 #endif
-#endif	// #ifdef CRYPTOPP_SSE2_ASM_AVAILABLE
+#endif	// CRYPTOPP_SSE2_ASM_AVAILABLE
 
 #ifndef CRYPTOPP_GENERATE_X64_MASM
 
