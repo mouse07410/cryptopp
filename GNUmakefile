@@ -551,7 +551,7 @@ endif
 #   http://stackoverflow.com/questions/2127797/gcc-significance-of-pthread-flag-when-compiling
 # BAD_PTHREAD and HAVE_PTHREAD is due to GCC on Solaris. GCC rejects -pthread but defines
 #   39 *_PTHREAD_* related macros. Then we pickup the macros and enable the option...
-BAD_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>&1 | $(GREP) -i -c -E 'warning|illegal|unrecognized')
+BAD_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -c adhoc.cpp 2>&1 | $(GREP) -i -c -E 'warning|incorrect|illegal|unrecognized')
 HAVE_PTHREAD = $(shell $(CXX) $(CXXFLAGS) -pthread -dM -E adhoc.cpp 2>/dev/null | $(GREP) -i -c 'PTHREAD')
 ifeq ($(BAD_PTHREAD),0)
 ifneq ($(HAVE_PTHREAD),0)
@@ -604,10 +604,14 @@ ifeq ($(IS_LINUX),1)
   endif # OpenMP
 endif # IS_LINUX
 
+# libc++ is LLVM's standard C++ library. If we add libc++
+# here then all user programs must use it too. The open
+# question is, which choice is easier on users?
 ifneq ($(IS_DARWIN),0)
+  CXX ?= c++
+  # CXXFLAGS += -stdlib=libc++
   AR = libtool
   ARFLAGS = -static -o
-  CXX ?= c++
 endif
 
 # Add -errtags=yes to get the name for a warning suppression

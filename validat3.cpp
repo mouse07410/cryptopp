@@ -26,7 +26,7 @@
 #include <sstream>
 
 // Aggressive stack checking with VS2005 SP1 and above.
-#if (_MSC_FULL_VER >= 140050727)
+#if (_MSC_VER >= 1500)
 # pragma strict_gs_check (on)
 #endif
 
@@ -41,6 +41,7 @@ bool ValidateAll(bool thorough)
 {
 	bool pass=TestSettings();
 	pass=TestOS_RNG() && pass;
+	pass=TestStringSink() && pass;
 	pass=TestRandomPool() && pass;
 #if !defined(NO_OS_DEPENDENCE) && defined(OS_RNG_AVAILABLE)
 	pass=TestAutoSeededX917() && pass;
@@ -201,7 +202,7 @@ bool TestSettings()
 	word32 w;
 	const byte s[] = "\x01\x02\x03\x04";
 
-#if (_MSC_FULL_VER >= 140050727)
+#if (_MSC_VER >= 1500)
 	std::copy(s, s+4,
 		stdext::make_checked_array_iterator(reinterpret_cast<byte*>(&w), sizeof(w)));
 #else
@@ -559,6 +560,26 @@ bool TestOS_RNG()
 		std::cout << "\nNo operating system provided nonblocking random number generator, skipping test." << std::endl;
 
 	return pass;
+}
+
+bool TestStringSink()
+{
+	try
+	{
+		std::string in = "The quick brown fox jumps over the lazy dog";
+
+		std::string str;
+		StringSource s1(in, true, new StringSink(str));
+
+		std::vector<byte> vec;
+		StringSource s2(in, true, new VectorSink(vec));
+
+		return str.size() == vec.size() && std::equal(str.begin(), str.end(), vec.begin());
+	}
+	catch(...)
+	{
+	}
+	return false;
 }
 
 bool TestRandomPool()
