@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+PWD_DIR=$(pwd)
+function cleanup {
+    cd "$PWD_DIR"
+}
+trap cleanup EXIT
+
 GREP=grep
 SED=sed
 AWK=awk
@@ -68,11 +74,13 @@ if [[ -z $(command -v autoreconf) ]]; then
 	echo "Cannot find autoreconf. Things may fail."
 fi
 
+echo "Running autoupdate"
 if ! autoupdate 2>/dev/null; then
 	echo "autoupdate failed."
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
 
+echo "Running libtoolize"
 if ! "$LIBTOOLIZE" 2>/dev/null; then
 	echo "libtoolize failed."
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
@@ -80,12 +88,21 @@ fi
 
 # Run autoreconf twice on failure. Also see
 # https://github.com/tracebox/tracebox/issues/57
+echo "Running autoreconf"
 if ! autoreconf 2>/dev/null; then
 	echo "autoreconf failed, running again."
 	if ! autoreconf -fi; then
 		echo "autoreconf failed, again."
 		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 	fi
+fi
+
+# Sparc need +w
+if [[ -e config.sub ]]; then
+	chmod +w config.sub
+fi
+if [[ -e config.guess ]]; then
+	chmod +w config.guess
 fi
 
 # Update config.sub config.guess. GNU recommends using the latest for all projects.
@@ -108,7 +125,7 @@ if ! ./configure; then
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
 
-make clean 2>/dev/null
+"$MAKE" clean 2>/dev/null
 
 if ! "$MAKE" -j2 -f Makefile; then
 	echo "make failed."
