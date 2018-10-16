@@ -199,16 +199,22 @@ void CFB_CipherTemplate<BASE>::ProcessData(byte *outString, const byte *inString
 	//       Using 'outString' for both input and output leads to incorrect results.
 	//
 	//       Benchmarking on Cortex-A7 and Cortex-A9 indicates removing the block
-	//       below does not have a material effect on performance.
+	//       below costs about 9 cpb for CFB mode on ARM.
 	//
 	//       Also see https://github.com/weidai11/cryptopp/issues/683.
 	//
-#if !defined(__arm__)
-	unsigned int alignment = policy.GetAlignment();
-	if (policy.CanIterate() && length >= bytesPerIteration && IsAlignedOn(outString, alignment))
+	// UPDATE: It appears the issue is related to alignment checks. When we made
+	//       the alignment check result volatile GCC and Clang stopped
+	//       short-circuiting the transform, which is what we wanted. I suspect
+	//       there's a little more to the issue, but we can enable the block again.
+
+	const unsigned int alignment = policy.GetAlignment();
+	volatile bool isAligned = IsAlignedOn(outString, alignment);
+	if (policy.CanIterate() && length >= bytesPerIteration && isAligned)
 	{
+		isAligned &= IsAlignedOn(inString, alignment);
 		const CipherDir cipherDir = GetCipherDir(*this);
-		if (IsAlignedOn(inString, alignment))
+		if (isAligned)
 			policy.Iterate(outString, inString, cipherDir, length / bytesPerIteration);
 		else
 		{
@@ -226,26 +232,20 @@ void CFB_CipherTemplate<BASE>::ProcessData(byte *outString, const byte *inString
 			// to use ptrdiff_t when subtracting pointers. We believe the relevant code paths
 			// are clean.
 			//
-			// There are two remaining open questions. The first is aliasing rules. Char-types
-			// are not bound by aliasing rules so we are OK. The second is array const-ness.
-			// The arrays are created in datatest.cpp and they are non-const. Since the original
-			// objects are non-const we are OK casting const-ness away as buffers are twiddled.
-			//
 			// One workaround is a distinct and aligned temporary buffer. It [mostly] works
 			// as expected but requires an extra allocation (casts not shown):
 			//
-			//   std::string temp(length);
-			//   std::memcpy(&temp[0], inString, length);
+			//   std::string temp(inString, length);
 			//   policy.Iterate(outString, &temp[0], cipherDir, length / bytesPerIteration);
 			//
 			memcpy(outString, inString, length);
 			policy.Iterate(outString, outString, cipherDir, length / bytesPerIteration);
 		}
-		inString = PtrAdd(inString, length - length % bytesPerIteration);
-		outString = PtrAdd(outString, length - length % bytesPerIteration);
-		length %= bytesPerIteration;
+		const size_t remainder = length % bytesPerIteration;
+		inString = PtrAdd(inString, length - remainder);
+		outString = PtrAdd(outString, length - remainder);
+		length = remainder;
 	}
-#endif
 
 	while (length >= bytesPerIteration)
 	{
