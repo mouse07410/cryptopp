@@ -406,7 +406,7 @@ bool TestSettings()
 bool Test_RandomNumberGenerator(RandomNumberGenerator& prng, bool drain=false)
 {
 	bool pass = true, result = true;
-	const size_t GENERATE_SIZE = 1024*10, ENTROPY_SIZE = 32;
+	const size_t GENERATE_SIZE = 1024*10, DISCARD_SIZE = 256, ENTROPY_SIZE = 32;
 
 	if(drain)
 	{
@@ -438,9 +438,9 @@ bool Test_RandomNumberGenerator(RandomNumberGenerator& prng, bool drain=false)
 			GlobalRNG().GenerateBlock(entropy, entropy.SizeInBytes());
 
 			prng.IncorporateEntropy(entropy, entropy.SizeInBytes());
-			prng.IncorporateEntropy(entropy, entropy.SizeInBytes());
-			prng.IncorporateEntropy(entropy, entropy.SizeInBytes());
-			prng.IncorporateEntropy(entropy, entropy.SizeInBytes());
+			prng.IncorporateEntropy(entropy, entropy.SizeInBytes()-1);
+			prng.IncorporateEntropy(entropy, entropy.SizeInBytes()-2);
+			prng.IncorporateEntropy(entropy, entropy.SizeInBytes()-3);
 		}
 	}
 	catch (const Exception& /*ex*/)
@@ -477,11 +477,13 @@ bool Test_RandomNumberGenerator(RandomNumberGenerator& prng, bool drain=false)
 		std::cout << "passed:";
 	std::cout << "  GenerateWord32 and Crop\n";
 
-
 	try
 	{
 		pass = true;
-		prng.DiscardBytes(GENERATE_SIZE);
+		prng.DiscardBytes(DISCARD_SIZE);
+		prng.DiscardBytes(DISCARD_SIZE-1);
+		prng.DiscardBytes(DISCARD_SIZE-2);
+		prng.DiscardBytes(DISCARD_SIZE-3);
 	}
 	catch (const Exception&)
 	{
@@ -493,11 +495,12 @@ bool Test_RandomNumberGenerator(RandomNumberGenerator& prng, bool drain=false)
 		std::cout << "FAILED:";
 	else
 		std::cout << "passed:";
-	std::cout << "  DiscardBytes with " << GENERATE_SIZE << " bytes\n";
+	std::cout << "  DiscardBytes with " << 4*DISCARD_SIZE << " bytes\n";
 
 	// Miscellaneous for code coverage
 	(void)prng.AlgorithmName();  // "unknown"
 
+	CRYPTOPP_ASSERT(result);
 	return result;
 }
 
@@ -517,9 +520,8 @@ bool TestOS_RNG()
 
 		MeterFilter meter(new Redirector(TheBitBucket()));
 		RandomNumberSource test(*rng, UINT_MAX, false, new Deflator(new Redirector(meter)));
-		unsigned long total=0, length=0;
+		unsigned long total=0;
 		time_t t = time(NULLPTR), t1 = 0;
-		CRYPTOPP_UNUSED(length);
 
 		// check that it doesn't take too long to generate a reasonable amount of randomness
 		while (total < 16 && (t1 < 10 || total*8 > (unsigned long)t1))
@@ -537,38 +539,6 @@ bool TestOS_RNG()
 		else
 			std::cout << "passed:";
 		std::cout << "  it took " << long(t1) << " seconds to generate " << total << " bytes" << std::endl;
-
-#if 0	// disable this part. it's causing an unpredictable pause during the validation testing
-		if (t1 < 2)
-		{
-			// that was fast, are we really blocking?
-			// first exhaust the extropy reserve
-			t = time(NULLPTR);
-			while (time(NULLPTR) - t < 2)
-			{
-				test.Pump(1);
-				total += 1;
-			}
-
-			// if it generates too many bytes in a certain amount of time,
-			// something's probably wrong
-			t = time(NULLPTR);
-			while (time(NULLPTR) - t < 2)
-			{
-				test.Pump(1);
-				total += 1;
-				length += 1;
-			}
-			if (length > 1024)
-			{
-				std::cout << "FAILED:";
-				pass = false;
-			}
-			else
-				std::cout << "passed:";
-			std::cout << "  it generated " << length << " bytes in " << long(time(NULLPTR) - t) << " seconds" << std::endl;
-		}
-#endif
 
 		test.AttachedTransformation()->MessageEnd();
 
@@ -624,6 +594,7 @@ bool TestOS_RNG()
 		std::cout << "\nNo operating system provided non-blocking random number generator, skipping test." << std::endl;
 #endif
 
+	CRYPTOPP_ASSERT(pass);
 	return pass;
 }
 
@@ -633,7 +604,7 @@ bool TestRandomPool()
 	bool pass=true;
 
 	try {prng.reset(new RandomPool);}
-	catch (OS_RNG_Err &) {}
+	catch (Exception &) {}
 
 	if(prng.get())
 	{
@@ -643,7 +614,7 @@ bool TestRandomPool()
 
 #if !defined(NO_OS_DEPENDENCE) && defined(OS_RNG_AVAILABLE)
 	try {prng.reset(new AutoSeededRandomPool);}
-	catch (OS_RNG_Err &) {}
+	catch (Exception &) {}
 
 	if(prng.get())
 	{
@@ -655,7 +626,7 @@ bool TestRandomPool()
 	// Old, PGP 2.6 style RandomPool. Added because users were still having problems
 	//  with it in 2017. The missing functionality was a barrier to upgrades.
 	try {prng.reset(new OldRandomPool);}
-	catch (OS_RNG_Err &) {}
+	catch (Exception &) {}
 
 	if(prng.get())
 	{
@@ -707,18 +678,39 @@ bool TestMersenne()
 {
 	std::cout << "\nTesting Mersenne Twister...\n\n";
 
-	MT19937ar prng;
+	member_ptr<RandomNumberGenerator> rng;
 	bool pass = true;
 
-	pass = Test_RandomNumberGenerator(prng);
+	try {rng.reset(new MT19937ar);}
+	catch (const PadlockRNG_Err &) {}
 
-	// First 10; http://create.stephan-brumme.com/mersenne-twister/
-	word32 result[10], expected[10] = {0xD091BB5C, 0x22AE9EF6,
-		0xE7E1FAEE, 0xD5C31F79, 0x2082352C, 0xF807B7DF, 0xE9D30005,
-		0x3895AFE1, 0xA1E24BBA, 0x4EE4092B};
+	if(rng.get())
+	{
+		pass = Test_RandomNumberGenerator(*rng.get());
+	}
 
-	prng.GenerateBlock(reinterpret_cast<byte*>(result), sizeof(result));
-	pass = (0 == std::memcmp(result, expected, sizeof(expected))) && pass;
+	// Reset state
+	try {rng.reset(new MT19937ar);}
+	catch (const PadlockRNG_Err &) {}
+
+	if(rng.get())
+	{
+		// First 10; http://create.stephan-brumme.com/mersenne-twister/
+		word32 result[10], expected[10] = {
+			0xD091BB5C, 0x22AE9EF6, 0xE7E1FAEE, 0xD5C31F79,
+			0x2082352C, 0xF807B7DF, 0xE9D30005, 0x3895AFE1,
+			0xA1E24BBA, 0x4EE4092B
+		};
+
+		rng->GenerateBlock(reinterpret_cast<byte*>(result), sizeof(result));
+		pass = (0 == std::memcmp(result, expected, sizeof(expected))) && pass;
+
+		if (!pass)
+			std::cout << "FAILED:";
+		else
+			std::cout << "passed:";
+		std::cout << "  Expected sequence from MT19937\n";
+	}
 
 	return pass;
 }
