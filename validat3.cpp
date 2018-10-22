@@ -732,8 +732,9 @@ bool TestMersenne()
 		PadlockRNG& padlock = dynamic_cast<PadlockRNG&>(*rng.get());
 		pass = Test_RandomNumberGenerator(padlock);
 
-		static const unsigned int SIZE = 10000;
 		SecByteBlock zero(16), one(16), t(16);
+		std::memset(zero, 0x00, zero.size());
+		std::memset( one, 0xff,  one.size());
 
 		// Cryptography Research, Inc tests
 		word32 oldDivisor = padlock.SetDivisor(0);
