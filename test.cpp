@@ -143,6 +143,12 @@ int scoped_main(int argc, char *argv[])
 	_CrtSetDbgFlag( tempflag );
 #endif
 
+#ifdef _SUNPRO_CC
+	// No need for thread safety for the test program
+	cout.set_safe_flag(stream_MT::unsafe_object);
+	cin.set_safe_flag(stream_MT::unsafe_object);
+#endif
+
 	try
 	{
 		RegisterFactories(All);
@@ -892,8 +898,10 @@ bool Validate(int alg, bool thorough, const char *seedInput)
 	case 83: result = ValidateHashDRBG(); break;
 	case 84: result = ValidateHmacDRBG(); break;
 	case 85: result = ValidateNaCl(); break;
-	case 86: result = ValidateSIMECK(); break;
-	case 87: result = ValidateCHAM(); break;
+	case 86: result = ValidateCHAM(); break;
+	case 87: result = ValidateSIMECK(); break;
+	case 88: result = ValidateSIMON(); break;
+	case 89: result = ValidateSPECK(); break;
 
 #if defined(CRYPTOPP_EXTENDED_VALIDATION)
 	// http://github.com/weidai11/cryptopp/issues/92

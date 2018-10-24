@@ -42,29 +42,6 @@ class FixedBlockSize
 public:
 	/// \brief The block size of the algorithm provided as a constant.
 	CRYPTOPP_CONSTANT(BLOCKSIZE = N)
-	/// \brief The default blocksize for the algorithm provided as a constant.
-	CRYPTOPP_CONSTANT(DEFAULT_BLOCKSIZE = N)
-	/// \brief The minimum blocksize for the algorithm provided as a constant.
-	CRYPTOPP_CONSTANT(MIN_BLOCKSIZE = N)
-	/// \brief The maximum blocksize for the algorithm provided as a constant.
-	CRYPTOPP_CONSTANT(MAX_BLOCKSIZE = N)
-	/// \brief The default block size for the algorithm provided by a static function.
-	/// \param blocksize the block size, in bytes
-	/// \details The default implementation returns BLOCKSIZE. blocksize is unused
-	///   in the default implementation.
-	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t blocksize)
-	{
-		return CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(BLOCKSIZE);
-	}
-	/// \brief The default block size under a key provided by a static function.
-	/// \param keylength the size of the key, in bytes
-	/// \param blocksize the block size, in bytes
-	/// \details The default implementation returns BLOCKSIZE. blocksize is unused
-	///   in the default implementation.
-	CRYPTOPP_STATIC_CONSTEXPR size_t CRYPTOPP_API StaticGetValidBlockSize(size_t keylength, size_t blocksize)
-	{
-		return CRYPTOPP_UNUSED(keylength), CRYPTOPP_UNUSED(blocksize), static_cast<size_t>(BLOCKSIZE);
-	}
 };
 
 // ************** rounds ***************

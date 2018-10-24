@@ -81,6 +81,12 @@ MAKE=make
 DISASS=objdump
 DISASSARGS=("--disassemble")
 
+# Fixup ancient Bash
+# https://unix.stackexchange.com/q/468579/56041
+if [[ -z "$BASH_SOURCE" ]]; then
+	BASH_SOURCE="$0"
+fi
+
 # Fixup, Solaris and friends
 if [[ (-d /usr/xpg4/bin) ]]; then
 	SED=/usr/xpg4/bin/sed
@@ -1939,14 +1945,20 @@ if true; then
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+		# Stop now if things are broke
+		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 	else
 		./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+			# Stop now if things are broke
+			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 		fi
 		./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+			# Stop now if things are broke
+			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 		fi
 	fi
 
@@ -1967,14 +1979,20 @@ if true; then
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+		# Stop now if things are broke
+		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 	else
 		./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+			# Stop now if things are broke
+			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 		fi
 		./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+			# Stop now if things are broke
+			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 		fi
 		echo
 	fi

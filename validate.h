@@ -23,7 +23,6 @@ NAMESPACE_BEGIN(Test)
 bool ValidateAll(bool thorough);
 bool TestSettings();
 bool TestOS_RNG();
-bool TestStringSink();
 // bool TestSecRandom();
 bool TestRandomPool();
 #if !defined(NO_OS_DEPENDENCE)
@@ -89,6 +88,8 @@ bool ValidateSIMECK();
 bool ValidateCHAM();
 bool ValidateHIGHT();
 bool ValidateLEA();
+bool ValidateSIMON();
+bool ValidateSPECK();
 bool ValidateCamellia();
 
 bool ValidateHC128();
@@ -150,6 +151,8 @@ bool TestRounding();
 bool TestHuffmanCodes();
 // http://github.com/weidai11/cryptopp/issues/346
 bool TestASN1Parse();
+// https://github.com/weidai11/cryptopp/pull/334
+bool TestStringSink();
 // Additional tests due to no coverage
 bool TestCompressors();
 bool TestEncryptors();
