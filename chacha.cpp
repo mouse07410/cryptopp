@@ -11,8 +11,8 @@
 
 NAMESPACE_BEGIN(CryptoPP)
 
-#if defined(CRYPTOPP_SSE2_INTRIN_AVAILABLE)
-extern void ChaCha_OperateKeystream_SSE2(const word32 *state, byte *message, unsigned int rounds);
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
+extern void ChaCha_OperateKeystream_SSE2(const word32 *state, const byte* input, byte *output, unsigned int rounds, bool xorInput);
 #endif
 
 #define CHACHA_QUARTER_ROUND(a,b,c,d) \
@@ -30,7 +30,7 @@ void ChaCha_TestInstantiations()
 
 std::string ChaCha_Policy::AlgorithmProvider() const
 {
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
 	if (HasSSE2())
 		return "SSE2";
 #endif
@@ -77,7 +77,7 @@ void ChaCha_Policy::SeekToIteration(lword iterationCount)
 
 unsigned int ChaCha_Policy::GetAlignment() const
 {
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
 	if (HasSSE2())
 		return 16;
 	else
@@ -87,7 +87,7 @@ unsigned int ChaCha_Policy::GetAlignment() const
 
 unsigned int ChaCha_Policy::GetOptimalBlockSize() const
 {
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
 	if (HasSSE2())
 		return 4*BYTES_PER_ITERATION;
 	else
@@ -95,24 +95,25 @@ unsigned int ChaCha_Policy::GetOptimalBlockSize() const
 		return BYTES_PER_ITERATION;
 }
 
+// OperateKeystream always produces a key stream. The key stream is written
+// to output. Optionally a message may be supplied to xor with the key stream.
+// The message is input, and output = output ^ input.
 void ChaCha_Policy::OperateKeystream(KeystreamOperation operation,
         byte *output, const byte *input, size_t iterationCount)
 {
-#if CRYPTOPP_SSE2_INTRIN_AVAILABLE
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
 	if (HasSSE2())
 	{
 		while (iterationCount >= 4)
 		{
-			ChaCha_OperateKeystream_SSE2(m_state, output, m_rounds);
-
-			if ((operation & INPUT_NULL) != INPUT_NULL)
-				xorbuf(output, input, 4*BYTES_PER_ITERATION);
+			bool xorInput = (operation & INPUT_NULL) != INPUT_NULL;
+			ChaCha_OperateKeystream_SSE2(m_state, input, output, m_rounds, xorInput);
 
 			m_state[12] += 4;
 			if (m_state[12] < 4)
 				m_state[13]++;
 
-			input += 4*BYTES_PER_ITERATION;
+			input += !!xorInput*4*BYTES_PER_ITERATION;
 			output += 4*BYTES_PER_ITERATION;
 			iterationCount -= 4;
 		}
