@@ -1292,37 +1292,44 @@ public:
 	//@{
 
 	/// \brief Pump data to attached transformation
-	/// \param pumpMax the maximpum number of bytes to pump
+	/// \param pumpMax the maximum number of bytes to pump
 	/// \returns the number of bytes that remain in the block (i.e., bytes not processed)
 	/// \details Internally, Pump() calls Pump2().
-	/// \note pumpMax is a \p lword, which is a 64-bit value that typically uses \p LWORD_MAX. The default
-	///   argument is a \p size_t that uses \p SIZE_MAX, and it can be 32-bits or 64-bits.
+	/// \note pumpMax is a <tt>lword</tt>, which is a 64-bit value that typically uses
+	///   <tt>LWORD_MAX</tt>. The default argument is <tt>SIZE_MAX</tt>, and it can be
+	///   32-bits or 64-bits.
+	/// \sa Pump2, PumpAll, AnyRetrievable, MaxRetrievable
 	lword Pump(lword pumpMax=SIZE_MAX)
 		{Pump2(pumpMax); return pumpMax;}
 
 	/// \brief Pump messages to attached transformation
-	/// \param count the maximpum number of messages to pump
+	/// \param count the maximum number of messages to pump
 	/// \returns TODO
 	/// \details Internally, PumpMessages() calls PumpMessages2().
 	unsigned int PumpMessages(unsigned int count=UINT_MAX)
 		{PumpMessages2(count); return count;}
 
 	/// \brief Pump all data to attached transformation
-	/// \details Internally, PumpAll() calls PumpAll2().
+	/// \details Pumps all data to the attached transformation and signal the end of the current
+	///   message. To avoid the MessageEnd() signal call \ref Pump "Pump(LWORD_MAX)" or \ref Pump2
+	///   "Pump2(LWORD_MAX, bool)".
+	/// \details Internally, PumpAll() calls PumpAll2(), which calls PumpMessages().
+	/// \sa Pump, Pump2, AnyRetrievable, MaxRetrievable
 	void PumpAll()
 		{PumpAll2();}
 
 	/// \brief Pump data to attached transformation
-	/// \param byteCount the maximpum number of bytes to pump
+	/// \param byteCount the maximum number of bytes to pump
 	/// \param blocking specifies whether the object should block when processing input
 	/// \returns the number of bytes that remain in the block (i.e., bytes not processed)
 	/// \details byteCount is an \a IN and \a OUT parameter. When the call is made, byteCount is the
 	///   requested size of the pump. When the call returns, byteCount is the number of bytes that
 	///   were pumped.
+	/// \sa Pump, PumpAll, AnyRetrievable, MaxRetrievable
 	virtual size_t Pump2(lword &byteCount, bool blocking=true) =0;
 
 	/// \brief Pump messages to attached transformation
-	/// \param messageCount the maximpum number of messages to pump
+	/// \param messageCount the maximum number of messages to pump
 	/// \param blocking specifies whether the object should block when processing input
 	/// \details messageCount is an IN and OUT parameter.
 	virtual size_t PumpMessages2(unsigned int &messageCount, bool blocking=true) =0;
@@ -1330,6 +1337,7 @@ public:
 	/// \brief Pump all data to attached transformation
 	/// \param blocking specifies whether the object should block when processing input
 	/// \returns the number of bytes that remain in the block (i.e., bytes not processed)
+	/// \sa Pump, Pump2, AnyRetrievable, MaxRetrievable
 	virtual size_t PumpAll2(bool blocking=true);
 
 	/// \brief Determines if the Source is exhausted
