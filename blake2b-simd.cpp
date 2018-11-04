@@ -1,6 +1,6 @@
-
 // blake2-simd.cpp - written and placed in the public domain by
-//                   Jeffrey Walton, Uri Blumenthal and Marcel Raad.
+//                   Samuel Neves, Jeffrey Walton, Uri Blumenthal
+//                   and Marcel Raad.
 //
 //    This source file uses intrinsics to gain access to ARMv7a/ARMv8a
 //    NEON, Power8 and SSE4.1 instructions. A separate source file is
@@ -16,7 +16,7 @@
 // Do so in both blake2.cpp and blake2-simd.cpp.
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
-// #undef CRYPTOPP_POWER8_AVAILABLE
+// #undef CRYPTOPP_ALTIVEC_AVAILABLE
 
 // Disable NEON/ASIMD for Cortex-A53 and A57. The shifts are too slow and C/C++ is about
 // 3 cpb faster than NEON/ASIMD. Also see http://github.com/weidai11/cryptopp/issues/367.
@@ -41,39 +41,24 @@
 # include <arm_acle.h>
 #endif
 
-#if defined(CRYPTOPP_POWER8_AVAILABLE)
+#if (CRYPTOPP_POWER8_AVAILABLE)
 # include "ppc-simd.h"
 #endif
 
-ANONYMOUS_NAMESPACE_BEGIN
-
-using CryptoPP::word32;
-using CryptoPP::word64;
-
-#if (CRYPTOPP_SSE41_AVAILABLE || CRYPTOPP_ARM_NEON_AVAILABLE || CRYPTOPP_POWER8_AVAILABLE)
-
-CRYPTOPP_ALIGN_DATA(16)
-const word64 BLAKE2B_IV[8] = {
-    W64LIT(0x6a09e667f3bcc908), W64LIT(0xbb67ae8584caa73b),
-    W64LIT(0x3c6ef372fe94f82b), W64LIT(0xa54ff53a5f1d36f1),
-    W64LIT(0x510e527fade682d1), W64LIT(0x9b05688c2b3e6c1f),
-    W64LIT(0x1f83d9abfb41bd6b), W64LIT(0x5be0cd19137e2179)
-};
-
-#endif  // CRYPTOPP_SSE41_AVAILABLE || CRYPTOPP_ARM_NEON_AVAILABLE
-
-ANONYMOUS_NAMESPACE_END
-
 NAMESPACE_BEGIN(CryptoPP)
+
+// Exported by blake2.cpp
+extern const word32 BLAKE2S_IV[8];
+extern const word64 BLAKE2B_IV[8];
 
 #if CRYPTOPP_SSE41_AVAILABLE
 
-#define LOADU(p)  _mm_loadu_si128( (const __m128i *)(const void*)(p) )
+#define LOADU(p)  _mm_loadu_si128((const __m128i *)(const void*)(p))
 #define STOREU(p,r) _mm_storeu_si128((__m128i *)(void*)(p), r)
 #define TOF(reg) _mm_castsi128_ps((reg))
 #define TOI(reg) _mm_castps_si128((reg))
 
-void BLAKE2_Compress64_SSE4(const byte* input, BLAKE2_State<word64, true>& state)
+void BLAKE2_Compress64_SSE4(const byte* input, BLAKE2b_State& state)
 {
     #define BLAKE2B_LOAD_MSG_0_1(b0, b1) \
     do { \
@@ -454,53 +439,53 @@ void BLAKE2_Compress64_SSE4(const byte* input, BLAKE2_State<word64, true>& state
     __m128i b0, b1;
     __m128i t0, t1;
 
-    const __m128i r16 = _mm_setr_epi8( 2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9 );
-    const __m128i r24 = _mm_setr_epi8( 3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10 );
+    const __m128i r16 = _mm_setr_epi8(2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
+    const __m128i r24 = _mm_setr_epi8(3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
 
-    const __m128i m0 = LOADU( input + 00 );
-    const __m128i m1 = LOADU( input + 16 );
-    const __m128i m2 = LOADU( input + 32 );
-    const __m128i m3 = LOADU( input + 48 );
-    const __m128i m4 = LOADU( input + 64 );
-    const __m128i m5 = LOADU( input + 80 );
-    const __m128i m6 = LOADU( input + 96 );
-    const __m128i m7 = LOADU( input + 112 );
+    const __m128i m0 = LOADU(input + 00);
+    const __m128i m1 = LOADU(input + 16);
+    const __m128i m2 = LOADU(input + 32);
+    const __m128i m3 = LOADU(input + 48);
+    const __m128i m4 = LOADU(input + 64);
+    const __m128i m5 = LOADU(input + 80);
+    const __m128i m6 = LOADU(input + 96);
+    const __m128i m7 = LOADU(input + 112);
 
-    row1l = LOADU( &state.h[0] );
-    row1h = LOADU( &state.h[2] );
-    row2l = LOADU( &state.h[4] );
-    row2h = LOADU( &state.h[6] );
-    row3l = LOADU( &BLAKE2B_IV[0] );
-    row3h = LOADU( &BLAKE2B_IV[2] );
-    row4l = _mm_xor_si128( LOADU( &BLAKE2B_IV[4] ), LOADU( &state.t[0] ) );
-    row4h = _mm_xor_si128( LOADU( &BLAKE2B_IV[6] ), LOADU( &state.f[0] ) );
+    row1l = LOADU(&state.h[0]);
+    row1h = LOADU(&state.h[2]);
+    row2l = LOADU(&state.h[4]);
+    row2h = LOADU(&state.h[6]);
+    row3l = LOADU(&BLAKE2B_IV[0]);
+    row3h = LOADU(&BLAKE2B_IV[2]);
+    row4l = _mm_xor_si128(LOADU(&BLAKE2B_IV[4]), LOADU(&state.tf[0]));
+    row4h = _mm_xor_si128(LOADU(&BLAKE2B_IV[6]), LOADU(&state.tf[2]));
 
-    BLAKE2B_ROUND( 0 );
-    BLAKE2B_ROUND( 1 );
-    BLAKE2B_ROUND( 2 );
-    BLAKE2B_ROUND( 3 );
-    BLAKE2B_ROUND( 4 );
-    BLAKE2B_ROUND( 5 );
-    BLAKE2B_ROUND( 6 );
-    BLAKE2B_ROUND( 7 );
-    BLAKE2B_ROUND( 8 );
-    BLAKE2B_ROUND( 9 );
-    BLAKE2B_ROUND( 10 );
-    BLAKE2B_ROUND( 11 );
+    BLAKE2B_ROUND(0);
+    BLAKE2B_ROUND(1);
+    BLAKE2B_ROUND(2);
+    BLAKE2B_ROUND(3);
+    BLAKE2B_ROUND(4);
+    BLAKE2B_ROUND(5);
+    BLAKE2B_ROUND(6);
+    BLAKE2B_ROUND(7);
+    BLAKE2B_ROUND(8);
+    BLAKE2B_ROUND(9);
+    BLAKE2B_ROUND(10);
+    BLAKE2B_ROUND(11);
 
-    row1l = _mm_xor_si128( row3l, row1l );
-    row1h = _mm_xor_si128( row3h, row1h );
-    STOREU( &state.h[0], _mm_xor_si128( LOADU( &state.h[0] ), row1l ) );
-    STOREU( &state.h[2], _mm_xor_si128( LOADU( &state.h[2] ), row1h ) );
-    row2l = _mm_xor_si128( row4l, row2l );
-    row2h = _mm_xor_si128( row4h, row2h );
-    STOREU( &state.h[4], _mm_xor_si128( LOADU( &state.h[4] ), row2l ) );
-    STOREU( &state.h[6], _mm_xor_si128( LOADU( &state.h[6] ), row2h ) );
+    row1l = _mm_xor_si128(row3l, row1l);
+    row1h = _mm_xor_si128(row3h, row1h);
+    STOREU(&state.h[0], _mm_xor_si128(LOADU(&state.h[0]), row1l));
+    STOREU(&state.h[2], _mm_xor_si128(LOADU(&state.h[2]), row1h));
+    row2l = _mm_xor_si128(row4l, row2l);
+    row2h = _mm_xor_si128(row4h, row2h);
+    STOREU(&state.h[4], _mm_xor_si128(LOADU(&state.h[4]), row2l));
+    STOREU(&state.h[6], _mm_xor_si128(LOADU(&state.h[6]), row2h));
 }
 #endif  // CRYPTOPP_SSE41_AVAILABLE
 
 #if CRYPTOPP_ARM_NEON_AVAILABLE
-void BLAKE2_Compress64_NEON(const byte* input, BLAKE2_State<word64, true>& state)
+void BLAKE2_Compress64_NEON(const byte* input, BLAKE2b_State& state)
 {
     #define BLAKE2B_LOAD_MSG_0_1(b0, b1) \
     do { b0 = vcombine_u64(vget_low_u64(m0), vget_low_u64(m1)); b1 = vcombine_u64(vget_low_u64(m2), vget_low_u64(m3)); } while(0)
@@ -648,11 +633,11 @@ void BLAKE2_Compress64_NEON(const byte* input, BLAKE2_State<word64, true>& state
 
     #define vrorq_n_u64_32(x) vreinterpretq_u64_u32(vrev64q_u32(vreinterpretq_u32_u64((x))))
 
-    #define vrorq_n_u64_24(x) vcombine_u64(\
+    #define vrorq_n_u64_24(x) vcombine_u64( \
         vreinterpret_u64_u8(vext_u8(vreinterpret_u8_u64(vget_low_u64(x)), vreinterpret_u8_u64(vget_low_u64(x)), 3)), \
         vreinterpret_u64_u8(vext_u8(vreinterpret_u8_u64(vget_high_u64(x)), vreinterpret_u8_u64(vget_high_u64(x)), 3)))
 
-    #define vrorq_n_u64_16(x) vcombine_u64(\
+    #define vrorq_n_u64_16(x) vcombine_u64( \
         vreinterpret_u64_u8(vext_u8(vreinterpret_u8_u64(vget_low_u64(x)), vreinterpret_u8_u64(vget_low_u64(x)), 2)), \
         vreinterpret_u64_u8(vext_u8(vreinterpret_u8_u64(vget_high_u64(x)), vreinterpret_u8_u64(vget_high_u64(x)), 2)))
 
@@ -732,8 +717,8 @@ void BLAKE2_Compress64_NEON(const byte* input, BLAKE2_State<word64, true>& state
 
     row3l = vld1q_u64(&BLAKE2B_IV[0]);
     row3h = vld1q_u64(&BLAKE2B_IV[2]);
-    row4l = veorq_u64(vld1q_u64(&BLAKE2B_IV[4]), vld1q_u64(&state.t[0]));
-    row4h = veorq_u64(vld1q_u64(&BLAKE2B_IV[6]), vld1q_u64(&state.f[0]));
+    row4l = veorq_u64(vld1q_u64(&BLAKE2B_IV[4]), vld1q_u64(&state.tf[0]));
+    row4h = veorq_u64(vld1q_u64(&BLAKE2B_IV[6]), vld1q_u64(&state.tf[2]));
 
     BLAKE2B_ROUND(0);
     BLAKE2B_ROUND(1);
@@ -806,7 +791,7 @@ inline uint64x2_p VectorShiftLeftOctet(const uint64x2_p a, const uint64x2_p b)
 #endif
 }
 
-#define vec_ext(a,b,c) VectorShiftLeftOctet<c*8>(a, b)
+#define vec_shl_octet(a,b,c) VectorShiftLeftOctet<c*8>(a, b)
 
 // vec_mergeh(a,b) is equivalent to vec_perm(a,b,HH_MASK); and
 // vec_mergel(a,b) is equivalent vec_perm(a,b,LL_MASK). Benchmarks
@@ -823,7 +808,7 @@ inline uint64x2_p VectorShiftLeftOctet(const uint64x2_p a, const uint64x2_p b)
 #  define vec_merge_lo(a,b) vec_mergel(a,b)
 #endif
 
-void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& state)
+void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2b_State& state)
 {
     // Permute masks. High is element 0 (most significant),
     // low is element 1 (least significant).
@@ -869,12 +854,12 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
     #define BLAKE2B_LOAD_MSG_1_2(b0, b1) \
     do { \
          b0 = vec_merge_hi(m5, m4); \
-         b1 = vec_ext(m7, m3, 1); \
+         b1 = vec_shl_octet(m7, m3, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_1_3(b0, b1) \
     do { \
-         b0 = vec_ext(m0, m0, 1); \
+         b0 = vec_shl_octet(m0, m0, 1); \
          b1 = vec_merge_lo(m5, m2); \
     } while(0)
 
@@ -886,7 +871,7 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     #define BLAKE2B_LOAD_MSG_2_1(b0, b1) \
     do { \
-         b0 = vec_ext(m5, m6, 1); \
+         b0 = vec_shl_octet(m5, m6, 1); \
          b1 = vec_merge_lo(m2, m7); \
     } while(0)
 
@@ -905,7 +890,7 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
     #define BLAKE2B_LOAD_MSG_2_4(b0, b1) \
        do { \
          b0 = vec_merge_hi(m7, m3); \
-         b1 = vec_ext(m0, m2, 1); \
+         b1 = vec_shl_octet(m0, m2, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_3_1(b0, b1) \
@@ -952,7 +937,7 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     #define BLAKE2B_LOAD_MSG_4_4(b0, b1) \
        do { \
-         b0 = vec_ext(m0, m6, 1); \
+         b0 = vec_shl_octet(m0, m6, 1); \
          b1 = vec_perm(m4, m6, HL_MASK); \
     } while(0)
 
@@ -989,13 +974,13 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
     #define BLAKE2B_LOAD_MSG_6_2(b0, b1) \
        do { \
          b0 = vec_merge_lo(m2, m7); \
-         b1 = vec_ext(m6, m5, 1); \
+         b1 = vec_shl_octet(m6, m5, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_6_3(b0, b1) \
        do { \
          b0 = vec_merge_hi(m0, m3); \
-         b1 = vec_ext(m4, m4, 1); \
+         b1 = vec_shl_octet(m4, m4, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_6_4(b0, b1) \
@@ -1012,7 +997,7 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     #define BLAKE2B_LOAD_MSG_7_2(b0, b1) \
        do { \
-         b0 = vec_ext(m5, m7, 1); \
+         b0 = vec_shl_octet(m5, m7, 1); \
          b1 = vec_merge_lo(m0, m4); \
     } while(0)
 
@@ -1031,19 +1016,19 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
     #define BLAKE2B_LOAD_MSG_8_1(b0, b1) \
        do { \
          b0 = vec_merge_hi(m3, m7); \
-         b1 = vec_ext(m5, m0, 1); \
+         b1 = vec_shl_octet(m5, m0, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_8_2(b0, b1) \
        do { \
          b0 = vec_merge_lo(m7, m4); \
-         b1 = vec_ext(m1, m4, 1); \
+         b1 = vec_shl_octet(m1, m4, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_8_3(b0, b1) \
        do { \
          b0 = m6; \
-         b1 = vec_ext(m0, m5, 1); \
+         b1 = vec_shl_octet(m0, m5, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_8_4(b0, b1) \
@@ -1072,7 +1057,7 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     #define BLAKE2B_LOAD_MSG_9_4(b0, b1) \
        do { \
-         b0 = vec_ext(m5, m7, 1); \
+         b0 = vec_shl_octet(m5, m7, 1); \
          b1 = vec_merge_hi(m6, m0); \
     } while(0)
 
@@ -1109,12 +1094,12 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
     #define BLAKE2B_LOAD_MSG_11_2(b0, b1) \
        do { \
          b0 = vec_merge_hi(m5, m4); \
-         b1 = vec_ext(m7, m3, 1); \
+         b1 = vec_shl_octet(m7, m3, 1); \
     } while(0)
 
     #define BLAKE2B_LOAD_MSG_11_3(b0, b1) \
        do { \
-         b0 = vec_ext(m0, m0, 1); \
+         b0 = vec_shl_octet(m0, m0, 1); \
          b1 = vec_merge_lo(m5, m2); \
     } while(0)
 
@@ -1159,19 +1144,19 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     #define BLAKE2B_DIAGONALIZE(row1l,row2l,row3l,row4l,row1h,row2h,row3h,row4h) \
     do { \
-      uint64x2_p t0 = vec_ext(row2l, row2h, 1); \
-      uint64x2_p t1 = vec_ext(row2h, row2l, 1); \
+      uint64x2_p t0 = vec_shl_octet(row2l, row2h, 1); \
+      uint64x2_p t1 = vec_shl_octet(row2h, row2l, 1); \
       row2l = t0; row2h = t1; t0 = row3l;  row3l = row3h; row3h = t0; \
-      t0 = vec_ext(row4h, row4l, 1); t1 = vec_ext(row4l, row4h, 1); \
+      t0 = vec_shl_octet(row4h, row4l, 1); t1 = vec_shl_octet(row4l, row4h, 1); \
       row4l = t0; row4h = t1; \
     } while(0)
 
     #define BLAKE2B_UNDIAGONALIZE(row1l,row2l,row3l,row4l,row1h,row2h,row3h,row4h) \
     do { \
-      uint64x2_p t0 = vec_ext(row2h, row2l, 1); \
-      uint64x2_p t1 = vec_ext(row2l, row2h, 1); \
+      uint64x2_p t0 = vec_shl_octet(row2h, row2l, 1); \
+      uint64x2_p t1 = vec_shl_octet(row2l, row2h, 1); \
       row2l = t0; row2h = t1; t0 = row3l; row3l = row3h; row3h = t0; \
-      t0 = vec_ext(row4l, row4h, 1); t1 = vec_ext(row4h, row4l, 1); \
+      t0 = vec_shl_octet(row4l, row4h, 1); t1 = vec_shl_octet(row4h, row4l, 1); \
       row4l = t0; row4h = t1; \
     } while(0)
 
@@ -1209,8 +1194,8 @@ void BLAKE2_Compress64_POWER8(const byte* input, BLAKE2_State<word64, true>& sta
 
     row3l = VectorLoad64(&BLAKE2B_IV[0]);
     row3h = VectorLoad64(&BLAKE2B_IV[2]);
-    row4l = vec_xor(VectorLoad64(&BLAKE2B_IV[4]), VectorLoad64(&state.t[0]));
-    row4h = vec_xor(VectorLoad64(&BLAKE2B_IV[6]), VectorLoad64(&state.f[0]));
+    row4l = vec_xor(VectorLoad64(&BLAKE2B_IV[4]), VectorLoad64(&state.tf[0]));
+    row4h = vec_xor(VectorLoad64(&BLAKE2B_IV[6]), VectorLoad64(&state.tf[2]));
 
     BLAKE2B_ROUND(0);
     BLAKE2B_ROUND(1);

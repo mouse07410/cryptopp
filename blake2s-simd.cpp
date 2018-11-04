@@ -1,6 +1,6 @@
-
 // blake2-simd.cpp - written and placed in the public domain by
-//                   Jeffrey Walton, Uri Blumenthal and Marcel Raad.
+//                   Samuel Neves, Jeffrey Walton, Uri Blumenthal
+//                   and Marcel Raad.
 //
 //    This source file uses intrinsics to gain access to ARMv7a/ARMv8a
 //    NEON, Power7 and SSE4.1 instructions. A separate source file is
@@ -16,7 +16,7 @@
 // Do so in both blake2.cpp and blake2-simd.cpp.
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
-// #undef CRYPTOPP_POWER7_AVAILABLE
+// #undef CRYPTOPP_ALTIVEC_AVAILABLE
 
 // Disable NEON/ASIMD for Cortex-A53 and A57. The shifts are too slow and C/C++ is about
 // 3 cpb faster than NEON/ASIMD. Also see http://github.com/weidai11/cryptopp/issues/367.
@@ -41,42 +41,24 @@
 # include <arm_acle.h>
 #endif
 
-#if defined(CRYPTOPP_POWER7_AVAILABLE)
+#if (CRYPTOPP_POWER7_AVAILABLE)
 # include "ppc-simd.h"
 #endif
 
-// Disable POWER7 on PowerPC big-endian machines. Blake2s/POWER7 runs slower than C++.
-#if defined(__powerpc__) && defined(__BIG_ENDIAN__)
-# undef CRYPTOPP_POWER7_AVAILABLE
-#endif
-
-ANONYMOUS_NAMESPACE_BEGIN
-
-using CryptoPP::word32;
-using CryptoPP::word64;
-
-#if (CRYPTOPP_SSE41_AVAILABLE || CRYPTOPP_ARM_NEON_AVAILABLE || CRYPTOPP_POWER7_AVAILABLE)
-
-CRYPTOPP_ALIGN_DATA(16)
-const word32 BLAKE2S_IV[8] = {
-    0x6A09E667UL, 0xBB67AE85UL, 0x3C6EF372UL, 0xA54FF53AUL,
-    0x510E527FUL, 0x9B05688CUL, 0x1F83D9ABUL, 0x5BE0CD19UL
-};
-
-#endif
-
-ANONYMOUS_NAMESPACE_END
-
 NAMESPACE_BEGIN(CryptoPP)
+
+// Exported by blake2.cpp
+extern const word32 BLAKE2S_IV[8];
+extern const word64 BLAKE2B_IV[8];
 
 #if CRYPTOPP_SSE41_AVAILABLE
 
-#define LOADU(p)  _mm_loadu_si128( (const __m128i *)(const void*)(p) )
+#define LOADU(p)  _mm_loadu_si128((const __m128i *)(const void*)(p))
 #define STOREU(p,r) _mm_storeu_si128((__m128i *)(void*)(p), r)
 #define TOF(reg) _mm_castsi128_ps((reg))
 #define TOI(reg) _mm_castps_si128((reg))
 
-void BLAKE2_Compress32_SSE4(const byte* input, BLAKE2_State<word32, false>& state)
+void BLAKE2_Compress32_SSE4(const byte* input, BLAKE2s_State& state)
 {
     #define BLAKE2S_LOAD_MSG_0_1(buf) \
     buf = TOI(_mm_shuffle_ps(TOF(m0), TOF(m1), _MM_SHUFFLE(2,0,2,0)));
@@ -296,35 +278,35 @@ void BLAKE2_Compress32_SSE4(const byte* input, BLAKE2_State<word32, false>& stat
 # define MM_ROTI_EPI32(r, c) ( \
       (8==-(c)) ? _mm_shuffle_epi8(r,r8) \
     : (16==-(c)) ? _mm_shuffle_epi8(r,r16) \
-    : _mm_xor_si128(_mm_srli_epi32( (r), -(c) ), \
-      _mm_slli_epi32( (r), 32-(-(c)) )) )
+    : _mm_xor_si128(_mm_srli_epi32((r), -(c)), \
+      _mm_slli_epi32((r), 32-(-(c)))))
 #endif
 
 #define BLAKE2S_G1(row1,row2,row3,row4,buf) \
-    row1 = _mm_add_epi32( _mm_add_epi32( row1, buf), row2 ); \
-    row4 = _mm_xor_si128( row4, row1 ); \
+    row1 = _mm_add_epi32(_mm_add_epi32(row1, buf), row2); \
+    row4 = _mm_xor_si128(row4, row1); \
     row4 = MM_ROTI_EPI32(row4, -16); \
-    row3 = _mm_add_epi32( row3, row4 );   \
-    row2 = _mm_xor_si128( row2, row3 ); \
+    row3 = _mm_add_epi32(row3, row4);   \
+    row2 = _mm_xor_si128(row2, row3); \
     row2 = MM_ROTI_EPI32(row2, -12);
 
 #define BLAKE2S_G2(row1,row2,row3,row4,buf) \
-    row1 = _mm_add_epi32( _mm_add_epi32( row1, buf), row2 ); \
-    row4 = _mm_xor_si128( row4, row1 ); \
+    row1 = _mm_add_epi32(_mm_add_epi32(row1, buf), row2); \
+    row4 = _mm_xor_si128(row4, row1); \
     row4 = MM_ROTI_EPI32(row4, -8); \
-    row3 = _mm_add_epi32( row3, row4 );   \
-    row2 = _mm_xor_si128( row2, row3 ); \
+    row3 = _mm_add_epi32(row3, row4);   \
+    row2 = _mm_xor_si128(row2, row3); \
     row2 = MM_ROTI_EPI32(row2, -7);
 
 #define DIAGONALIZE(row1,row2,row3,row4) \
-    row4 = _mm_shuffle_epi32( row4, _MM_SHUFFLE(2,1,0,3) ); \
-    row3 = _mm_shuffle_epi32( row3, _MM_SHUFFLE(1,0,3,2) ); \
-    row2 = _mm_shuffle_epi32( row2, _MM_SHUFFLE(0,3,2,1) );
+    row4 = _mm_shuffle_epi32(row4, _MM_SHUFFLE(2,1,0,3)); \
+    row3 = _mm_shuffle_epi32(row3, _MM_SHUFFLE(1,0,3,2)); \
+    row2 = _mm_shuffle_epi32(row2, _MM_SHUFFLE(0,3,2,1));
 
 #define UNDIAGONALIZE(row1,row2,row3,row4) \
-    row4 = _mm_shuffle_epi32( row4, _MM_SHUFFLE(0,3,2,1) ); \
-    row3 = _mm_shuffle_epi32( row3, _MM_SHUFFLE(1,0,3,2) ); \
-    row2 = _mm_shuffle_epi32( row2, _MM_SHUFFLE(2,1,0,3) );
+    row4 = _mm_shuffle_epi32(row4, _MM_SHUFFLE(0,3,2,1)); \
+    row3 = _mm_shuffle_epi32(row3, _MM_SHUFFLE(1,0,3,2)); \
+    row2 = _mm_shuffle_epi32(row2, _MM_SHUFFLE(2,1,0,3));
 
 #define BLAKE2S_ROUND(r)  \
     BLAKE2S_LOAD_MSG_ ##r ##_1(buf1); \
@@ -342,37 +324,37 @@ void BLAKE2_Compress32_SSE4(const byte* input, BLAKE2_State<word32, false>& stat
     __m128i buf1, buf2, buf3, buf4;
     __m128i t0, t1, t2, ff0, ff1;
 
-    const __m128i r8 = _mm_set_epi8( 12, 15, 14, 13, 8, 11, 10, 9, 4, 7, 6, 5, 0, 3, 2, 1 );
-    const __m128i r16 = _mm_set_epi8( 13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2 );
+    const __m128i r8 = _mm_set_epi8(12, 15, 14, 13, 8, 11, 10, 9, 4, 7, 6, 5, 0, 3, 2, 1);
+    const __m128i r16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
 
-    const __m128i m0 = LOADU( input + 00 );
-    const __m128i m1 = LOADU( input + 16 );
-    const __m128i m2 = LOADU( input + 32 );
-    const __m128i m3 = LOADU( input + 48 );
+    const __m128i m0 = LOADU(input + 00);
+    const __m128i m1 = LOADU(input + 16);
+    const __m128i m2 = LOADU(input + 32);
+    const __m128i m3 = LOADU(input + 48);
 
-    row1 = ff0 = LOADU( &state.h[0] );
-    row2 = ff1 = LOADU( &state.h[4] );
-    row3 = LOADU( &BLAKE2S_IV[0] );
-    row4 = _mm_xor_si128( LOADU( &BLAKE2S_IV[4] ), LOADU( &state.t[0] ) );
+    row1 = ff0 = LOADU(&state.h[0]);
+    row2 = ff1 = LOADU(&state.h[4]);
+    row3 = LOADU(&BLAKE2S_IV[0]);
+    row4 = _mm_xor_si128(LOADU(&BLAKE2S_IV[4]), LOADU(&state.tf[0]));
 
-    BLAKE2S_ROUND( 0 );
-    BLAKE2S_ROUND( 1 );
-    BLAKE2S_ROUND( 2 );
-    BLAKE2S_ROUND( 3 );
-    BLAKE2S_ROUND( 4 );
-    BLAKE2S_ROUND( 5 );
-    BLAKE2S_ROUND( 6 );
-    BLAKE2S_ROUND( 7 );
-    BLAKE2S_ROUND( 8 );
-    BLAKE2S_ROUND( 9 );
+    BLAKE2S_ROUND(0);
+    BLAKE2S_ROUND(1);
+    BLAKE2S_ROUND(2);
+    BLAKE2S_ROUND(3);
+    BLAKE2S_ROUND(4);
+    BLAKE2S_ROUND(5);
+    BLAKE2S_ROUND(6);
+    BLAKE2S_ROUND(7);
+    BLAKE2S_ROUND(8);
+    BLAKE2S_ROUND(9);
 
-    STOREU( &state.h[0], _mm_xor_si128( ff0, _mm_xor_si128( row1, row3 ) ) );
-    STOREU( &state.h[4], _mm_xor_si128( ff1, _mm_xor_si128( row2, row4 ) ) );
+    STOREU(&state.h[0], _mm_xor_si128(ff0, _mm_xor_si128(row1, row3)));
+    STOREU(&state.h[4], _mm_xor_si128(ff1, _mm_xor_si128(row2, row4)));
 }
 #endif  // CRYPTOPP_SSE41_AVAILABLE
 
 #if CRYPTOPP_ARM_NEON_AVAILABLE
-void BLAKE2_Compress32_NEON(const byte* input, BLAKE2_State<word32, false>& state)
+void BLAKE2_Compress32_NEON(const byte* input, BLAKE2s_State& state)
 {
     #define BLAKE2S_LOAD_MSG_0_1(buf) \
     do { uint32x2_t t0, t1; \
@@ -661,21 +643,17 @@ void BLAKE2_Compress32_NEON(const byte* input, BLAKE2_State<word32, false>& stat
       BLAKE2S_UNDIAGONALIZE(row1,row2,row3,row4); \
     } while(0)
 
-    CRYPTOPP_ASSERT(IsAlignedOn(&state.h[0],GetAlignmentOf<uint32x4_t>()));
-    CRYPTOPP_ASSERT(IsAlignedOn(&state.t[0],GetAlignmentOf<uint32x4_t>()));
-    CRYPTOPP_ASSERT(IsAlignedOn(&state.f[0],GetAlignmentOf<uint32x4_t>()));
-
-    const uint32x4_t m0 = vreinterpretq_u32_u8(vld1q_u8((input + 00)));
-    const uint32x4_t m1 = vreinterpretq_u32_u8(vld1q_u8((input + 16)));
-    const uint32x4_t m2 = vreinterpretq_u32_u8(vld1q_u8((input + 32)));
-    const uint32x4_t m3 = vreinterpretq_u32_u8(vld1q_u8((input + 48)));
+    const uint32x4_t m0 = vreinterpretq_u32_u8(vld1q_u8(input + 00));
+    const uint32x4_t m1 = vreinterpretq_u32_u8(vld1q_u8(input + 16));
+    const uint32x4_t m2 = vreinterpretq_u32_u8(vld1q_u8(input + 32));
+    const uint32x4_t m3 = vreinterpretq_u32_u8(vld1q_u8(input + 48));
 
     uint32x4_t row1, row2, row3, row4;
 
     const uint32x4_t f0 = row1 = vld1q_u32(&state.h[0]);
     const uint32x4_t f1 = row2 = vld1q_u32(&state.h[4]);
     row3 = vld1q_u32(&BLAKE2S_IV[0]);
-    row4 = veorq_u32(vld1q_u32(&BLAKE2S_IV[4]), vld1q_u32(&state.t[0]));
+    row4 = veorq_u32(vld1q_u32(&BLAKE2S_IV[4]), vld1q_u32(&state.tf[0]));
 
     BLAKE2S_ROUND(0);
     BLAKE2S_ROUND(1);
@@ -757,13 +735,15 @@ inline uint32x4_p VectorShiftLeftOctet(const uint32x4_p a)
 template <unsigned int E1, unsigned int E2>
 inline uint32x4_p VectorSet32(const uint32x4_p a, const uint32x4_p b)
 {
-    // Re-index
+    // Re-index. I'd like to use something like Z=Y*4 and then
+    // VectorShiftLeftOctet<Z>(b) but it crashes early Red Hat
+    // GCC compilers.
     enum {X=E1&3, Y=E2&3};
 
     // Don't care element
     const unsigned int DC = 31;
 
-    // Element 3 combinations
+    // Element 0 combinations
     if (X == 0 && Y == 0)
     {
         const uint8x16_p mask = {0,1,2,3, 16,17,18,19, DC,DC,DC,DC, DC,DC,DC,DC};
@@ -864,8 +844,7 @@ inline uint32x4_p VectorSet32(const uint32x4_p a, const uint32x4_p b,
 
     // Power7 follows SSE2's implementation, and this is _mm_set_epi32.
     const uint8x16_p mask = {20,21,22,23, 16,17,18,19, 4,5,6,7, 0,1,2,3};
-    const uint32x4_p r = vec_perm(t0, t1, mask);
-    return r;
+    return vec_perm(t0, t1, mask);
 }
 
 template<>
@@ -874,8 +853,7 @@ uint32x4_p VectorSet32<2,0,2,0>(const uint32x4_p a, const uint32x4_p b,
 {
     // a=b, c=d, mask is {2,0, 2,0}
     const uint8x16_p mask = {16,17,18,19, 24,25,26,27, 0,1,2,3, 8,9,10,11};
-    const uint32x4_p r = vec_perm(a, c, mask);
-    return r;
+    return vec_perm(a, c, mask);
 }
 
 template<>
@@ -884,11 +862,10 @@ uint32x4_p VectorSet32<3,1,3,1>(const uint32x4_p a, const uint32x4_p b,
 {
     // a=b, c=d, mask is {3,1, 3,1}
     const uint8x16_p mask = {20,21,22,23, 28,29,30,31, 4,5,6,7, 12,13,14,15};
-    const uint32x4_p r = vec_perm(a, c, mask);
-    return r;
+    return vec_perm(a, c, mask);
 }
 
-void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2_State<word32, false>& state)
+void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state)
 {
     # define m1 m0
     # define m2 m0
@@ -972,19 +949,19 @@ void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2_State<word32, false>& st
     #define vec_ror_7(x)  vec_rl(x, ROR7_MASK)
 
     #define BLAKE2S_G1(row1,row2,row3,row4,buf) \
-      row1 = vec_add( vec_add( row1, buf), row2 ); \
-      row4 = vec_xor( row4, row1 ); \
+      row1 = vec_add(vec_add(row1, buf), row2); \
+      row4 = vec_xor(row4, row1); \
       row4 = vec_ror_16(row4); \
-      row3 = vec_add( row3, row4 );   \
-      row2 = vec_xor( row2, row3 ); \
+      row3 = vec_add(row3, row4);   \
+      row2 = vec_xor(row2, row3); \
       row2 = vec_ror_12(row2);
 
     #define BLAKE2S_G2(row1,row2,row3,row4,buf) \
-      row1 = vec_add( vec_add( row1, buf), row2 ); \
-      row4 = vec_xor( row4, row1 ); \
+      row1 = vec_add(vec_add(row1, buf), row2); \
+      row4 = vec_xor(row4, row1); \
       row4 = vec_ror_8(row4); \
-      row3 = vec_add( row3, row4 );   \
-      row2 = vec_xor( row2, row3 ); \
+      row3 = vec_add(row3, row4);   \
+      row2 = vec_xor(row2, row3); \
       row2 = vec_ror_7(row2);
 
     const uint8x16_p D2103_MASK = {12,13,14,15, 0,1,2,3, 4,5,6,7, 8,9,10,11};
@@ -992,14 +969,14 @@ void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2_State<word32, false>& st
     const uint8x16_p D0321_MASK = {4,5,6,7, 8,9,10,11, 12,13,14,15, 0,1,2,3};
 
     #define BLAKE2S_DIAGONALIZE(row1,row2,row3,row4) \
-      row4 = vec_perm( row4, row4, D2103_MASK ); \
-      row3 = vec_perm( row3, row3, D1032_MASK ); \
-      row2 = vec_perm( row2, row2, D0321_MASK );
+      row4 = vec_perm(row4, row4, D2103_MASK); \
+      row3 = vec_perm(row3, row3, D1032_MASK); \
+      row2 = vec_perm(row2, row2, D0321_MASK);
 
     #define BLAKE2S_UNDIAGONALIZE(row1,row2,row3,row4) \
-      row4 = vec_perm( row4, row4, D0321_MASK ); \
-      row3 = vec_perm( row3, row3, D1032_MASK ); \
-      row2 = vec_perm( row2, row2, D2103_MASK );
+      row4 = vec_perm(row4, row4, D0321_MASK); \
+      row3 = vec_perm(row3, row3, D1032_MASK); \
+      row2 = vec_perm(row2, row2, D2103_MASK);
 
     #define BLAKE2S_ROUND(r)  \
       BLAKE2S_LOAD_MSG_ ##r ##_1(buf1); \
@@ -1022,44 +999,24 @@ void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2_State<word32, false>& st
     const uint32x4_p  m8 = VectorLoad32LE(input + 32);
     const uint32x4_p m12 = VectorLoad32LE(input + 48);
 
-    row1 = ff0 = VectorLoad32LE( &state.h[0] );
-    row2 = ff1 = VectorLoad32LE( &state.h[4] );
-    row3 = VectorLoad32( &BLAKE2S_IV[0] );
-    row4 = vec_xor( VectorLoad32( &BLAKE2S_IV[4] ), VectorLoad32( &state.t[0] ) );
+    row1 = ff0 = VectorLoad32LE(&state.h[0]);
+    row2 = ff1 = VectorLoad32LE(&state.h[4]);
+    row3 = VectorLoad32(&BLAKE2S_IV[0]);
+    row4 = vec_xor(VectorLoad32(&BLAKE2S_IV[4]), VectorLoad32(&state.tf[0]));
 
-    BLAKE2S_ROUND( 0 );
-    BLAKE2S_ROUND( 1 );
-    BLAKE2S_ROUND( 2 );
-    BLAKE2S_ROUND( 3 );
-    BLAKE2S_ROUND( 4 );
-    BLAKE2S_ROUND( 5 );
-    BLAKE2S_ROUND( 6 );
-    BLAKE2S_ROUND( 7 );
-    BLAKE2S_ROUND( 8 );
-    BLAKE2S_ROUND( 9 );
+    BLAKE2S_ROUND(0);
+    BLAKE2S_ROUND(1);
+    BLAKE2S_ROUND(2);
+    BLAKE2S_ROUND(3);
+    BLAKE2S_ROUND(4);
+    BLAKE2S_ROUND(5);
+    BLAKE2S_ROUND(6);
+    BLAKE2S_ROUND(7);
+    BLAKE2S_ROUND(8);
+    BLAKE2S_ROUND(9);
 
-    VectorStore32LE( &state.h[0], vec_xor( ff0, vec_xor( row1, row3 ) ) );
-    VectorStore32LE( &state.h[4], vec_xor( ff1, vec_xor( row2, row4 ) ) );
-
-    #undef m0
-    #undef m1
-    #undef m2
-    #undef m3
-
-    #undef m4
-    #undef m5
-    #undef m6
-    #undef m7
-
-    #undef m8
-    #undef m9
-    #undef m10
-    #undef m11
-
-    #undef m12
-    #undef m13
-    #undef m14
-    #undef m15
+    VectorStore32LE(&state.h[0], vec_xor(ff0, vec_xor(row1, row3)));
+    VectorStore32LE(&state.h[4], vec_xor(ff1, vec_xor(row2, row4)));
 }
 #endif  // CRYPTOPP_POWER7_AVAILABLE
 
