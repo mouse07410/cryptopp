@@ -27,7 +27,7 @@
 # include <arm_neon.h>
 #endif
 
-#if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+#if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
 #endif
@@ -53,6 +53,11 @@
 extern const char SHA_SIMD_FNAME[] = __FILE__;
 
 NAMESPACE_BEGIN(CryptoPP)
+
+// ***************** SHA key tables ********************
+
+extern const word32 SHA256_K[64];
+extern const word64 SHA512_K[80];
 
 // ***************** SIGILL probes ********************
 
@@ -283,10 +288,6 @@ bool CPU_ProbeSHA512()
 #endif  // PPC32 or PPC64
 
 // ***************** Intel x86 SHA ********************
-
-// provided by sha.cpp, 16-byte aigned
-extern const word32 SHA256_K[64];
-extern const word64 SHA512_K[80];
 
 /////////////////////////////////////
 // start of Walton and Gulley code //
@@ -1115,7 +1116,7 @@ void VectorStore32x4u(const uint32x4_p8 val, T* data, int offset)
 template <class T> static inline
 uint32x4_p8 VectorLoadMsg32x4(const T* data, int offset)
 {
-#if defined(CRYPTOPP_LITTLE_ENDIAN)
+#if (CRYPTOPP_LITTLE_ENDIAN)
     const uint8x16_p8 mask = {3,2,1,0, 7,6,5,4, 11,10,9,8, 15,14,13,12};
     const uint32x4_p8 r = VectorLoad32x4u(data, offset);
     return (uint32x4_p8)vec_perm(r, r, mask);
@@ -1190,7 +1191,7 @@ uint32x4_p8 VectorPack(const uint32x4_p8 a, const uint32x4_p8 b,
 template <unsigned int L> static inline
 uint32x4_p8 VectorShiftLeft(const uint32x4_p8 val)
 {
-#if (defined(CRYPTOPP_LITTLE_ENDIAN))
+#if (CRYPTOPP_LITTLE_ENDIAN)
     return (uint32x4_p8)vec_sld((uint8x16_p8)val, (uint8x16_p8)val, (16-L)&0xf);
 #else
     return (uint32x4_p8)vec_sld((uint8x16_p8)val, (uint8x16_p8)val, L&0xf);
@@ -1253,7 +1254,7 @@ void SHA256_HashMultipleBlocks_POWER8(word32 *state, const word32 *data, size_t 
     size_t blocks = length / SHA256::BLOCKSIZE;
     while (blocks--)
     {
-        unsigned int i, offset=0;
+        unsigned int offset=0;
 
         S[A] = abcd; S[E] = efgh;
         S[B] = VectorShiftLeft<4>(S[A]);
@@ -1263,81 +1264,79 @@ void SHA256_HashMultipleBlocks_POWER8(word32 *state, const word32 *data, size_t 
         S[D] = VectorShiftLeft<4>(S[C]);
         S[H] = VectorShiftLeft<4>(S[G]);
 
-        // Unroll the loop to provide the round number as a constexpr
-        // for (unsigned int i=0; i<16; ++i)
-        {
-            vk = VectorLoad32x4u(k, offset);
-            vm = VectorLoadMsg32x4(m, offset);
-            SHA256_ROUND1<0>(W,S, vk,vm);
-            offset+=16;
+        // Rounds 0-16
+        vk = VectorLoad32x4u(k, offset);
+        vm = VectorLoadMsg32x4(m, offset);
+        SHA256_ROUND1<0>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<1>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<1>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<2>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<2>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<3>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<3>(W,S, vk,vm);
 
-            vk = VectorLoad32x4u(k, offset);
-            vm = VectorLoadMsg32x4(m, offset);
-            SHA256_ROUND1<4>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad32x4u(k, offset);
+        vm = VectorLoadMsg32x4(m, offset);
+        SHA256_ROUND1<4>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<5>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<5>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<6>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<6>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<7>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<7>(W,S, vk,vm);
 
-            vk = VectorLoad32x4u(k, offset);
-            vm = VectorLoadMsg32x4(m, offset);
-            SHA256_ROUND1<8>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad32x4u(k, offset);
+        vm = VectorLoadMsg32x4(m, offset);
+        SHA256_ROUND1<8>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<9>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<9>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<10>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<10>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<11>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<11>(W,S, vk,vm);
 
-            vk = VectorLoad32x4u(k, offset);
-            vm = VectorLoadMsg32x4(m, offset);
-            SHA256_ROUND1<12>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad32x4u(k, offset);
+        vm = VectorLoadMsg32x4(m, offset);
+        SHA256_ROUND1<12>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<13>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<13>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<14>(W,S, vk,vm);
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<14>(W,S, vk,vm);
 
-            vk = VectorShiftLeft<4>(vk);
-            vm = VectorShiftLeft<4>(vm);
-            SHA256_ROUND1<15>(W,S, vk,vm);
-        }
+        vk = VectorShiftLeft<4>(vk);
+        vm = VectorShiftLeft<4>(vm);
+        SHA256_ROUND1<15>(W,S, vk,vm);
 
         m += 16; // 32-bit words, not bytes
 
-        for (i=16; i<64; i+=16)
+        // Rounds 16-64
+        for (unsigned int i=16; i<64; i+=16)
         {
             vk = VectorLoad32x4u(k, offset);
             SHA256_ROUND2<0>(W,S, vk);
@@ -1409,7 +1408,7 @@ void VectorStore64x2u(const uint64x2_p8 val, T* data, int offset)
 template <class T> static inline
 uint64x2_p8 VectorLoadMsg64x2(const T* data, int offset)
 {
-#if defined(CRYPTOPP_LITTLE_ENDIAN)
+#if (CRYPTOPP_LITTLE_ENDIAN)
     const uint8x16_p8 mask = {0,1,2,3, 4,5,6,7, 8,9,10,11, 12,13,14,15};
     return VectorPermute64x2(VectorLoad64x2u(data, offset), mask);
 #else
@@ -1481,7 +1480,7 @@ uint64x2_p8 VectorPack(const uint64x2_p8 x, const uint64x2_p8 y)
 template <unsigned int L> static inline
 uint64x2_p8 VectorShiftLeft(const uint64x2_p8 val)
 {
-#if (defined(CRYPTOPP_LITTLE_ENDIAN))
+#if (CRYPTOPP_LITTLE_ENDIAN)
     return (uint64x2_p8)vec_sld((uint8x16_p8)val, (uint8x16_p8)val, (16-L)&0xf);
 #else
     return (uint64x2_p8)vec_sld((uint8x16_p8)val, (uint8x16_p8)val, L&0xf);
@@ -1546,7 +1545,7 @@ void SHA512_HashMultipleBlocks_POWER8(word64 *state, const word64 *data, size_t 
     size_t blocks = length / SHA512::BLOCKSIZE;
     while (blocks--)
     {
-        unsigned int i, offset=0;
+        unsigned int offset=0;
 
         S[A] = ab; S[C] = cd;
         S[E] = ef; S[G] = gh;
@@ -1555,85 +1554,83 @@ void SHA512_HashMultipleBlocks_POWER8(word64 *state, const word64 *data, size_t 
         S[F] = VectorShiftLeft<8>(S[E]);
         S[H] = VectorShiftLeft<8>(S[G]);
 
-        // Unroll the loop to provide the round number as a constexpr
-        // for (unsigned int i=0; i<16; ++i)
-        {
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<0>(W,S, vk,vm);
-            offset+=16;
+        // Rounds 0-16
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<0>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<1>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<1>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<2>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<2>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<3>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<3>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<4>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<4>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<5>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<5>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<6>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<6>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<7>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<7>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<8>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<8>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<9>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<9>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<10>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<10>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<11>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<11>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<12>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<12>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<13>(W,S, vk,vm);
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<13>(W,S, vk,vm);
 
-            vk = VectorLoad64x2u(k, offset);
-            vm = VectorLoadMsg64x2(m, offset);
-            SHA512_ROUND1<14>(W,S, vk,vm);
-            offset+=16;
+        vk = VectorLoad64x2u(k, offset);
+        vm = VectorLoadMsg64x2(m, offset);
+        SHA512_ROUND1<14>(W,S, vk,vm);
+        offset+=16;
 
-            vk = VectorShiftLeft<8>(vk);
-            vm = VectorShiftLeft<8>(vm);
-            SHA512_ROUND1<15>(W,S, vk,vm);
-        }
+        vk = VectorShiftLeft<8>(vk);
+        vm = VectorShiftLeft<8>(vm);
+        SHA512_ROUND1<15>(W,S, vk,vm);
 
         m += 16; // 64-bit words, not bytes
 
-        for (i=16 ; i<80; i+=16)
+        // Rounds 16-80
+        for (unsigned int i=16; i<80; i+=16)
         {
             vk = VectorLoad64x2u(k, offset);
             SHA512_ROUND2<0>(W,S, vk);

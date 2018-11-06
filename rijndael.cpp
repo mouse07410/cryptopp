@@ -88,6 +88,14 @@ being unloaded from L1 cache, until that round is finished.
 #include "misc.h"
 #include "cpu.h"
 
+// MSVC bug, still don't know how to fix it. TODO, figure out
+// when we can re-enable optimizations for MSVC. Also see
+// https://github.com/weidai11/cryptopp/issues/649
+#if defined(_MSC_VER) && (_MSC_VER >= 1910)
+# pragma optimize("", off)
+# pragma optimize("ts", on)
+#endif
+
 NAMESPACE_BEGIN(CryptoPP)
 
 // Hack for http://github.com/weidai11/cryptopp/issues/42 and http://github.com/weidai11/cryptopp/issues/132
@@ -119,15 +127,6 @@ CRYPTOPP_ALIGN_DATA(16) static word32 Td[256*4];
 static volatile bool s_TeFilled = false, s_TdFilled = false;
 
 ANONYMOUS_NAMESPACE_BEGIN
-
-CRYPTOPP_ALIGN_DATA(16)
-const word32 s_one[] = {0, 0, 0, 1<<24};
-
-/* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
-CRYPTOPP_ALIGN_DATA(16)
-const word32 s_rconLE[] = {
-	0x01, 0x02, 0x04, 0x08,	0x10, 0x20, 0x40, 0x80,	0x1B, 0x36
-};
 
 #if CRYPTOPP_BOOL_X64 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X86
 
@@ -212,7 +211,7 @@ ANONYMOUS_NAMESPACE_END
 #define QUARTER_ROUND_E(t, a, b, c, d)		QUARTER_ROUND(TL_M, Te, t, a, b, c, d)
 #define QUARTER_ROUND_D(t, a, b, c, d)		QUARTER_ROUND(TL_M, Td, t, a, b, c, d)
 
-#ifdef CRYPTOPP_LITTLE_ENDIAN
+#if (CRYPTOPP_LITTLE_ENDIAN)
 	#define QUARTER_ROUND_FE(t, a, b, c, d)		QUARTER_ROUND(TL_F, Te, t, d, c, b, a)
 	#define QUARTER_ROUND_FD(t, a, b, c, d)		QUARTER_ROUND(TL_F, Td, t, d, c, b, a)
 	#if defined(CRYPTOPP_ALLOW_RIJNDAEL_UNALIGNED_DATA_ACCESS)

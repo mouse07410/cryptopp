@@ -9,23 +9,24 @@
 // ***************** Important Settings ********************
 
 // define this if running on a big-endian CPU
+// big endian will be assumed if CRYPTOPP_LITTLE_ENDIAN is not non-0
 #if !defined(CRYPTOPP_LITTLE_ENDIAN) && !defined(CRYPTOPP_BIG_ENDIAN) && (defined(__BIG_ENDIAN__) || (defined(__s390__) || defined(__s390x__) || defined(__zarch__)) || (defined(__m68k__) || defined(__MC68K__)) || defined(__sparc) || defined(__sparc__) || defined(__hppa__) || defined(__MIPSEB__) || defined(__ARMEB__) || (defined(__MWERKS__) && !defined(__INTEL__)))
 #	define CRYPTOPP_BIG_ENDIAN 1
 #endif
 
 // define this if running on a little-endian CPU
-// big endian will be assumed if CRYPTOPP_LITTLE_ENDIAN is not defined
+// big endian will be assumed if CRYPTOPP_LITTLE_ENDIAN is not non-0
 #if !defined(CRYPTOPP_BIG_ENDIAN) && !defined(CRYPTOPP_LITTLE_ENDIAN)
 #	define CRYPTOPP_LITTLE_ENDIAN 1
 #endif
 
 // Sanity checks. Some processors have more than big, little and bi-endian modes. PDP mode, where order results in "4312", should
 // raise red flags immediately. Additionally, mis-classified machines, like (previosuly) S/390, should raise red flags immediately.
-#if defined(CRYPTOPP_BIG_ENDIAN) && defined(__GNUC__) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__)
-# error "CRYPTOPP_BIG_ENDIAN is set, but __BYTE_ORDER__ is not __ORDER_BIG_ENDIAN__"
+#if (CRYPTOPP_BIG_ENDIAN) && defined(__GNUC__) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__)
+# error "(CRYPTOPP_BIG_ENDIAN) is set, but __BYTE_ORDER__ is not __ORDER_BIG_ENDIAN__"
 #endif
-#if defined(CRYPTOPP_LITTLE_ENDIAN) && defined(__GNUC__) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
-# error "CRYPTOPP_LITTLE_ENDIAN is set, but __BYTE_ORDER__ is not __ORDER_LITTLE_ENDIAN__"
+#if (CRYPTOPP_LITTLE_ENDIAN) && defined(__GNUC__) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+# error "(CRYPTOPP_LITTLE_ENDIAN) is set, but __BYTE_ORDER__ is not __ORDER_LITTLE_ENDIAN__"
 #endif
 
 // Define this if you want to disable all OS-dependent features,
@@ -58,7 +59,8 @@
 // compiled using C++ only. The library code will not include SSE2 (and
 // above), NEON, Aarch32, Aarch64, Power4, Power7 or Power8. Note the compiler
 // may use higher ISAs depending on compiler options, but the library will not
-// explictly use the ISAs.
+// explictly use the ISAs. When disabling ASM, it is best to do it from
+// config.h to ensure the library and all programs share the setting.
 // #define CRYPTOPP_DISABLE_ASM 1
 
 // https://github.com/weidai11/cryptopp/issues/719
@@ -496,7 +498,7 @@ NAMESPACE_END
 		#define CRYPTOPP_SSE2_ASM_AVAILABLE 1
 	#endif
 
-	#if !defined(CRYPTOPP_DISABLE_SSSE3) && (_MSC_VER >= 1500 || defined(__SSSE3__))
+	#if !defined(CRYPTOPP_DISABLE_SSSE3) && (_MSC_VER >= 1500 || CRYPTOPP_GCC_VERSION >= 40300 || defined(__SSSE3__))
 		#define CRYPTOPP_SSSE3_ASM_AVAILABLE 1
 	#endif
 #endif
@@ -510,7 +512,7 @@ NAMESPACE_END
 #endif
 
 // 32-bit SunCC does not enable SSE2 by default.
-#if !defined(CRYPTOPP_DISABLE_ASM) && (defined(_MSC_VER) || defined(__SSE2__))
+#if !defined(CRYPTOPP_DISABLE_ASM) && (defined(_MSC_VER) || CRYPTOPP_GCC_VERSION >= 30300 || defined(__SSE2__))
 	#define CRYPTOPP_SSE2_INTRIN_AVAILABLE 1
 #endif
 
@@ -605,7 +607,7 @@ NAMESPACE_END
 
 // We don't have an ARM big endian test rig. Disable
 // ARM-BE ASM and instrinsics until we can test it.
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
 # define CRYPTOPP_DISABLE_ASM 1
 #endif
 

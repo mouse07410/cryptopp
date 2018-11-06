@@ -24,6 +24,7 @@
 // we needed them for the SIMD and non-SIMD files. When the SIMD file is
 // compiled it may only get -mcpu=power4 or -mcpu=power7, so the POWER7
 // or POWER8 stuff is not actually available when this header is included.
+// We also need to handle the case of -DCRYPTOPP_ALTIVEC_AVAILABLE=0.
 #if !defined(__ALTIVEC__)
 # undef CRYPTOPP_ALTIVEC_AVAILABLE
 #endif
@@ -39,27 +40,38 @@
 # undef CRYPTOPP_POWER8_SHA_AVAILABLE
 #endif
 
-#if defined(CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 # include <altivec.h>
 # undef vector
 # undef pixel
 # undef bool
 #endif
 
+#if !(CRYPTOPP_ALTIVEC_AVAILABLE)
+# undef CRYPTOPP_POWER7_AVAILABLE
+# undef CRYPTOPP_POWER8_AVAILABLE
+# undef CRYPTOPP_POWER8_AES_AVAILABLE
+# undef CRYPTOPP_POWER8_VMULL_AVAILABLE
+# undef CRYPTOPP_POWER8_SHA_AVAILABLE
+#endif
+
 NAMESPACE_BEGIN(CryptoPP)
 
+// Wrap everything in this file based on CRYPTOPP_ALTIVEC_AVAILABLE
+#if (CRYPTOPP_ALTIVEC_AVAILABLE)
+
 // Datatypes
-#if defined(CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 typedef __vector unsigned char   uint8x16_p;
 typedef __vector unsigned short  uint16x8_p;
 typedef __vector unsigned int    uint32x4_p;
-#if defined(CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 typedef __vector unsigned long long uint64x2_p;
 #endif  // POWER8 datatypes
 #endif  // ALTIVEC datatypes
 
 // Applies to all POWER machines
-#if defined(CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_ALTIVEC_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief Reverse a vector
 /// \tparam T vector type
@@ -73,6 +85,21 @@ inline T Reverse(const T& src)
 {
     const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
     return (T)vec_perm(src, src, mask);
+}
+
+/// \brief Permutes a vector
+/// \tparam T vector type
+/// \param vec the vector
+/// \param mask vector mask
+/// \returns vector
+/// \details VectorPermute returns a new vector from vec based on
+///   mask. mask is an uint8x16_p type vector. The return
+///   vector is the same type as vec.
+/// \since Crypto++ 6.0
+template <class T1, class T2>
+inline T1 VectorPermute(const T1& vec, const T2& mask)
+{
+    return (T1)vec_perm(vec, vec, (uint8x16_p)mask);
 }
 
 /// \brief Permutes two vectors
@@ -90,21 +117,6 @@ template <class T1, class T2>
 inline T1 VectorPermute(const T1& vec1, const T1& vec2, const T2& mask)
 {
     return (T1)vec_perm(vec1, vec2, (uint8x16_p)mask);
-}
-
-/// \brief Permutes a vector
-/// \tparam T vector type
-/// \param vec the vector
-/// \param mask vector mask
-/// \returns vector
-/// \details VectorPermute returns a new vector from vec based on
-///   mask. mask is an uint8x16_p type vector. The return
-///   vector is the same type as vec.
-/// \since Crypto++ 6.0
-template <class T1, class T2>
-inline T1 VectorPermute(const T1& vec, const T2& mask)
-{
-    return (T1)vec_perm(vec, vec, (uint8x16_p)mask);
 }
 
 /// \brief AND two vectors
@@ -218,7 +230,7 @@ inline T VectorShiftLeft(const T& vec)
     }
     else
     {
-#if CRYPTOPP_BIG_ENDIAN
+#if (CRYPTOPP_BIG_ENDIAN)
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)zero, C);
 #else
     return (T)vec_sld((uint8x16_p)zero, (uint8x16_p)vec, 16-C);
@@ -261,7 +273,7 @@ inline T VectorShiftRight(const T& vec)
     }
     else
     {
-#if CRYPTOPP_BIG_ENDIAN
+#if (CRYPTOPP_BIG_ENDIAN)
     return (T)vec_sld((uint8x16_p)zero, (uint8x16_p)vec, 16-C);
 #else
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)zero, C);
@@ -284,7 +296,7 @@ template <unsigned int C, class T>
 inline T VectorRotateLeft(const T& vec)
 {
     enum { R = C&0xf };
-#if CRYPTOPP_BIG_ENDIAN
+#if (CRYPTOPP_BIG_ENDIAN)
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)vec, R);
 #else
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)vec, 16-R);
@@ -306,7 +318,7 @@ template <unsigned int C, class T>
 inline T VectorRotateRight(const T& vec)
 {
     enum { R = C&0xf };
-#if CRYPTOPP_BIG_ENDIAN
+#if (CRYPTOPP_BIG_ENDIAN)
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)vec, 16-R);
 #else
     return (T)vec_sld((uint8x16_p)vec, (uint8x16_p)vec, R);
@@ -337,7 +349,7 @@ inline T VectorGetLow(const T& val)
 {
     //const T zero = {0};
     //const uint8x16_p mask = {16,16,16,16, 16,16,16,16, 8,9,10,11, 12,13,14,15 };
-    //return (T)vec_perm(val, zero, mask);
+    //return (T)vec_perm(zero, val, mask);
     return VectorShiftRight<8>(VectorShiftLeft<8>(val));
 }
 
@@ -354,7 +366,7 @@ inline T VectorGetHigh(const T& val)
 {
     //const T zero = {0};
     //const uint8x16_p mask = {16,16,16,16, 16,16,16,16, 0,1,2,3, 4,5,6,7 };
-    //return (T)vec_perm(val, zero, mask);
+    //return (T)vec_perm(zero, val, mask);
     return VectorShiftRight<8>(val);
 }
 
@@ -385,7 +397,7 @@ inline bool VectorNotEqual(const T1& vec1, const T2& vec2)
 #endif  // POWER4 and above
 
 // POWER7/POWER4 load and store
-#if defined(CRYPTOPP_POWER7_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_POWER7_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief Loads a vector from a byte array
 /// \param src the byte array
@@ -399,7 +411,7 @@ inline uint32x4_p VectorLoadBE(const byte src[16])
 #if defined(CRYPTOPP_XLC_VERSION)
     return (uint32x4_p)vec_xl_be(0, (byte*)src);
 #else
-# if defined(CRYPTOPP_BIG_ENDIAN)
+# if (CRYPTOPP_BIG_ENDIAN)
     return (uint32x4_p)vec_vsx_ld(0, src);
 # else
     return (uint32x4_p)Reverse(vec_vsx_ld(0, src));
@@ -420,7 +432,7 @@ inline uint32x4_p VectorLoadBE(int off, const byte src[16])
 #if defined(CRYPTOPP_XLC_VERSION)
     return (uint32x4_p)vec_xl_be(off, (byte*)src);
 #else
-# if defined(CRYPTOPP_BIG_ENDIAN)
+# if (CRYPTOPP_BIG_ENDIAN)
     return (uint32x4_p)vec_vsx_ld(off, (byte*)src);
 # else
     return (uint32x4_p)Reverse(vec_vsx_ld(off, (byte*)src));
@@ -497,7 +509,7 @@ inline void VectorStoreBE(const T& src, byte dest[16])
 #if defined(CRYPTOPP_XLC_VERSION)
     vec_xst_be((uint8x16_p)src, 0, (byte*)dest);
 #else
-# if defined(CRYPTOPP_BIG_ENDIAN)
+# if (CRYPTOPP_BIG_ENDIAN)
     vec_vsx_st((uint8x16_p)src, 0, (byte*)dest);
 # else
     vec_vsx_st((uint8x16_p)Reverse(src), 0, (byte*)dest);
@@ -521,7 +533,7 @@ inline void VectorStoreBE(const T& src, int off, byte dest[16])
 #if defined(CRYPTOPP_XLC_VERSION)
     vec_xst_be((uint8x16_p)src, off, (byte*)dest);
 #else
-# if defined(CRYPTOPP_BIG_ENDIAN)
+# if (CRYPTOPP_BIG_ENDIAN)
     vec_vsx_st((uint8x16_p)src, off, (byte*)dest);
 # else
     vec_vsx_st((uint8x16_p)Reverse(src), off, (byte*)dest);
@@ -538,6 +550,23 @@ inline void VectorStoreBE(const T& src, int off, byte dest[16])
 /// \since Crypto++ 6.0
 template<class T>
 inline void VectorStore(const T& src, byte dest[16])
+{
+#if defined(CRYPTOPP_XLC_VERSION)
+    vec_xst((uint8x16_p)src, 0, (byte*)dest);
+#else
+    vec_vsx_st((uint8x16_p)src, 0, (byte*)dest);
+#endif
+}
+
+/// \brief Stores a vector to a byte array
+/// \tparam T vector type
+/// \param src the vector
+/// \param dest the byte array
+/// \details Stores a vector in native endian format to a byte array.
+/// \note VectorStore does not require an aligned array.
+/// \since Crypto++ 6.0
+template<class T>
+inline void VectorStore(byte dest[16], const T& src)
 {
 #if defined(CRYPTOPP_XLC_VERSION)
     vec_xst((uint8x16_p)src, 0, (byte*)dest);
@@ -643,7 +672,7 @@ inline uint32x4_p VectorLoad(int off, const word32 src[4])
 /// \since Crypto++ 6.0
 inline uint32x4_p VectorLoadBE(const byte src[16])
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     return (uint32x4_p)VectorLoad(src);
 #else
     return (uint32x4_p)Reverse(VectorLoad(src));
@@ -684,7 +713,7 @@ inline void VectorStore(const T& data, byte dest[16])
 template <class T>
 inline void VectorStoreBE(const T& src, byte dest[16])
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     VectorStore(src, dest);
 #else
     VectorStore(Reverse(src), dest);
@@ -694,7 +723,7 @@ inline void VectorStoreBE(const T& src, byte dest[16])
 #endif  // POWER4/POWER7 load and store
 
 // POWER8 crypto
-#if defined(CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief One round of AES encryption
 /// \tparam T1 vector type
@@ -778,7 +807,7 @@ inline T1 VectorDecryptLast(const T1& state, const T2& key)
 
 #endif  // POWER8 crypto
 
-#if defined(CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if (CRYPTOPP_POWER8_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief SHA256 Sigma functions
 /// \tparam func function
@@ -821,6 +850,8 @@ inline T VectorSHA512(const T& vec)
 }
 
 #endif  // POWER8 crypto
+
+#endif  // CRYPTOPP_ALTIVEC_AVAILABLE
 
 NAMESPACE_END
 

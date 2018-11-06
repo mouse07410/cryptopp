@@ -1,6 +1,7 @@
 // chacha.h - written and placed in the public domain by Jeffrey Walton.
-//            Based on Wei Dai's Salsa20 and Bernstein's reference ChaCha
-//            family implementation at http://cr.yp.to/chacha.html.
+//            Based on Wei Dai's Salsa20, Botan's SSE2 implementation,
+//            and Bernstein's reference ChaCha family implementation at
+//            http://cr.yp.to/chacha.html.
 
 /// \file chacha.h
 /// \brief Classes for ChaCha8, ChaCha12 and ChaCha20 stream ciphers
@@ -22,9 +23,16 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \since Crypto++ 5.6.4
 struct ChaCha_Info : public VariableKeyLength<32, 16, 32, 16, SimpleKeyingInterface::UNIQUE_IV, 8>
 {
-	static const char* StaticAlgorithmName() {
-		return "ChaCha";
-	}
+    /// \brief The algorithm name
+    /// \returns the algorithm name
+    /// \details StaticAlgorithmName returns the algorithm's name as a static
+    ///   member function.
+    /// \details Bernstein named the cipher variants ChaCha8, ChaCha12 and
+    ///   ChaCha20. More generally, Bernstein called the family ChaCha{r}.
+    ///   AlgorithmName() provides the exact name once rounds are set.
+    static const char* StaticAlgorithmName() {
+        return "ChaCha";
+    }
 };
 
 /// \brief ChaCha stream cipher implementation
@@ -32,16 +40,26 @@ struct ChaCha_Info : public VariableKeyLength<32, 16, 32, 16, SimpleKeyingInterf
 class CRYPTOPP_NO_VTABLE ChaCha_Policy : public AdditiveCipherConcretePolicy<word32, 16>
 {
 protected:
-	void CipherSetKey(const NameValuePairs &params, const byte *key, size_t length);
-	void OperateKeystream(KeystreamOperation operation, byte *output, const byte *input, size_t iterationCount);
-	void CipherResynchronize(byte *keystreamBuffer, const byte *IV, size_t length);
-	bool CipherIsRandomAccess() const {return false;} // TODO
-	void SeekToIteration(lword iterationCount);
-	unsigned int GetAlignment() const;
-	unsigned int GetOptimalBlockSize() const;
+    void CipherSetKey(const NameValuePairs &params, const byte *key, size_t length);
+    void OperateKeystream(KeystreamOperation operation, byte *output, const byte *input, size_t iterationCount);
+    void CipherResynchronize(byte *keystreamBuffer, const byte *IV, size_t length);
+    bool CipherIsRandomAccess() const {return true;}
+    void SeekToIteration(lword iterationCount);
+    unsigned int GetAlignment() const;
+    unsigned int GetOptimalBlockSize() const;
 
-	FixedSizeAlignedSecBlock<word32, 16> m_state;
-	int m_rounds;
+    std::string AlgorithmName() const;
+    std::string AlgorithmProvider() const;
+
+    // MultiBlockSafe detects a condition that can arise in the SIMD
+    // implementations where we overflow one of the 32-bit state words
+    // during addition in an intermediate result. Conditions to trigger
+    // issue include a user seeks to around 2^32 blocks (256 GB of data).
+    // https://github.com/weidai11/cryptopp/issues/732
+    bool MultiBlockSafe() const;
+
+    FixedSizeAlignedSecBlock<word32, 16> m_state;
+    int m_rounds;
 };
 
 /// \brief ChaCha stream cipher
@@ -54,8 +72,8 @@ protected:
 /// \since Crypto++ 5.6.4
 struct ChaCha : public ChaCha_Info, public SymmetricCipherDocumentation
 {
-	typedef SymmetricCipherFinal<ConcretePolicyHolder<ChaCha_Policy, AdditiveCipherTemplate<> >, ChaCha_Info > Encryption;
-	typedef Encryption Decryption;
+    typedef SymmetricCipherFinal<ConcretePolicyHolder<ChaCha_Policy, AdditiveCipherTemplate<> >, ChaCha_Info > Encryption;
+    typedef Encryption Decryption;
 };
 
 NAMESPACE_END

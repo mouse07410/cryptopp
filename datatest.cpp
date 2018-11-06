@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cerrno>
 
 // Aggressive stack checking with VS2005 SP1 and above.
 #if (_MSC_FULL_VER >= 140050727)
@@ -28,6 +29,12 @@
 
 #if CRYPTOPP_MSC_VERSION
 # pragma warning(disable: 4505 4355)
+#endif
+
+#ifdef _MSC_VER
+# define STRTOUL64 _strtoui64
+#else
+# define STRTOUL64 strtoull
 #endif
 
 NAMESPACE_BEGIN(CryptoPP)
@@ -44,8 +51,37 @@ public:
 
 static const TestData *s_currentTestData = NULLPTR;
 
+std::string TrimComment(std::string str)
+{
+	if (str.empty()) return "";
+
+	std::string::size_type first = str.find("#");
+
+	if (first != std::string::npos)
+		return str.substr(0, first);
+	else
+		return str;
+}
+
+std::string TrimSpace(std::string str)
+{
+	if (str.empty()) return "";
+
+	const std::string whitespace(" \r\t\n");
+	std::string::size_type beg = str.find_first_not_of(whitespace);
+	std::string::size_type end = str.find_last_not_of(whitespace);
+
+	if (beg != std::string::npos && end != std::string::npos)
+		return str.substr(beg, end+1);
+	else if (beg != std::string::npos)
+		return str.substr(beg);
+	else
+		return "";
+}
+
 static void OutputTestData(const TestData &v)
 {
+	std::cerr << "\n";
 	for (TestData::const_iterator i = v.begin(); i != v.end(); ++i)
 	{
 		std::cerr << i->first << ": " << i->second << std::endl;
@@ -64,10 +100,14 @@ static void SignalUnknownAlgorithmError(const std::string& algType)
 	throw Exception(Exception::OTHER_ERROR, "Unknown algorithm " + algType + " during validation test");
 }
 
-static void SignalTestError()
+static void SignalTestError(const char* msg = NULLPTR)
 {
 	OutputTestData(*s_currentTestData);
-	throw Exception(Exception::OTHER_ERROR, "Unexpected error during validation test");
+
+	if (msg)
+		throw Exception(Exception::OTHER_ERROR, msg);
+	else
+		throw Exception(Exception::OTHER_ERROR, "Unexpected error during validation test");
 }
 
 bool DataExists(const TestData &data, const char *name)
@@ -80,7 +120,10 @@ const std::string & GetRequiredDatum(const TestData &data, const char *name)
 {
 	TestData::const_iterator i = data.find(name);
 	if (i == data.end())
-		SignalTestError();
+	{
+		std::string msg("Required datum \"" + std::string(name) + "\" missing");
+		SignalTestError(msg.c_str());
+	}
 	return i->second;
 }
 
@@ -220,6 +263,16 @@ public:
 
 		if (valueType == typeid(int))
 			*reinterpret_cast<int *>(pValue) = atoi(value.c_str());
+		else if (valueType == typeid(word64))
+		{
+			std::string x(value); errno = 0;
+			const char* beg = &x[0];
+			char* end = &x[0] + value.size();
+
+			*reinterpret_cast<word64*>(pValue) = STRTOUL64(beg, &end, 0);
+			if (errno != 0)
+				return false;
+		}
 		else if (valueType == typeid(Integer))
 			*reinterpret_cast<Integer *>(pValue) = Integer((std::string(value) + "h").c_str());
 		else if (valueType == typeid(ConstByteArrayParameter))
@@ -338,7 +391,8 @@ void TestSignatureScheme(TestData &v)
 	}
 	else
 	{
-		SignalTestError();
+		std::string msg("Unknown signature test \"" + test + "\"");
+		SignalTestError(msg.c_str());
 		CRYPTOPP_ASSERT(false);
 	}
 }
@@ -384,7 +438,8 @@ void TestAsymmetricCipher(TestData &v)
 	}
 	else
 	{
-		SignalTestError();
+		std::string msg("Unknown asymmetric cipher test \"" + test + "\"");
+		SignalTestError(msg.c_str());
 		CRYPTOPP_ASSERT(false);
 	}
 }
@@ -445,11 +500,20 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 			decryptor->SetKey(reinterpret_cast<const byte*>(&key[0]), key.size(), pairs);
 		}
 
-		int seek = pairs.GetIntValueWithDefault("Seek", 0);
-		if (seek)
+		word64 seek64 = pairs.GetWord64ValueWithDefault("Seek64", 0);
+		if (seek64)
 		{
-			encryptor->Seek(seek);
-			decryptor->Seek(seek);
+			encryptor->Seek(seek64);
+			decryptor->Seek(seek64);
+		}
+		else
+		{
+			int seek = pairs.GetIntValueWithDefault("Seek", 0);
+			if (seek)
+			{
+				encryptor->Seek(seek);
+				decryptor->Seek(seek);
+			}
 		}
 
 		// If a per-test vector parameter was set for a test, like BlockPadding,
@@ -551,8 +615,8 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 	}
 	else
 	{
-		std::cout << "\nunexpected test name\n";
-		SignalTestError();
+		std::string msg("Unknown symmetric cipher test \"" + test + "\"");
+		SignalTestError(msg.c_str());
 	}
 }
 
@@ -641,8 +705,8 @@ void TestAuthenticatedSymmetricCipher(TestData &v, const NameValuePairs &overrid
 	}
 	else
 	{
-		std::cout << "\nunexpected test name\n";
-		SignalTestError();
+		std::string msg("Unknown authenticated symmetric cipher test \"" + test + "\"");
+		SignalTestError(msg.c_str());
 	}
 }
 
@@ -693,8 +757,8 @@ void TestDigestOrMAC(TestData &v, bool testDigest)
 	}
 	else
 	{
-		SignalTestError();
-		CRYPTOPP_ASSERT(false);
+		std::string msg("Unknown digest or mac test \"" + test + "\"");
+		SignalTestError(msg.c_str());
 	}
 }
 
@@ -728,83 +792,91 @@ void TestKeyDerivationFunction(TestData &v)
 	}
 }
 
+inline char FirstChar(const std::string& str) {
+	if (str.empty()) return 0;
+	return str[0];
+}
+
+inline char LastChar(const std::string& str) {
+	if (str.empty()) return 0;
+	return str[str.length()-1];
+}
+
 // GetField parses the name/value pairs. The tricky part is the insertion operator
 // because Unix&Linux uses LF, OS X uses CR, and Windows uses CRLF. If this function
 // is modified, then run 'cryptest.exe tv rsa_pkcs1_1_5' as a test. Its the parser
 // file from hell. If it can be parsed without error, then things are likely OK.
+// For istream.fail() see https://stackoverflow.com/q/34395801/608639.
 bool GetField(std::istream &is, std::string &name, std::string &value)
 {
+	std::string line;
+	name.clear(); value.clear();
+
 	// ***** Name *****
-	name.clear();
-	is >> name;
-
-	if (name.empty())
-		return false;
-
-	if (name[name.size()-1] != ':')
+	while (is >> std::ws && std::getline(is, line))
 	{
-		char c;
-		is >> std::skipws >> c;
-		if (c != ':')
-			SignalTestError();
-	}
-	else
-		name.erase(name.size()-1);
+		// Eat whitespace and comments gracefully
+		if (line.empty() || line[0] == '#')
+			continue;
 
-	while (is.peek() == ' ')
-		is.ignore(1);
+		std::string::size_type pos = line.find(':');
+		if (pos == std::string::npos)
+			SignalTestError("Unable to parse name/value pair");
+
+		name = TrimSpace(line.substr(0, pos));
+		line = TrimSpace(line.substr(pos + 1));
+
+		// Empty name is bad
+		if (name.empty())
+			return false;
+
+		// Empty value is ok
+		if (line.empty())
+			return true;
+
+		break;
+	}
 
 	// ***** Value *****
-	value.clear();
-	std::string line;
 	bool continueLine = true;
 
-	while (continueLine && std::getline(is, line))
+	do
 	{
-		// Unix and Linux may have a stray \r because of Windows
-		if (!line.empty() && (line[line.size() - 1] == '\r' || line[line.size() - 1] == '\n')) {
-			line.erase(line.size()-1);
-		}
+		// Trim leading and trailing whitespace, including OS X and Windows
+		// new lines. Don't parse comments here because there may be a line
+		// continuation at the end.
+		line = TrimSpace(line);
 
 		continueLine = false;
-		if (!line.empty())
-		{
-			// Early out for immediate line continuation
-			if (line[0] == '\\') {
-				continueLine = true;
-				continue;
-			}
-			// Check end of line. It must be last character
-			if (line[line.size() - 1] == '\\') {
-				continueLine = true;
-			}
-			// Check for comment. It can be first character
-			if (line[0] == '#') {
-				continue;
-			}
+		if (line.empty())
+			continue;
+
+		// Early out for immediate line continuation
+		if (line[0] == '\\') {
+			continueLine = true;
+			continue;
+		}
+		// Check end of line. It must be last character
+		if (LastChar(line) == '\\') {
+			continueLine = true;
+			line.erase(line.end()-1);
+			line = TrimSpace(line);
 		}
 
-		// Leading and trailing position. The leading position moves right, and
-		// trailing position moves left. The sub-string in the middle is the value
-		// for the name. We leave one space when line continuation is in effect.
-		// The value can be an empty string. One Plaintext value is often empty
-		// for algorithm testing.
-		std::string::size_type l=0, t=std::string::npos;
-		const std::string whitespace = "\t \r\n";
+		// Re-trim after parsing
+		line = TrimComment(line);
+		line = TrimSpace(line);
 
-		l = line.find_first_not_of(whitespace, l);
-		if (l == std::string::npos) { l = 0; }
-		t = line.find('#', l);
-		if (t != std::string::npos) { t--; }
-		t = line.find_last_not_of(whitespace+"\\", t);
-		if (t != std::string::npos) { t++; }
+		if (line.empty())
+			continue;
 
-		CRYPTOPP_ASSERT(t >= l);
-		value += line.substr(l, t - l);
+		// Finally... the value
+		value += line;
 
 		if (continueLine)
 			value += ' ';
 	}
+	while (continueLine && is >> std::ws && std::getline(is, line));
 
 	return true;
 }
@@ -859,14 +931,11 @@ void TestDataFile(std::string filename, const NameValuePairs &overrideParameters
 
 	while (file)
 	{
-		while (file.peek() == '#')
-			file.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-
-		if (file.peek() == '\n' || file.peek() == '\r')
-			v.clear();
-
 		if (!GetField(file, name, value))
 			break;
+
+		if (name == "AlgorithmType")
+			v.clear();
 
 		// Can't assert value. Plaintext is sometimes empty.
 		// CRYPTOPP_ASSERT(!value.empty());

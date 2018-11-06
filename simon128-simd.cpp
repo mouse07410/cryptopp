@@ -22,6 +22,10 @@
 # include <tmmintrin.h>
 #endif
 
+#if defined(__XOP__)
+# include <ammintrin.h>
+#endif
+
 #if defined(__AVX512F__) && defined(__AVX512VL__)
 # define CRYPTOPP_AVX512_ROTATE 1
 # include <immintrin.h>
@@ -33,7 +37,7 @@
 
 // Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
 // compilers don't follow ACLE conventions for the include.
-#if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+#if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
 #endif
@@ -95,7 +99,7 @@ inline uint64x2_t RotateRight64(const uint64x2_t& val)
 template <>
 inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7 };
     const uint8x16_t mask = vld1q_u8(maskb);
 #else
@@ -111,7 +115,7 @@ inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 template <>
 inline uint64x2_t RotateRight64<8>(const uint64x2_t& val)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1 };
     const uint8x16_t mask = vld1q_u8(maskb);
 #else
@@ -316,6 +320,8 @@ inline __m128i RotateLeft64(const __m128i& val)
 {
 #if defined(CRYPTOPP_AVX512_ROTATE)
     return _mm_rol_epi64(val, R);
+#elif defined(__XOP__)
+    return _mm_roti_epi64(val, R);
 #else
     return _mm_or_si128(
         _mm_slli_epi64(val, R), _mm_srli_epi64(val, 64-R));
@@ -327,6 +333,8 @@ inline __m128i RotateRight64(const __m128i& val)
 {
 #if defined(CRYPTOPP_AVX512_ROTATE)
     return _mm_ror_epi64(val, R);
+#elif defined(__XOP__)
+    return _mm_roti_epi64(val, 64-R);
 #else
     return _mm_or_si128(
         _mm_slli_epi64(val, 64-R), _mm_srli_epi64(val, R));
@@ -337,16 +345,24 @@ inline __m128i RotateRight64(const __m128i& val)
 template <>
 inline __m128i RotateLeft64<8>(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi64(val, 8);
+#else
     const __m128i mask = _mm_set_epi8(14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7);
     return _mm_shuffle_epi8(val, mask);
+#endif
 }
 
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
 template <>
 inline __m128i RotateRight64<8>(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi64(val, 64-8);
+#else
     const __m128i mask = _mm_set_epi8(8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1);
     return _mm_shuffle_epi8(val, mask);
+#endif
 }
 
 inline __m128i SIMON128_f(const __m128i& v)
@@ -551,7 +567,7 @@ inline uint64x2_p SIMON128_f(const uint64x2_p val)
 
 inline void SIMON128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -579,7 +595,7 @@ inline void SIMON128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigne
         std::swap(x1, y1);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     //const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -593,7 +609,7 @@ inline void SIMON128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigne
 
 inline void SIMON128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -622,7 +638,7 @@ inline void SIMON128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigne
         y1 = VectorXor(VectorXor(y1, SIMON128_f(x1)), rk2);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     //const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -638,7 +654,7 @@ inline void SIMON128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
             uint32x4_p &block5, const word64 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -676,7 +692,7 @@ inline void SIMON128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
         std::swap(x1, y1); std::swap(x2, y2); std::swap(x3, y3);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -697,7 +713,7 @@ inline void SIMON128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
             uint32x4_p &block5, const word64 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else
@@ -736,7 +752,7 @@ inline void SIMON128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
         y3 = VectorXor(VectorXor(y3, SIMON128_f(x3)), rk2);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m4 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
 #else

@@ -115,11 +115,12 @@ struct BTEA_Info : public FixedKeyLength<16>
 
 /// \brief BTEA block cipher
 /// \details Corrected Block TEA as described in "xxtea". This class hasn't been tested yet.
-/// \sa <a href="http://www.cryptopp.com/wiki/TEA">Corrected Block TEA</a>.
+/// \sa <A HREF="http://www.movable-type.co.uk/scripts/xxtea.pdf">Correction to xtea</A> and
+///   <a href="http://www.cryptopp.com/wiki/TEA">Corrected Block TEA</a>.
 class BTEA : public BTEA_Info, public BlockCipherDocumentation
 {
 	/// \brief BTEA block cipher default operation
-	class CRYPTOPP_NO_VTABLE Base : public AlgorithmImpl<SimpleKeyingInterfaceImpl<BlockCipher, BTEA_Info>, BTEA_Info>, public BTEA_Info
+	class CRYPTOPP_NO_VTABLE Base : public AlgorithmImpl<SimpleKeyingInterfaceImpl<BlockCipher, BTEA_Info>, BTEA_Info>
 	{
 	public:
 		void UncheckedSetKey(const byte *key, unsigned int length, const NameValuePairs &params)

@@ -26,6 +26,10 @@
 # include <smmintrin.h>
 #endif
 
+#if defined(__XOP__)
+# include <ammintrin.h>
+#endif
+
 #if defined(__AVX512F__) && defined(__AVX512VL__)
 # define CRYPTOPP_AVX512_ROTATE 1
 # include <immintrin.h>
@@ -37,7 +41,7 @@
 
 // Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
 // compilers don't follow ACLE conventions for the include.
-#if defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+#if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
 #endif
@@ -101,7 +105,7 @@ inline uint32x4_t RotateRight32(const uint32x4_t& val)
 template <>
 inline uint32x4_t RotateLeft32<8>(const uint32x4_t& val)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 14,13,12,15, 10,9,8,11, 6,5,4,7, 2,1,0,3 };
     const uint8x16_t mask = vld1q_u8(maskb);
 #else
@@ -117,7 +121,7 @@ inline uint32x4_t RotateLeft32<8>(const uint32x4_t& val)
 template <>
 inline uint32x4_t RotateRight32<8>(const uint32x4_t& val)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 12,15,14,13, 8,11,10,9, 4,7,6,5, 0,3,2,1 };
     const uint8x16_t mask = vld1q_u8(maskb);
 #else
@@ -288,23 +292,7 @@ inline void SIMON64_Dec_6_Blocks(uint32x4_t &block0, uint32x4_t &block1,
 
 // ***************************** IA-32 ***************************** //
 
-#if (CRYPTOPP_SSSE3_AVAILABLE)
-
-// Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
-#ifndef M128_CAST
-# define M128_CAST(x) ((__m128i *)(void *)(x))
-#endif
-#ifndef CONST_M128_CAST
-# define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
-#endif
-
-// GCC double casts, https://www.spinics.net/lists/gcchelp/msg47735.html
-#ifndef DOUBLE_CAST
-# define DOUBLE_CAST(x) ((double *)(void *)(x))
-#endif
-#ifndef CONST_DOUBLE_CAST
-# define CONST_DOUBLE_CAST(x) ((const double *)(const void *)(x))
-#endif
+#if defined(CRYPTOPP_SSE41_AVAILABLE)
 
 inline void Swap128(__m128i& a,__m128i& b)
 {
@@ -318,240 +306,49 @@ inline void Swap128(__m128i& a,__m128i& b)
 }
 
 template <unsigned int R>
-inline __m128i RotateLeft64(const __m128i& val)
-{
-#if defined(CRYPTOPP_AVX512_ROTATE)
-    return _mm_rol_epi64(val, R);
-#else
-    return _mm_or_si128(
-        _mm_slli_epi64(val, R), _mm_srli_epi64(val, 64-R));
-#endif
-}
-
-template <unsigned int R>
-inline __m128i RotateRight64(const __m128i& val)
-{
-#if defined(CRYPTOPP_AVX512_ROTATE)
-    return _mm_ror_epi64(val, R);
-#else
-    return _mm_or_si128(
-        _mm_slli_epi64(val, 64-R), _mm_srli_epi64(val, R));
-#endif
-}
-
-// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
-template <>
-inline __m128i RotateLeft64<8>(const __m128i& val)
-{
-    const __m128i mask = _mm_set_epi8(14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7);
-    return _mm_shuffle_epi8(val, mask);
-}
-
-// Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
-template <>
-inline __m128i RotateRight64<8>(const __m128i& val)
-{
-    const __m128i mask = _mm_set_epi8(8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1);
-    return _mm_shuffle_epi8(val, mask);
-}
-
-inline __m128i SIMON128_f(const __m128i& v)
-{
-    return _mm_xor_si128(RotateLeft64<2>(v),
-        _mm_and_si128(RotateLeft64<1>(v), RotateLeft64<8>(v)));
-}
-
-inline void SIMON128_Enc_Block(__m128i &block0, __m128i &block1,
-    const word64 *subkeys, unsigned int rounds)
-{
-    // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
-    __m128i x1 = _mm_unpackhi_epi64(block0, block1);
-    __m128i y1 = _mm_unpacklo_epi64(block0, block1);
-
-    for (int i = 0; i < static_cast<int>(rounds & ~1)-1; i += 2)
-    {
-        const __m128i rk1 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i)));
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk1);
-
-        const __m128i rk2 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i+1)));
-        x1 = _mm_xor_si128(_mm_xor_si128(x1, SIMON128_f(y1)), rk2);
-    }
-
-    if (rounds & 1)
-    {
-        const __m128i rk = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+rounds-1)));
-
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk);
-        Swap128(x1, y1);
-    }
-
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = _mm_unpacklo_epi64(y1, x1);
-    block1 = _mm_unpackhi_epi64(y1, x1);
-}
-
-inline void SIMON128_Enc_6_Blocks(__m128i &block0, __m128i &block1,
-    __m128i &block2, __m128i &block3, __m128i &block4, __m128i &block5,
-    const word64 *subkeys, unsigned int rounds)
-{
-    // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
-    __m128i x1 = _mm_unpackhi_epi64(block0, block1);
-    __m128i y1 = _mm_unpacklo_epi64(block0, block1);
-    __m128i x2 = _mm_unpackhi_epi64(block2, block3);
-    __m128i y2 = _mm_unpacklo_epi64(block2, block3);
-    __m128i x3 = _mm_unpackhi_epi64(block4, block5);
-    __m128i y3 = _mm_unpacklo_epi64(block4, block5);
-
-    for (int i = 0; i < static_cast<int>(rounds & ~1) - 1; i += 2)
-    {
-        const __m128i rk1 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + i)));
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk1);
-        y2 = _mm_xor_si128(_mm_xor_si128(y2, SIMON128_f(x2)), rk1);
-        y3 = _mm_xor_si128(_mm_xor_si128(y3, SIMON128_f(x3)), rk1);
-
-        const __m128i rk2 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + i + 1)));
-        x1 = _mm_xor_si128(_mm_xor_si128(x1, SIMON128_f(y1)), rk2);
-        x2 = _mm_xor_si128(_mm_xor_si128(x2, SIMON128_f(y2)), rk2);
-        x3 = _mm_xor_si128(_mm_xor_si128(x3, SIMON128_f(y3)), rk2);
-    }
-
-    if (rounds & 1)
-    {
-        const __m128i rk = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + rounds - 1)));
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk);
-        y2 = _mm_xor_si128(_mm_xor_si128(y2, SIMON128_f(x2)), rk);
-        y3 = _mm_xor_si128(_mm_xor_si128(y3, SIMON128_f(x3)), rk);
-        Swap128(x1, y1); Swap128(x2, y2); Swap128(x3, y3);
-    }
-
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = _mm_unpacklo_epi64(y1, x1);
-    block1 = _mm_unpackhi_epi64(y1, x1);
-    block2 = _mm_unpacklo_epi64(y2, x2);
-    block3 = _mm_unpackhi_epi64(y2, x2);
-    block4 = _mm_unpacklo_epi64(y3, x3);
-    block5 = _mm_unpackhi_epi64(y3, x3);
-}
-
-inline void SIMON128_Dec_Block(__m128i &block0, __m128i &block1,
-    const word64 *subkeys, unsigned int rounds)
-{
-    // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
-    __m128i x1 = _mm_unpackhi_epi64(block0, block1);
-    __m128i y1 = _mm_unpacklo_epi64(block0, block1);
-
-    if (rounds & 1)
-    {
-        const __m128i rk = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + rounds - 1)));
-
-        Swap128(x1, y1);
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, rk), SIMON128_f(x1));
-        rounds--;
-    }
-
-    for (int i = static_cast<int>(rounds-2); i >= 0; i -= 2)
-    {
-        const __m128i rk1 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i+1)));
-        x1 = _mm_xor_si128(_mm_xor_si128(x1, SIMON128_f(y1)), rk1);
-
-        const __m128i rk2 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i)));
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk2);
-    }
-
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = _mm_unpacklo_epi64(y1, x1);
-    block1 = _mm_unpackhi_epi64(y1, x1);
-}
-
-inline void SIMON128_Dec_6_Blocks(__m128i &block0, __m128i &block1,
-    __m128i &block2, __m128i &block3, __m128i &block4, __m128i &block5,
-    const word64 *subkeys, unsigned int rounds)
-{
-    // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
-    __m128i x1 = _mm_unpackhi_epi64(block0, block1);
-    __m128i y1 = _mm_unpacklo_epi64(block0, block1);
-    __m128i x2 = _mm_unpackhi_epi64(block2, block3);
-    __m128i y2 = _mm_unpacklo_epi64(block2, block3);
-    __m128i x3 = _mm_unpackhi_epi64(block4, block5);
-    __m128i y3 = _mm_unpacklo_epi64(block4, block5);
-
-    if (rounds & 1)
-    {
-        const __m128i rk = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + rounds - 1)));
-
-        Swap128(x1, y1); Swap128(x2, y2); Swap128(x3, y3);
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, rk), SIMON128_f(x1));
-        y2 = _mm_xor_si128(_mm_xor_si128(y2, rk), SIMON128_f(x2));
-        y3 = _mm_xor_si128(_mm_xor_si128(y3, rk), SIMON128_f(x3));
-        rounds--;
-    }
-
-    for (int i = static_cast<int>(rounds-2); i >= 0; i -= 2)
-    {
-        const __m128i rk1 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + i + 1)));
-        x1 = _mm_xor_si128(_mm_xor_si128(x1, SIMON128_f(y1)), rk1);
-        x2 = _mm_xor_si128(_mm_xor_si128(x2, SIMON128_f(y2)), rk1);
-        x3 = _mm_xor_si128(_mm_xor_si128(x3, SIMON128_f(y3)), rk1);
-
-        const __m128i rk2 = _mm_castpd_si128(
-            _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys + i)));
-        y1 = _mm_xor_si128(_mm_xor_si128(y1, SIMON128_f(x1)), rk2);
-        y2 = _mm_xor_si128(_mm_xor_si128(y2, SIMON128_f(x2)), rk2);
-        y3 = _mm_xor_si128(_mm_xor_si128(y3, SIMON128_f(x3)), rk2);
-    }
-
-    // [A1 B1][A2 B2] ... => [A1 A2][B1 B2] ...
-    block0 = _mm_unpacklo_epi64(y1, x1);
-    block1 = _mm_unpackhi_epi64(y1, x1);
-    block2 = _mm_unpacklo_epi64(y2, x2);
-    block3 = _mm_unpackhi_epi64(y2, x2);
-    block4 = _mm_unpacklo_epi64(y3, x3);
-    block5 = _mm_unpackhi_epi64(y3, x3);
-}
-
-#endif  // CRYPTOPP_SSSE3_AVAILABLE
-
-#if defined(CRYPTOPP_SSE41_AVAILABLE)
-
-template <unsigned int R>
 inline __m128i RotateLeft32(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi32(val, R);
+#else
     return _mm_or_si128(
         _mm_slli_epi32(val, R), _mm_srli_epi32(val, 32-R));
+#endif
 }
 
 template <unsigned int R>
 inline __m128i RotateRight32(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi32(val, 32-R);
+#else
     return _mm_or_si128(
         _mm_slli_epi32(val, 32-R), _mm_srli_epi32(val, R));
+#endif
 }
 
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
 template <>
 inline __m128i RotateLeft32<8>(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi32(val, 8);
+#else
     const __m128i mask = _mm_set_epi8(14,13,12,15, 10,9,8,11, 6,5,4,7, 2,1,0,3);
     return _mm_shuffle_epi8(val, mask);
+#endif
 }
 
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
 template <>
 inline __m128i RotateRight32<8>(const __m128i& val)
 {
+#if defined(__XOP__)
+    return _mm_roti_epi32(val, 32-8);
+#else
     const __m128i mask = _mm_set_epi8(12,15,14,13, 8,11,10,9, 4,7,6,5, 0,3,2,1);
     return _mm_shuffle_epi8(val, mask);
+#endif
 }
 
 inline __m128i SIMON64_f(const __m128i& v)
@@ -762,7 +559,7 @@ inline uint32x4_p SIMON64_f(const uint32x4_p val)
 inline void SIMON64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
     const word32 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
     const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
 #else
@@ -790,7 +587,7 @@ inline void SIMON64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
         std::swap(x1, y1);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {19,18,17,16, 3,2,1,0, 23,22,21,20, 7,6,5,4};
     const uint8x16_p m4 = {27,26,25,24, 11,10,9,8, 31,30,29,28, 15,14,13,12};
 #else
@@ -806,7 +603,7 @@ inline void SIMON64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
 inline void SIMON64_Dec_Block(uint32x4_p &block0, uint32x4_p &block1,
     const word32 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
     const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
 #else
@@ -835,7 +632,7 @@ inline void SIMON64_Dec_Block(uint32x4_p &block0, uint32x4_p &block1,
         y1 = VectorXor(VectorXor(y1, SIMON64_f(x1)), rk2);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {19,18,17,16, 3,2,1,0, 23,22,21,20, 7,6,5,4};
     const uint8x16_p m4 = {27,26,25,24, 11,10,9,8, 31,30,29,28, 15,14,13,12};
 #else
@@ -852,7 +649,7 @@ inline void SIMON64_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
             uint32x4_p &block5, const word32 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
     const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
 #else
@@ -890,7 +687,7 @@ inline void SIMON64_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
         std::swap(x1, y1); std::swap(x2, y2); std::swap(x3, y3);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {19,18,17,16, 3,2,1,0, 23,22,21,20, 7,6,5,4};
     const uint8x16_p m4 = {27,26,25,24, 11,10,9,8, 31,30,29,28, 15,14,13,12};
 #else
@@ -911,7 +708,7 @@ inline void SIMON64_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
             uint32x4_p &block2, uint32x4_p &block3, uint32x4_p &block4,
             uint32x4_p &block5, const word32 *subkeys, unsigned int rounds)
 {
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {7,6,5,4, 15,14,13,12, 23,22,21,20, 31,30,29,28};
     const uint8x16_p m2 = {3,2,1,0, 11,10,9,8, 19,18,17,16, 27,26,25,24};
 #else
@@ -950,7 +747,7 @@ inline void SIMON64_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
         y3 = VectorXor(VectorXor(y3, SIMON64_f(x3)), rk2);
     }
 
-#if defined(CRYPTOPP_BIG_ENDIAN)
+#if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m3 = {19,18,17,16, 3,2,1,0, 23,22,21,20, 7,6,5,4};
     const uint8x16_p m4 = {27,26,25,24, 11,10,9,8, 31,30,29,28, 15,14,13,12};
 #else
