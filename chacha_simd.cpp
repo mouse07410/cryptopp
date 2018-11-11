@@ -1,4 +1,4 @@
-// chacha-simd.cpp - written and placed in the public domain by
+// chacha_simd.cpp - written and placed in the public domain by
 //                   Jack Lloyd and Jeffrey Walton
 //
 //    This source file uses intrinsics and built-ins to gain access to
@@ -30,12 +30,12 @@
 #include "chacha.h"
 #include "misc.h"
 
-#if defined(__SSE2__) || defined(_MSC_VER)
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE || CRYPTOPP_SSE2_ASM_AVAILABLE)
 # include <xmmintrin.h>
 # include <emmintrin.h>
 #endif
 
-#if defined(__SSSE3__) || defined(_MSC_VER)
+#if defined(__SSSE3__)
 # include <tmmintrin.h>
 #endif
 
@@ -55,7 +55,7 @@
 #endif
 
 #if defined(CRYPTOPP_POWER8_AVAILABLE)
-# include "ppc-simd.h"
+# include "ppc_simd.h"
 #endif
 
 // Squash MS LNK4221 and libtool warnings
