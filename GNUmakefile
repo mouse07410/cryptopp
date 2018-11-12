@@ -205,14 +205,14 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
   TPROG = TestPrograms/test_sse2.cxx
   TOPT = -msse2
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
     SSE_FLAG = -msse2
     CHACHA_FLAG = -msse2
 
     TPROG = TestPrograms/test_ssse3.cxx
     TOPT = -mssse3
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
       ARIA_FLAG = -mssse3
       CHAM_FLAG = -mssse3
@@ -226,7 +226,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
       TPROG = TestPrograms/test_sse41.cxx
       TOPT = -msse4.1
-      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
       ifeq ($(HAVE_OPT),0)
         BLAKE2B_FLAG = -msse4.1
         BLAKE2S_FLAG = -msse4.1
@@ -235,13 +235,13 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
         TPROG = TestPrograms/test_sse42.cxx
         TOPT = -msse4.2
-        HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+        HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
         ifeq ($(HAVE_OPT),0)
           CRC_FLAG = -msse4.2
 
           TPROG = TestPrograms/test_clmul.cxx
           TOPT = -mssse3 -mpclmul
-          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
             GCM_FLAG = -mssse3 -mpclmul
           else
@@ -250,7 +250,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
           TPROG = TestPrograms/test_aesni.cxx
           TOPT = -msse4.1 -maes
-          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
             AES_FLAG = -msse4.1 -maes
             SM4_FLAG = -mssse3 -maes
@@ -260,7 +260,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
           TPROG = TestPrograms/test_avx.cxx
           TOPT = -mavx
-          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
             AVX_FLAG = -mavx
           else
@@ -269,7 +269,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
           TPROG = TestPrograms/test_avx2.cxx
           TOPT = -mavx2
-          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
             CHACHA_AVX2_FLAG = -mavx2
           else
@@ -278,7 +278,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
 
           TPROG = TestPrograms/test_shani.cxx
           TOPT = -msse4.2 -msha
-          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+          HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
             SHA_FLAG = -msse4.2 -msha
           else
