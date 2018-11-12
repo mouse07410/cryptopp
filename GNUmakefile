@@ -104,6 +104,16 @@ ifeq ($(IS_AIX),1)
   endif
 endif
 
+# Hack to skip CPU feature tests for some recipes
+DETECT_FEATURES ?= 1
+ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),-DCRYPTOPP_DISABLE_ASM)
+  DETECT_FEATURES := 0
+else ifeq ($(findstring clean,$(MAKECMDGOALS)),clean)
+  DETECT_FEATURES := 0
+else ifeq ($(findstring distclean,$(MAKECMDGOALS)),distclean)
+  DETECT_FEATURES := 0
+endif
+
 ###########################################################
 #####                General Variables                #####
 ###########################################################
@@ -190,7 +200,7 @@ ifneq ($(IS_X86)$(IS_X64),00)
 
 # Begin GCC and compatibles
 ifneq ($(GCC_COMPILER)$(CLANG_COMPILER)$(INTEL_COMPILER),000)
-ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
+ifeq ($(DETECT_FEATURES),1)
 
   # Tell MacPorts and Homebrew GCC to use Clang integrated assembler
   #   http://github.com/weidai11/cryptopp/issues/190
@@ -203,14 +213,14 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
     endif
   endif
 
-  TPROG = TestPrograms/test_sse2.cxx
+  TPROG = TestPrograms/test_x86_sse2.cxx
   TOPT = -msse2
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
     SSE_FLAG = -msse2
     CHACHA_FLAG = -msse2
 
-    TPROG = TestPrograms/test_ssse3.cxx
+    TPROG = TestPrograms/test_x86_ssse3.cxx
     TOPT = -mssse3
     HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
@@ -224,7 +234,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
       SPECK64_FLAG = -mssse3
       SPECK128_FLAG = -mssse3
 
-      TPROG = TestPrograms/test_sse41.cxx
+      TPROG = TestPrograms/test_x86_sse41.cxx
       TOPT = -msse4.1
       HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
       ifeq ($(HAVE_OPT),0)
@@ -233,13 +243,13 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
         SIMON64_FLAG = -msse4.1
         SPECK64_FLAG = -msse4.1
 
-        TPROG = TestPrograms/test_sse42.cxx
+        TPROG = TestPrograms/test_x86_sse42.cxx
         TOPT = -msse4.2
         HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
         ifeq ($(HAVE_OPT),0)
           CRC_FLAG = -msse4.2
 
-          TPROG = TestPrograms/test_clmul.cxx
+          TPROG = TestPrograms/test_x86_clmul.cxx
           TOPT = -mssse3 -mpclmul
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -248,7 +258,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_CLMUL
           endif
 
-          TPROG = TestPrograms/test_aesni.cxx
+          TPROG = TestPrograms/test_x86_aes.cxx
           TOPT = -msse4.1 -maes
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -258,7 +268,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AESNI
           endif
 
-          TPROG = TestPrograms/test_avx.cxx
+          TPROG = TestPrograms/test_x86_avx.cxx
           TOPT = -mavx
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -267,7 +277,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AVX
           endif
 
-          TPROG = TestPrograms/test_avx2.cxx
+          TPROG = TestPrograms/test_x86_avx2.cxx
           TOPT = -mavx2
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -276,7 +286,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AVX2
           endif
 
-          TPROG = TestPrograms/test_shani.cxx
+          TPROG = TestPrograms/test_x86_sha.cxx
           TOPT = -msse4.2 -msha
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) -o /dev/null $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -298,7 +308,10 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2
   endif
 
-# CRYPTOPP_DISABLE_ASM
+  # https://github.com/weidai11/cryptopp/issues/738
+  UNUSED := $(shell rm -f a.out && rm -rf a.out.dSYM/)
+
+# DETECT_FEATURES
 endif
 
 # End GCC and compatibles
@@ -306,9 +319,9 @@ endif
 
 # Begin SunCC
 ifeq ($(SUN_COMPILER),1)
-ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
+ifeq ($(DETECT_FEATURES),1)
 
-  TPROG = TestPrograms/test_sse2.cxx
+  TPROG = TestPrograms/test_x86_sse2.cxx
   TOPT = -xarch=sse2
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -316,7 +329,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
     CHACHA_FLAG = -xarch=sse2
     LDFLAGS += -xarch=sse2
 
-    TPROG = TestPrograms/test_ssse3.cxx
+    TPROG = TestPrograms/test_x86_ssse3.cxx
     TOPT = -xarch=ssse3
     HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
@@ -331,7 +344,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
       SPECK128_FLAG = -xarch=ssse3
       LDFLAGS += -xarch=ssse3
 
-      TPROG = TestPrograms/test_sse41.cxx
+      TPROG = TestPrograms/test_x86_sse41.cxx
       TOPT = -xarch=sse4_1
       HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
       ifeq ($(HAVE_OPT),0)
@@ -341,14 +354,14 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
         SPECK64_FLAG = -xarch=sse4_1
         LDFLAGS += -xarch=sse4_1
 
-        TPROG = TestPrograms/test_sse42.cxx
+        TPROG = TestPrograms/test_x86_sse42.cxx
         TOPT = -xarch=sse4_2
         HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
         ifeq ($(HAVE_OPT),0)
           CRC_FLAG = -xarch=sse4_2
           LDFLAGS += -xarch=sse4_2
 
-          TPROG = TestPrograms/test_clmul.cxx
+          TPROG = TestPrograms/test_x86_clmul.cxx
           TOPT = -xarch=ssse3 -xarch=aes
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -357,7 +370,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_CLMUL
           endif
 
-          TPROG = TestPrograms/test_aesni.cxx
+          TPROG = TestPrograms/test_x86_aes.cxx
           TOPT = -xarch=sse4_1 -xarch=aes
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -368,7 +381,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AESNI
           endif
 
-          TPROG = TestPrograms/test_avx.cxx
+          TPROG = TestPrograms/test_x86_avx.cxx
           TOPT = -xarch=avx
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -378,7 +391,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AVX
           endif
 
-          TPROG = TestPrograms/test_avx2.cxx
+          TPROG = TestPrograms/test_x86_avx2.cxx
           TOPT = -xarch=avx2
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -388,7 +401,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
             CXXFLAGS += -DCRYPTOPP_DISABLE_AVX2
           endif
 
-          TPROG = TestPrograms/test_shani.cxx
+          TPROG = TestPrograms/test_x86_sha.cxx
           TOPT = -xarch=sse4_2 -xarch=sha
           HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
           ifeq ($(HAVE_OPT),0)
@@ -411,7 +424,10 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2
   endif
 
-# CRYPTOPP_DISABLE_ASM
+  # https://github.com/weidai11/cryptopp/issues/738
+  UNUSED := $(shell rm -f a.out && rm -rf a.out.dSYM/)
+
+# DETECT_FEATURES
 endif
 
 # End SunCC
@@ -445,11 +461,11 @@ endif
 ###########################################################
 
 ifneq ($(IS_ARM32)$(IS_ARMV8)$(IS_NEON),000)
-ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
+ifeq ($(DETECT_FEATURES),1)
 
 ifeq ($(IS_ARM32)$(IS_NEON),11)
 
-  TPROG = TestPrograms/test_neon.cxx
+  TPROG = TestPrograms/test_arm_neon.cxx
   TOPT = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -474,21 +490,26 @@ ifeq ($(IS_ARM32)$(IS_NEON),11)
     CXXFLAGS += -DCRYPTOPP_DISABLE_ASM
   endif
 
+  # https://github.com/weidai11/cryptopp/issues/738
+  UNUSED := $(shell rm -f a.out && rm -rf a.out.dSYM/)
+
 # IS_NEON
 endif
 
 ifeq ($(IS_ARMV8),1)
 
-  TPROG = TestPrograms/test_asimd.cxx
+  TPROG = TestPrograms/test_arm_acle.cxx
   TOPT = -march=armv8-a
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifneq ($(HAVE_OPT),0)
+  ifeq ($(HAVE_OPT),0)
+	ACLE_FLAG += -DCRYPTOPP_ARM_ACLE_AVAILABLE=1
+  else
 	CXXFLAGS += -DCRYPTOPP_ARM_ACLE_AVAILABLE=0
   endif
 
-  TPROG = TestPrograms/test_asimd.cxx
+  TPROG = TestPrograms/test_arm_asimd.cxx
   TOPT = -march=armv8-a
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
     ASIMD_FLAG = -march=armv8-a
     ARIA_FLAG = -march=armv8-a
@@ -509,26 +530,46 @@ ifeq ($(IS_ARMV8),1)
   endif
 
   ifneq ($(ASIMD_FLAG),)
-    TPROG = TestPrograms/test_crc.cxx
-    TOPT = -march=armv8-a+crc
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+    TPROG = TestPrograms/test_arm_crc.cxx
+    TOPT = -march=armv8.1-a+crc
+    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
-      CRC_FLAG = -march=armv8-a+crc
+      CRC_FLAG = -march=armv8.1-a+crc
+    else
+      CXXFLAGS += -DCRYPTOPP_ARM_CRC32_AVAILABLE=0
     endif
 
-    TPROG = TestPrograms/test_crypto_v81.cxx
-    TOPT = -march=armv8-a+crypto
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+    TPROG = TestPrograms/test_arm_aes.cxx
+    TOPT = -march=armv8.1-a+crypto
+    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
-      AES_FLAG = -march=armv8-a+crypto
-      GCM_FLAG = -march=armv8-a+crypto
-      SHA_FLAG = -march=armv8-a+crypto
+      AES_FLAG = -march=armv8.1-a+crypto
+    else
+      CXXFLAGS += -DCRYPTOPP_ARM_AES_AVAILABLE=0
+    endif
+
+    TPROG = TestPrograms/test_arm_pmull.cxx
+    TOPT = -march=armv8.1-a+crypto
+    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+    ifeq ($(HAVE_OPT),0)
+      GCM_FLAG = -march=armv8.1-a+crypto
+    else
+      CXXFLAGS += -DCRYPTOPP_ARM_PMULL_AVAILABLE=0
+    endif
+
+    TPROG = TestPrograms/test_arm_sha.cxx
+    TOPT = -march=armv8.1-a+crypto
+    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+    ifeq ($(HAVE_OPT),0)
+      SHA_FLAG = -march=armv8.1-a+crypto
+    else
+      CXXFLAGS += -DCRYPTOPP_ARM_SHA_AVAILABLE=0
     endif
 
     ifneq ($(AES_FLAG),)
       TPROG = TestPrograms/test_crypto_v84.cxx
       TOPT = -march=armv8.4-a+crypto
-      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
       ifeq ($(HAVE_OPT),0)
         SM3_FLAG = -march=armv8.4-a+crypto
         SM4_FLAG = -march=armv8.4-a+crypto
@@ -536,10 +577,13 @@ ifeq ($(IS_ARMV8),1)
     endif
   endif
 
+  # https://github.com/weidai11/cryptopp/issues/738
+  UNUSED := $(shell rm -f a.out && rm -rf a.out.dSYM/)
+
 # IS_ARMV8
 endif
 
-# CRYPTOPP_DISABLE_ASM
+# DETECT_FEATURES
 endif
 
 # IS_ARM32, IS_ARMV8, IS_NEON
@@ -554,13 +598,13 @@ endif
 # front-end. XLC/LLVM only supplies POWER8 so we have to set the flags for
 # XLC/LLVM to POWER8. I've got a feeling LLVM is going to cause trouble.
 ifneq ($(IS_PPC32)$(IS_PPC64),00)
-ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
+ifeq ($(DETECT_FEATURES),1)
 
   # LLVM front-ends only provide POWER8 and need special options to
   # get XLC defines. The POWER8 really jambs us up for ppc_simd.cpp
   # which needs ALTIVEC/POWER4. We have similar problems with POWER7.
   ifeq ($(XLC_COMPILER)$(findstring -qxlcompatmacros,$(CXXFLAGS)),1)
-    TPROG = TestPrograms/test_altivec.cxx
+    TPROG = TestPrograms/test_ppc_altivec.cxx
     TOPT = -qxlcompatmacros
     HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
     ifeq ($(HAVE_OPT),0)
@@ -569,7 +613,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # GCC and some compatibles
-  TPROG = TestPrograms/test_power8.cxx
+  TPROG = TestPrograms/test_ppc_power8.cxx
   TOPT = -mcpu=power8 -maltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -588,7 +632,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # GCC and some compatibles
-  TPROG = TestPrograms/test_power7.cxx
+  TPROG = TestPrograms/test_ppc_power7.cxx
   TOPT = -mcpu=power7 -maltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -603,7 +647,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # GCC and some compatibles
-  TPROG = TestPrograms/test_altivec.cxx
+  TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = -mcpu=power4 -maltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -623,7 +667,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # IBM XL C/C++
-  TPROG = TestPrograms/test_power8.cxx
+  TPROG = TestPrograms/test_ppc_power8.cxx
   TOPT = -qarch=pwr8 -qaltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -642,7 +686,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # IBM XL C/C++
-  TPROG = TestPrograms/test_power7.cxx
+  TPROG = TestPrograms/test_ppc_power7.cxx
   TOPT = -qarch=pwr7 -qaltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -657,7 +701,7 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   endif
 
   # IBM XL C/C++
-  TPROG = TestPrograms/test_altivec.cxx
+  TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = -qarch=pwr4 -qaltivec
   HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
   ifeq ($(HAVE_OPT),0)
@@ -707,7 +751,10 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8
   endif
 
-# CRYPTOPP_DISABLE_ASM
+  # https://github.com/weidai11/cryptopp/issues/738
+  UNUSED := $(shell rm -f a.out && rm -rf a.out.dSYM/)
+
+# DETECT_FEATURES
 endif
 
 # IBM XL C/C++ compiler
@@ -1138,10 +1185,17 @@ clean:
 	@-$(RM) libcryptopp.so libcryptopp.so$(SOLIB_COMPAT_SUFFIX) libcryptopp.so$(SOLIB_VERSION_SUFFIX)
 	@-$(RM) cryptest.exe dlltest.exe cryptest.import.exe cryptest.info ct et
 	@-$(RM) *.la *.lo *.gcov *.gcno *.gcda *.stackdump core core-*
-	@-$(RM) /tmp/adhoc.exe
+	@-$(RM) a.out /tmp/adhoc.exe
 	@-$(RM) -r /tmp/cryptopp_test/
-	@-$(RM) -r *.exe.dSYM/ *.dylib.dSYM/
+	@-$(RM) -r *.exe.dSYM/ *.dylib.dSYM/ a.out.dSYM/
 	@-$(RM) -r cov-int/
+
+# Feature testing runs the compiler and produces an [unwanted] a.out artifact.
+# If a.out is created using privileges then it will cause problems later if
+# the makefile is run again without privileges. This rule cleans a.out.
+.PHONY: aout-clean
+aout-clean:
+	@-$(RM) -r a.out a.out.dSYM/
 
 .PHONY: autotools-clean
 autotools-clean:
@@ -1157,7 +1211,7 @@ cmake-clean:
 	@-$(RM) -rf cmake_build/
 
 .PHONY: distclean
-distclean: clean autotools-clean cmake-clean
+distclean: clean autotools-clean cmake-clean aout-clean
 	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt
 	@-$(RM) cryptest-*.txt cryptopp.tgz libcryptopp.pc *.o *.bc *.ii *~
 	@-$(RM) -r cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
