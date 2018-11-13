@@ -6,7 +6,7 @@
 
 /*
 July 2018: Added support for ARMv7 AES instructions via Cryptogams ASM.
-           See the head notes in aes-armv4.S for copyright and license.
+           See the head notes in aes_armv4.S for copyright and license.
 */
 
 /*
@@ -88,10 +88,10 @@ being unloaded from L1 cache, until that round is finished.
 #include "misc.h"
 #include "cpu.h"
 
-// MSVC bug, still don't know how to fix it. TODO, figure out
-// when we can re-enable optimizations for MSVC. Also see
+// VS2017 and global optimization bug. TODO, figure out when
+// we can re-enable full optimizations for VS2017. Also see
 // https://github.com/weidai11/cryptopp/issues/649
-#if defined(_MSC_VER) && (_MSC_VER >= 1910)
+#if (_MSC_VER >= 1910) && defined(NDEBUG)
 # pragma optimize("", off)
 # pragma optimize("ts", on)
 #endif
@@ -246,7 +246,6 @@ ANONYMOUS_NAMESPACE_END
 
 unsigned int Rijndael::Base::OptimalDataAlignment() const
 {
-	// CFB mode performs an extra memcpy if buffer is not aligned.
 #if (CRYPTOPP_AESNI_AVAILABLE)
 	if (HasAESNI())
 		return 1;
