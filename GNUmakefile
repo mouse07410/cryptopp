@@ -206,7 +206,7 @@ ifeq ($(DETECT_FEATURES),1)
   #   http://github.com/weidai11/cryptopp/issues/190
   ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER),11)
     ifeq ($(findstring -Wa,-q,$(CXXFLAGS)),)
-      CXXFLAGS += -Wa,-q
+      CXXFLAGS += -Wa,-q -Wa,-mavx512f
     endif
     ifeq ($(findstring -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER,$(CXXFLAGS)),)
       CXXFLAGS += -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER=1
