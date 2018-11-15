@@ -484,10 +484,10 @@ NAMESPACE_END
 # define CRYPTOPP_DISABLE_ASM 1
 #endif
 
-// Sun Studio 12 provides GCC inline assembly, http://blogs.oracle.com/x86be/entry/gcc_style_asm_inlining_support
-// We can enable SSE2 for Sun Studio in the makefile with -D__SSE2__, but users may not compile with it.
-#if !defined(CRYPTOPP_DISABLE_ASM) && !defined(__SSE2__) && defined(__x86_64__) && (__SUNPRO_CC >= 0x5100)
-# define __SSE2__ 1
+// Sun Studio 12.1 provides GCC inline assembly
+// http://blogs.oracle.com/x86be/entry/gcc_style_asm_inlining_support
+#if !defined(CRYPTOPP_DISABLE_ASM) && defined(__SUNPRO_CC) && (__SUNPRO_CC < 0x5100)
+# define CRYPTOPP_DISABLE_ASM 1
 #endif
 
 #if !defined(CRYPTOPP_DISABLE_ASM) && ((defined(_MSC_VER) && defined(_M_IX86)) || (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))))
@@ -512,7 +512,7 @@ NAMESPACE_END
 #endif
 
 // 32-bit SunCC does not enable SSE2 by default.
-#if !defined(CRYPTOPP_DISABLE_ASM) && (defined(_MSC_VER) || CRYPTOPP_GCC_VERSION >= 30300 || defined(__SSE2__))
+#if !defined(CRYPTOPP_DISABLE_ASM) && (defined(_MSC_VER) || CRYPTOPP_GCC_VERSION >= 30300 || defined(__SSE2__) || (__SUNPRO_CC >= 0x5100))
 	#define CRYPTOPP_SSE2_INTRIN_AVAILABLE 1
 #endif
 
@@ -561,6 +561,22 @@ NAMESPACE_END
 	(CRYPTOPP_GCC_VERSION >= 40300) || (__INTEL_COMPILER >= 1110) || \
 	(CRYPTOPP_LLVM_CLANG_VERSION >= 30200) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40300))
 	#define CRYPTOPP_AESNI_AVAILABLE 1
+#endif
+
+// Requires Binutils 2.24
+#if !defined(CRYPTOPP_DISABLE_AVX) && defined(CRYPTOPP_SSE42_AVAILABLE) && \
+	(defined(__AVX2__) || (CRYPTOPP_MSC_VERSION >= 1800) || (__SUNPRO_CC >= 0x5130) || \
+	(CRYPTOPP_GCC_VERSION >= 40700) || (__INTEL_COMPILER >= 1400) || \
+	(CRYPTOPP_LLVM_CLANG_VERSION >= 30100) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40600))
+#define CRYPTOPP_AVX_AVAILABLE 1
+#endif
+
+// Requires Binutils 2.24
+#if !defined(CRYPTOPP_DISABLE_AVX2) && defined(CRYPTOPP_AVX_AVAILABLE) && \
+	(defined(__AVX2__) || (CRYPTOPP_MSC_VERSION >= 1800) || (__SUNPRO_CC >= 0x5130) || \
+	(CRYPTOPP_GCC_VERSION >= 40700) || (__INTEL_COMPILER >= 1400) || \
+	(CRYPTOPP_LLVM_CLANG_VERSION >= 30100) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40600))
+#define CRYPTOPP_AVX2_AVAILABLE 1
 #endif
 
 // Guessing at SHA for SunCC. Its not in Sun Studio 12.6. Also see
@@ -713,9 +729,11 @@ NAMESPACE_END
 #endif
 
 // Limit the <arm_acle.h> include.
-#if defined(__aarch32__) || defined(__aarch64__) || (__ARM_ARCH >= 8) || defined(__ARM_ACLE)
-# if !defined(__ANDROID__) && !defined(ANDROID) && !defined(__APPLE__)
-#  define CRYPTOPP_ARM_ACLE_AVAILABLE 1
+#if !defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+# if defined(__aarch32__) || defined(__aarch64__) || (__ARM_ARCH >= 8) || defined(__ARM_ACLE)
+#  if !defined(__ANDROID__) && !defined(ANDROID) && !defined(__APPLE__)
+#   define CRYPTOPP_ARM_ACLE_AVAILABLE 1
+#  endif
 # endif
 #endif
 
@@ -742,7 +760,7 @@ NAMESPACE_END
 // not provide an asm implementation. The Cryptogams implementation
 // is about 2x faster than C/C++. Define this to use the Cryptogams
 // AES implementation on GNU Linux systems. When defined, Crypto++
-// will use aes-armv4.S. LLVM miscompiles aes-armv4.S so disable
+// will use aes_armv4.S. LLVM miscompiles aes_armv4.S so disable
 // under Clang. See https://bugs.llvm.org/show_bug.cgi?id=38133.
 #if !defined(CRYPTOPP_DISABLE_ASM) && defined(__arm__)
 # if defined(__GNUC__) && !defined(__clang__)
@@ -1159,9 +1177,11 @@ NAMESPACE_END
 // Clang and __EXCEPTIONS see http://releases.llvm.org/3.6.0/tools/clang/docs/ReleaseNotes.html
 #if defined(__clang__)
 # if __EXCEPTIONS && __has_feature(cxx_exceptions)
-#  define CRYPTOPP_CXX17_EXCEPTIONS 1
+#  if __cpp_lib_uncaught_exceptions
+#   define CRYPTOPP_CXX17_EXCEPTIONS 1
+#  endif
 # endif
-#elif (CRYPTOPP_MSC_VERSION >= 1900) || (__INTEL_COMPILER >= 1800) || (CRYPTOPP_GCC_VERSION >= 60000)
+#elif (CRYPTOPP_MSC_VERSION >= 1900) || (__INTEL_COMPILER >= 1800) || (CRYPTOPP_GCC_VERSION >= 60000) || (__cpp_lib_uncaught_exceptions)
 # define CRYPTOPP_CXX17_EXCEPTIONS 1
 #endif // uncaught_exceptions compilers
 

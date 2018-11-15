@@ -162,10 +162,16 @@ matrix:
 
 before_install:
   - |
-    if [[ "$BUILD_MODE" == "android" ]]; then
+    if [[ "$BUILD_OS" == "linux" ]] && [ "$BUILD_MODE" == "android" ]]; then
         # https://github.com/travis-ci/travis-ci/issues/9037
         sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A145
+        sudo apt-get update
         TestScripts/install-android.sh
+    fi
+    if [[ "$BUILD_OS" == "linux" ]] && [[ "$BUILD_MODE" == "autotools" ]]; then
+        # https://github.com/travis-ci/travis-ci/issues/9037
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A145
+        sudo apt-get install -y autoconf automake libtool
     fi
 
 script:
@@ -178,7 +184,8 @@ script:
         cp ./TestScripts/cryptest-android.sh .
         bash cryptest-android.sh
     elif [[ "$BUILD_MODE" == "autotools" ]]; then
-        ./TestScripts/cryptest-autotools.sh
+        cp ./TestScripts/cryptest-autotools.sh .
+        bash cryptest-autotools.sh
     elif [[ "$BUILD_MODE" == "cmake" ]]; then
         cp ./TestScripts/cryptest-cmake.sh .
         bash cryptest-cmake.sh
