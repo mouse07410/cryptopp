@@ -162,8 +162,10 @@ extern void BLAKE2_Compress32_NEON(const byte* input, BLAKE2s_State& state);
 extern void BLAKE2_Compress64_NEON(const byte* input, BLAKE2b_State& state);
 #endif
 
-#if CRYPTOPP_ALTIVEC_AVAILABLE
+#if CRYPTOPP_POWER7_AVAILABLE
 extern void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state);
+#elif CRYPTOPP_ALTIVEC_AVAILABLE
+extern void BLAKE2_Compress32_ALTIVEC(const byte* input, BLAKE2s_State& state);
 #endif
 
 #if CRYPTOPP_POWER8_AVAILABLE
@@ -390,8 +392,7 @@ std::string BLAKE2s::AlgorithmProvider() const
 #if (CRYPTOPP_POWER7_AVAILABLE)
     if (HasPower7())
         return "Power7";
-#endif
-#if (CRYPTOPP_ALTIVEC_AVAILABLE)
+#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
     if (HasAltivec())
         return "Altivec";
 #endif
@@ -666,10 +667,15 @@ void BLAKE2s::Compress(const byte *input)
         return BLAKE2_Compress32_NEON(input, *m_state.data());
     }
 #endif
-#if CRYPTOPP_ALTIVEC_AVAILABLE
-    if(HasAltivec())
+#if CRYPTOPP_POWER7_AVAILABLE
+    if(HasPower7())
     {
         return BLAKE2_Compress32_POWER7(input, *m_state.data());
+    }
+#elif CRYPTOPP_ALTIVEC_AVAILABLE
+    if(HasAltivec())
+    {
+        return BLAKE2_Compress32_ALTIVEC(input, *m_state.data());
     }
 #endif
     return BLAKE2_Compress32_CXX(input, *m_state.data());
