@@ -681,7 +681,7 @@ void BLAKE2_Compress32_NEON(const byte* input, BLAKE2s_State& state)
 }
 #endif  // CRYPTOPP_ARM_NEON_AVAILABLE
 
-#if (CRYPTOPP_ALTIVEC_AVAILABLE)
+#if (CRYPTOPP_POWER7_AVAILABLE || CRYPTOPP_ALTIVEC_AVAILABLE)
 
 inline uint32x4_p VecLoad32(const void* p)
 {
@@ -847,7 +847,12 @@ uint32x4_p VectorSet32<3,1,3,1>(const uint32x4_p a, const uint32x4_p b,
     return VecPermute(a, c, mask);
 }
 
-void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state)
+// BLAKE2_Compress32_CORE will use either POWER7 or ALTIVEC,
+// depending on the flags used to compile this source file. The
+// abstractions are handled in VecLoad, VecStore and friends. In
+// the future we may to provide both POWER7 or ALTIVEC at the same
+// time to better support distros.
+void BLAKE2_Compress32_CORE(const byte* input, BLAKE2s_State& state)
 {
     # define m1 m0
     # define m2 m0
@@ -994,6 +999,22 @@ void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state)
     VecStore32LE(&state.h[0], VecXor(ff0, VecXor(row1, row3)));
     VecStore32LE(&state.h[4], VecXor(ff1, VecXor(row2, row4)));
 }
-#endif  // CRYPTOPP_ALTIVEC_AVAILABLE
+#endif  // CRYPTOPP_POWER7_AVAILABLE || CRYPTOPP_ALTIVEC_AVAILABLE
+
+#if (CRYPTOPP_POWER7_AVAILABLE)
+
+void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state)
+{
+	BLAKE2_Compress32_CORE(input, state);
+}
+
+#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
+
+void BLAKE2_Compress32_ALTIVEC(const byte* input, BLAKE2s_State& state)
+{
+	BLAKE2_Compress32_CORE(input, state);
+}
+
+#endif
 
 NAMESPACE_END
