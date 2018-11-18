@@ -35,7 +35,7 @@ INSTALL_PROGRAM = $(INSTALL)
 INSTALL_DATA = $(INSTALL) -m 644
 
 # Solaris provides a non-Posix grep at /usr/bin
-ifneq ($(wildcard /usr/xpg4/bin),)
+ifneq ($(wildcard /usr/xpg4/bin/grep),)
   GREP ?= /usr/xpg4/bin/grep
 else
   GREP ?= grep
@@ -60,14 +60,17 @@ IS_ARMV8 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'aarch32|aarch64')
 
 IS_NEON := $(shell $(CXX) $(CXXFLAGS) -dumpmachine 2>/dev/null | $(GREP) -i -c -E 'armv7|armhf|arm7l|eabihf|armv8|aarch32|aarch64')
 
+# Attempt to determine platform
 SYSTEMX := $(shell $(CXX) $(CXXFLAGS) -dumpmachine 2>/dev/null)
+ifeq ($(SYSTEMX),)
+  SYSTEMX := $(shell uname -s 2>/dev/null)
+endif
+
 IS_LINUX := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Linux")
 IS_MINGW := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "MinGW")
 IS_CYGWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Cygwin")
 IS_DARWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Darwin")
 IS_NETBSD := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "NetBSD")
-
-UNAMEX := $(shell uname -s 2>&1)
 IS_AIX := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "aix")
 IS_SUN := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "SunOS")
 
@@ -97,15 +100,8 @@ ifeq ($(wildcard adhoc.cpp),)
 $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
 
-# Fixup AIX
-ifeq ($(IS_AIX),1)
-  BITNESS=$(shell getconf KERNEL_BITMODE)
-  ifeq ($(BITNESS),64)
-    IS_PPC64=1
-  else
-    IS_PPC32=1
-  endif
-endif
+# For feature tests
+BAD_RESULT="fatal|error|unknown|unrecognized|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
 
 # Hack to skip CPU feature tests for some recipes
 DETECT_FEATURES ?= 1
@@ -117,6 +113,17 @@ else ifeq ($(findstring distclean,$(MAKECMDGOALS)),distclean)
   DETECT_FEATURES := 0
 else ifeq ($(findstring distclean,$(MAKECMDGOALS)),trim)
   DETECT_FEATURES := 0
+endif
+
+# Fixup AIX
+ifeq ($(IS_AIX),1)
+  TPROG = TestPrograms/test_64bit.cxx
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+  ifeq ($(HAVE_OPT),0)
+    IS_PPC64=1
+  else
+    IS_PPC32=1
+  endif
 endif
 
 ###########################################################
@@ -168,19 +175,10 @@ ifeq ($(ARFLAGS),rv)
 ARFLAGS = r
 endif
 
-# Newlib needs _XOPEN_SOURCE=600 for signals
-TPROG = TestPrograms/test_cxx.cxx
-HAS_NEWLIB := $(shell $(CXX) $(CXXFLAGS) -dM -E $(TPROG) 2>&1 | $(GREP) -i -c "__NEWLIB__")
-ifneq ($(HAS_NEWLIB),0)
-  ifeq ($(findstring -D_XOPEN_SOURCE,$(CXXFLAGS)),)
-    CXXFLAGS += -D_XOPEN_SOURCE=600
-  endif
-endif
-
 # Clang integrated assembler will be used with -Wa,-q
 CLANG_INTEGRATED_ASSEMBLER ?= 0
 
-# original MinGW targets Win2k by default, but lacks proper Win2k support
+# Original MinGW targets Win2k by default, but lacks proper Win2k support
 # if target Windows version is not specified, use Windows XP instead
 ifeq ($(IS_MINGW),1)
 ifeq ($(findstring -D_WIN32_WINNT,$(CXXFLAGS)),)
@@ -194,8 +192,14 @@ endif # _WIN32_WINDOWS
 endif # _WIN32_WINNT
 endif # IS_MINGW
 
-# For feature tests
-BAD_RESULT="fatal|error|unknown|unrecognized|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
+# Newlib needs _XOPEN_SOURCE=600 for signals
+TPROG = TestPrograms/test_newlib.cxx
+HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+ifeq ($(HAVE_OPT),0)
+  ifeq ($(findstring -D_XOPEN_SOURCE,$(CXXFLAGS)),)
+    CXXFLAGS += -D_XOPEN_SOURCE=600
+  endif
+endif
 
 ###########################################################
 #####               X86/X32/X64 Options               #####
@@ -297,20 +301,20 @@ ifeq ($(DETECT_FEATURES),1)
           ifeq ($(HAVE_OPT),0)
             SHA_FLAG = -msse4.2 -msha
           else
-            CXXFLAGS += -DCRYPTOPP_DISABLE_SHANI
+            CXXFLAGS += -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
           endif
 
         else
-          CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4
+          CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
         endif
       else
-        CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4
+        CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
       endif
     else
-      CXXFLAGS += -DCRYPTOPP_DISABLE_SSSE3
+      CXXFLAGS += -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
     endif
   else
-    CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2
+    CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2 -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
   endif
 
 # DETECT_FEATURES
@@ -703,15 +707,16 @@ ifeq ($(DETECT_FEATURES),1)
     POWER4_FLAG =
   endif
 
-  # Drop SIMON64 and SPECK64 to Power4 if Power7 not available
-  ifeq ($(SIMON64_FLAG)$(SPECK64_FLAG)$(ALTIVEC_FLAG),$(ALTIVEC_FLAG))
-    SIMON64_FLAG = $(ALTIVEC_FLAG)
-    SPECK64_FLAG = $(ALTIVEC_FLAG)
+  # Drop to Power7 if Power8 is not available.
+  ifeq ($(POWER8_FLAG),)
+    GCM_FLAG = $(POWER7_FLAG)
   endif
 
-  # Drop ChaCha to Power4 if Power7 and Power8 not available
-  ifeq ($(CHACHA_FLAG)$(ALTIVEC_FLAG),$(ALTIVEC_FLAG))
+  # Drop to Power4 if Power7 not available
+  ifeq ($(POWER7_FLAG),)
     CHACHA_FLAG = $(ALTIVEC_FLAG)
+    SIMON64_FLAG = $(ALTIVEC_FLAG)
+    SPECK64_FLAG = $(ALTIVEC_FLAG)
   endif
 
   ifeq ($(ALTIVEC_FLAG),)
