@@ -35,7 +35,7 @@ INSTALL_PROGRAM = $(INSTALL)
 INSTALL_DATA = $(INSTALL) -m 644
 
 # Solaris provides a non-Posix grep at /usr/bin
-ifneq ($(wildcard /usr/xpg4/bin),)
+ifneq ($(wildcard /usr/xpg4/bin/grep),)
   GREP ?= /usr/xpg4/bin/grep
 else
   GREP ?= grep
@@ -52,7 +52,7 @@ endif
 IS_X86 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'i.86|x86|i86')
 IS_X64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E '_64|d64')
 IS_PPC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'ppc|power')
-IS_PPC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'ppc64|power64')
+IS_PPC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'ppc64|powerpc64|power64')
 IS_SPARC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'sun|sparc')
 IS_SPARC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'sun|sparc64')
 IS_ARM32 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'arm|armhf|arm7l|eabihf')
@@ -60,16 +60,19 @@ IS_ARMV8 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'aarch32|aarch64')
 
 IS_NEON := $(shell $(CXX) $(CXXFLAGS) -dumpmachine 2>/dev/null | $(GREP) -i -c -E 'armv7|armhf|arm7l|eabihf|armv8|aarch32|aarch64')
 
+# Attempt to determine platform
 SYSTEMX := $(shell $(CXX) $(CXXFLAGS) -dumpmachine 2>/dev/null)
+ifeq ($(SYSTEMX),)
+  SYSTEMX := $(shell uname -s 2>/dev/null)
+endif
+
 IS_LINUX := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Linux")
 IS_MINGW := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "MinGW")
 IS_CYGWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Cygwin")
 IS_DARWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Darwin")
 IS_NETBSD := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "NetBSD")
-
-UNAMEX := $(shell uname -s 2>&1)
-IS_AIX := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "aix")
-IS_SUN := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "SunOS")
+IS_AIX := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "aix")
+IS_SUN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "SunOS")
 
 SUN_COMPILER := $(shell $(CXX) -V 2>&1 | $(GREP) -i -c -E 'CC: (Sun|Studio)')
 GCC_COMPILER := $(shell $(CXX) --version 2>/dev/null | $(GREP) -v -E '(llvm|clang)' | $(GREP) -i -c -E '(gcc|g\+\+)')
@@ -97,15 +100,8 @@ ifeq ($(wildcard adhoc.cpp),)
 $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
 
-# Fixup AIX
-ifeq ($(IS_AIX),1)
-  BITNESS=$(shell getconf KERNEL_BITMODE)
-  ifeq ($(BITNESS),64)
-    IS_PPC64=1
-  else
-    IS_PPC32=1
-  endif
-endif
+# For feature tests
+BAD_RESULT="fatal|error|unknown|unrecognized|unexpected|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
 
 # Hack to skip CPU feature tests for some recipes
 DETECT_FEATURES ?= 1
@@ -117,6 +113,17 @@ else ifeq ($(findstring distclean,$(MAKECMDGOALS)),distclean)
   DETECT_FEATURES := 0
 else ifeq ($(findstring distclean,$(MAKECMDGOALS)),trim)
   DETECT_FEATURES := 0
+endif
+
+# Fixup AIX
+ifeq ($(IS_AIX),1)
+  TPROG = TestPrograms/test_64bit.cxx
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    IS_PPC64=1
+  else
+    IS_PPC32=1
+  endif
 endif
 
 ###########################################################
@@ -168,19 +175,10 @@ ifeq ($(ARFLAGS),rv)
 ARFLAGS = r
 endif
 
-# Newlib needs _XOPEN_SOURCE=600 for signals
-TPROG = TestPrograms/test_cxx.cxx
-HAS_NEWLIB := $(shell $(CXX) $(CXXFLAGS) -dM -E $(TPROG) 2>&1 | $(GREP) -i -c "__NEWLIB__")
-ifneq ($(HAS_NEWLIB),0)
-  ifeq ($(findstring -D_XOPEN_SOURCE,$(CXXFLAGS)),)
-    CXXFLAGS += -D_XOPEN_SOURCE=600
-  endif
-endif
-
 # Clang integrated assembler will be used with -Wa,-q
 CLANG_INTEGRATED_ASSEMBLER ?= 0
 
-# original MinGW targets Win2k by default, but lacks proper Win2k support
+# Original MinGW targets Win2k by default, but lacks proper Win2k support
 # if target Windows version is not specified, use Windows XP instead
 ifeq ($(IS_MINGW),1)
 ifeq ($(findstring -D_WIN32_WINNT,$(CXXFLAGS)),)
@@ -194,8 +192,14 @@ endif # _WIN32_WINDOWS
 endif # _WIN32_WINNT
 endif # IS_MINGW
 
-# For feature tests
-BAD_RESULT="fatal|error|unknown|unrecognized|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
+# Newlib needs _XOPEN_SOURCE=600 for signals
+TPROG = TestPrograms/test_newlib.cxx
+HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
+ifeq ($(HAVE_OPT),0)
+  ifeq ($(findstring -D_XOPEN_SOURCE,$(CXXFLAGS)),)
+    CXXFLAGS += -D_XOPEN_SOURCE=600
+  endif
+endif
 
 ###########################################################
 #####               X86/X32/X64 Options               #####
@@ -297,20 +301,20 @@ ifeq ($(DETECT_FEATURES),1)
           ifeq ($(HAVE_OPT),0)
             SHA_FLAG = -msse4.2 -msha
           else
-            CXXFLAGS += -DCRYPTOPP_DISABLE_SHANI
+            CXXFLAGS += -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
           endif
 
         else
-          CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4
+          CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
         endif
       else
-        CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4
+        CXXFLAGS += -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
       endif
     else
-      CXXFLAGS += -DCRYPTOPP_DISABLE_SSSE3
+      CXXFLAGS += -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
     endif
   else
-    CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2
+    CXXFLAGS += -DCRYPTOPP_DISABLE_SSE2 -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_SHANI -DCRYPTOPP_DISABLE_AVX2
   endif
 
 # DETECT_FEATURES
@@ -593,185 +597,192 @@ endif
 ifneq ($(IS_PPC32)$(IS_PPC64),00)
 ifeq ($(DETECT_FEATURES),1)
 
-  # GCC and some compatibles
-  ifneq ($(GCC_COMPILER)$(CLANG_COMPILER),00)
-
-    TPROG = TestPrograms/test_ppc_power8.cxx
-    TOPT = -mcpu=power8 -maltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      POWER8_FLAG = -mcpu=power8 -maltivec
-      AES_FLAG = $(POWER8_FLAG)
-      BLAKE2B_FLAG = $(POWER8_FLAG)
-      BLAKE2S_FLAG = $(POWER8_FLAG)
-      CHACHA_FLAG = $(POWER8_FLAG)
-      GCM_FLAG = $(POWER8_FLAG)
-      SHA_FLAG = $(POWER8_FLAG)
-      SM4_FLAG = $(POWER8_FLAG)
-      SIMON64_FLAG = $(POWER8_FLAG)
-      SIMON128_FLAG = $(POWER8_FLAG)
-      SPECK64_FLAG = $(POWER8_FLAG)
-      SPECK128_FLAG = $(POWER8_FLAG)
-    endif
-
-    TPROG = TestPrograms/test_ppc_power7.cxx
-    TOPT = -mcpu=power7 -maltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      POWER7_FLAG = -mcpu=power7 -maltivec
-      ARIA_FLAG = $(POWER7_FLAG)
-      BLAKE2S_FLAG = $(POWER7_FLAG)
-      CHACHA_FLAG = $(POWER7_FLAG)
-      CHAM_FLAG = $(POWER7_FLAG)
-      LEA_FLAG = $(POWER7_FLAG)
-      SIMECK_FLAG = $(POWER7_FLAG)
-      SIMON64_FLAG = $(POWER7_FLAG)
-      SPECK64_FLAG = $(POWER7_FLAG)
-    endif
-
-    TPROG = TestPrograms/test_ppc_altivec.cxx
-    TOPT = -mcpu=power4 -maltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      ALTIVEC_FLAG = -mcpu=power4 -maltivec
-    else
-      TOPT = -mcpu=power5 -maltivec
-      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-      ifeq ($(HAVE_OPT),0)
-        ALTIVEC_FLAG = -mcpu=power5 -maltivec
-      else
-        TOPT = -mcpu=power6 -maltivec
-        HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-        ifeq ($(HAVE_OPT),0)
-          ALTIVEC_FLAG = -mcpu=power6 -maltivec
-        endif
-      endif
-    endif
-
-    # Drop SIMON64 and SPECK64 to Power4 if Power7 not available
-    ifeq ($(SIMON64_FLAG)$(SPECK64_FLAG),)
-      SIMON64_FLAG = $(ALTIVEC_FLAG)
-      SPECK64_FLAG = $(ALTIVEC_FLAG)
-    endif
-
-    # Drop ChaCha to Power4 if Power7 and Power8 not available
-    ifeq ($(CHACHA_FLAG),)
-      CHACHA_FLAG = $(ALTIVEC_FLAG)
-    endif
-
-  # GCC and some compatibles
-  endif
-
-  # IBM XL C/C++
   ifeq ($(XLC_COMPILER),1)
-
-    # LLVM front-ends only provide POWER8 and need special options to
-    # get XLC defines. The POWER8 really jambs us up for ppc_simd.cpp
-    # which needs ALTIVEC/POWER4. We have similar problems with POWER7.
-    ifeq ($(findstring -qxlcompatmacros,$(CXXFLAGS)),)
-      TPROG = TestPrograms/test_ppc_altivec.cxx
-      TOPT = -qxlcompatmacros
-      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-      ifeq ($(HAVE_OPT),0)
-        CXXFLAGS += -qxlcompatmacros
-      endif
-    endif
-
-    TPROG = TestPrograms/test_ppc_power8.cxx
-    TOPT = -qarch=pwr8 -qaltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      POWER8_FLAG = -qarch=pwr8 -qaltivec
-      AES_FLAG = $(POWER8_FLAG)
-      BLAKE2B_FLAG = $(POWER8_FLAG)
-      BLAKE2S_FLAG = $(POWER8_FLAG)
-      CHACHA_FLAG = $(POWER8_FLAG)
-      GCM_FLAG = $(POWER8_FLAG)
-      SHA_FLAG = $(POWER8_FLAG)
-      SM4_FLAG = $(POWER8_FLAG)
-      SIMON64_FLAG = $(POWER8_FLAG)
-      SIMON128_FLAG = $(POWER8_FLAG)
-      SPECK64_FLAG = $(POWER8_FLAG)
-      SPECK128_FLAG = $(POWER8_FLAG)
-    endif
-
-    TPROG = TestPrograms/test_ppc_power7.cxx
-    TOPT = -qarch=pwr7 -qaltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      POWER7_FLAG = -qarch=pwr7 -qaltivec
-      ARIA_FLAG = $(POWER7_FLAG)
-      BLAKE2S_FLAG = $(POWER7_FLAG)
-      CHACHA_FLAG = $(POWER7_FLAG)
-      CHAM_FLAG = $(POWER7_FLAG)
-      LEA_FLAG = $(POWER7_FLAG)
-      SIMECK_FLAG = $(POWER7_FLAG)
-      SIMON64_FLAG = $(POWER7_FLAG)
-      SPECK64_FLAG = $(POWER7_FLAG)
-    endif
-
-    TPROG = TestPrograms/test_ppc_altivec.cxx
-    TOPT = -qarch=pwr4 -qaltivec
-    HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-    ifeq ($(HAVE_OPT),0)
-      ALTIVEC_FLAG = -qarch=pwr4 -qaltivec
-    else
-      TOPT = -qarch=pwr5 -qaltivec
-      HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-      ifeq ($(HAVE_OPT),0)
-        ALTIVEC_FLAG = -qarch=pwr5 -qaltivec
-      else
-        TOPT = -qarch=pwr6 -qaltivec
-        HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-        ifeq ($(HAVE_OPT),0)
-          ALTIVEC_FLAG = -qarch=pwr6 -qaltivec
-        endif
-      endif
-    endif
-
-    # LLVM front-end to XLC only provide Power8. It really jambs
-    # us up for ppc_simd.cpp which needs ALTIVEC/POWER4. We have
-    # similar problems with POWER7.
-    ifneq ($(POWER8_FLAG),)
-      ifeq ($(POWER7_FLAG),)
-        POWER7_FLAG = $(POWER8_FLAG)
-        ARIA_FLAG = $(POWER8_FLAG)
-        BLAKE2B_FLAG = $(POWER8_FLAG)
-        BLAKE2S_FLAG = $(POWER8_FLAG)
-        CHACHA_FLAG = $(POWER8_FLAG)
-        CHAM_FLAG = $(POWER8_FLAG)
-        LEA_FLAG = $(POWER8_FLAG)
-        SIMECK_FLAG = $(POWER8_FLAG)
-        SIMON64_FLAG = $(POWER8_FLAG)
-        SIMON128_FLAG = $(POWER8_FLAG)
-        SPECK64_FLAG = $(POWER8_FLAG)
-        SPECK128_FLAG = $(POWER8_FLAG)
-      endif
-      ifeq ($(ALTIVEC_FLAG),)
-        ALTIVEC_FLAG = $(POWER8_FLAG)
-      endif
-    endif
-
-    # Drop SIMON64 and SPECK64 to Power4 if Power7 not available
-    ifeq ($(SIMON64_FLAG)$(SPECK64_FLAG),)
-      SIMON64_FLAG = $(ALTIVEC_FLAG)
-      SPECK64_FLAG = $(ALTIVEC_FLAG)
-    endif
-
-    # Drop ChaCha to Power4 if Power7 and Power8 not available
-    ifeq ($(CHACHA_FLAG),)
-      CHACHA_FLAG = $(ALTIVEC_FLAG)
-    endif
-
-  # IBM XL C/C++
+    POWER9_FLAG = -qarch=pwr9 -qaltivec
+    POWER8_FLAG = -qarch=pwr8 -qaltivec
+    POWER7_FLAG = -qarch=pwr7 -qaltivec
+    POWER6_FLAG = -qarch=pwr6 -qaltivec
+    POWER5_FLAG = -qarch=pwr5 -qaltivec
+    POWER4_FLAG = -qarch=pwr4 -qaltivec
+  else
+    POWER9_FLAG = -mcpu=power9 -maltivec
+    POWER8_FLAG = -mcpu=power8 -maltivec
+    POWER7_FLAG = -mcpu=power7 -maltivec
+    POWER6_FLAG = -mcpu=power6 -maltivec
+    POWER5_FLAG = -mcpu=power5 -maltivec
+    POWER4_FLAG = -mcpu=power4 -maltivec
   endif
+
+  # XLC with LLVM front-ends failed to define XLC defines.
+  #ifeq ($(findstring -qxlcompatmacros,$(CXXFLAGS)),)
+  #  TPROG = TestPrograms/test_ppc_altivec.cxx
+  #  TOPT = -qxlcompatmacros
+  #  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  #  ifeq ($(strip $(HAVE_OPT)),0)
+  #    CXXFLAGS += -qxlcompatmacros
+  #  endif
+  #endif
+
+  #####################################################################
+  # AES is a separate submodule of POWER8 due to possible export
+  # restrictions by the government. It is the reason LLVM choose
+  # different intrinsics than GCC and XLC.
+
+  TPROG = TestPrograms/test_ppc_aes.cxx
+  TOPT = $(POWER9_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    AES_FLAG = $(POWER9_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_aes.cxx
+  TOPT = $(POWER8_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    AES_FLAG = $(POWER8_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_sha.cxx
+  TOPT = $(POWER9_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    SHA_FLAG = $(POWER9_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_sha.cxx
+  TOPT = $(POWER8_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    SHA_FLAG = $(POWER8_FLAG)
+  endif
+
+  #####################################################################
+  # Looking for a POWER8 option
+
+  TPROG = TestPrograms/test_ppc_power8.cxx
+  TOPT = $(POWER9_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER9_FLAG)
+    BLAKE2B_FLAG = $(POWER9_FLAG)
+    BLAKE2S_FLAG = $(POWER9_FLAG)
+    CHACHA_FLAG = $(POWER9_FLAG)
+    GCM_FLAG = $(POWER9_FLAG)
+    SM4_FLAG = $(POWER9_FLAG)
+    SIMON64_FLAG = $(POWER9_FLAG)
+    SIMON128_FLAG = $(POWER9_FLAG)
+    SPECK64_FLAG = $(POWER9_FLAG)
+    SPECK128_FLAG = $(POWER9_FLAG)
+  else
+    POWER9_FLAG =
+  endif
+
+  TPROG = TestPrograms/test_ppc_power8.cxx
+  TOPT = $(POWER8_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER8_FLAG)
+    BLAKE2B_FLAG = $(POWER8_FLAG)
+    BLAKE2S_FLAG = $(POWER8_FLAG)
+    CHACHA_FLAG = $(POWER8_FLAG)
+    GCM_FLAG = $(POWER8_FLAG)
+    SM4_FLAG = $(POWER8_FLAG)
+    SIMON64_FLAG = $(POWER8_FLAG)
+    SIMON128_FLAG = $(POWER8_FLAG)
+    SPECK64_FLAG = $(POWER8_FLAG)
+    SPECK128_FLAG = $(POWER8_FLAG)
+  else
+    POWER8_FLAG =
+  endif
+
+  #####################################################################
+  # Looking for a POWER7 option
+
+  TPROG = TestPrograms/test_ppc_power7.cxx
+  TOPT = $(POWER7_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER7_FLAG)
+    ARIA_FLAG = $(POWER7_FLAG)
+    BLAKE2S_FLAG = $(POWER7_FLAG)
+    CHACHA_FLAG = $(POWER7_FLAG)
+    CHAM_FLAG = $(POWER7_FLAG)
+    LEA_FLAG = $(POWER7_FLAG)
+    SIMECK_FLAG = $(POWER7_FLAG)
+    SIMON64_FLAG = $(POWER7_FLAG)
+    SPECK64_FLAG = $(POWER7_FLAG)
+  else
+    POWER7_FLAG =
+  endif
+
+  #####################################################################
+  # Looking for an Altivec option
+
+  TPROG = TestPrograms/test_ppc_altivec.cxx
+  TOPT = $(POWER6_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER6_FLAG)
+  else
+    POWER6_FLAG =
+  endif
+
+  TPROG = TestPrograms/test_ppc_altivec.cxx
+  TOPT = $(POWER5_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER5_FLAG)
+  else
+    POWER5_FLAG =
+  endif
+
+  TPROG = TestPrograms/test_ppc_altivec.cxx
+  TOPT = $(POWER4_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG = $(POWER4_FLAG)
+  else
+    POWER4_FLAG =
+  endif
+
+  #####################################################################
+  # Fixups for algorithms that can drop to a lower ISA, if needed
+
+  # Drop to Power7 if Power8 is not available.
+  ifeq ($(POWER8_FLAG),)
+    GCM_FLAG = $(POWER7_FLAG)
+  endif
+
+  # Drop to Power4 if Power7 not available
+  ifeq ($(POWER7_FLAG),)
+    BLAKE2S_FLAG = $(ALTIVEC_FLAG)
+    CHACHA_FLAG = $(ALTIVEC_FLAG)
+    SIMON64_FLAG = $(ALTIVEC_FLAG)
+    SPECK64_FLAG = $(ALTIVEC_FLAG)
+  endif
+
+  #####################################################################
+  # Fixups for missing ISAs
 
   ifeq ($(ALTIVEC_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_ALTIVEC
-  else ifeq ($(POWER7_FLAG),)
+  else ifeq ($(POWER9_FLAG)$(POWER8_FLAG)$(POWER7_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER7
-  else ifeq ($(POWER8_FLAG),)
+  else ifeq ($(POWER9_FLAG)$(POWER8_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8
+  endif
+
+  #####################################################################
+  # Fixups for missing crypto
+
+  ifneq ($(POWER9_FLAG)$(POWER8_FLAG),)
+    ifeq ($(AES_FLAG),)
+      CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_AES
+    endif
+    ifeq ($(SHA_FLAG),)
+      CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_SHA
+    endif
+	# CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_VMULL
   endif
 
 # DETECT_FEATURES
@@ -1494,9 +1505,17 @@ lea_simd.o : lea_simd.cpp
 neon_simd.o : neon_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(NEON_FLAG) -c) $<
 
-# AltiVec, Power7, Power8 available
+# AltiVec available
 ppc_simd.o : ppc_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(ALTIVEC_FLAG) -c) $<
+
+# Power7 available
+ppc_power7.o : ppc_power7.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(POWER7_FLAG) -c) $<
+
+# Power8 available
+ppc_power8.o : ppc_power8.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(POWER8_FLAG) -c) $<
 
 # AESNI or ARMv7a/ARMv8a available
 rijndael_simd.o : rijndael_simd.cpp
