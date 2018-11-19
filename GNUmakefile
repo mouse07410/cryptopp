@@ -71,8 +71,8 @@ IS_MINGW := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "MinGW")
 IS_CYGWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Cygwin")
 IS_DARWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Darwin")
 IS_NETBSD := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "NetBSD")
-IS_AIX := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "aix")
-IS_SUN := $(shell echo "$(UNAMEX)" | $(GREP) -i -c "SunOS")
+IS_AIX := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "aix")
+IS_SUN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "SunOS")
 
 SUN_COMPILER := $(shell $(CXX) -V 2>&1 | $(GREP) -i -c -E 'CC: (Sun|Studio)')
 GCC_COMPILER := $(shell $(CXX) --version 2>/dev/null | $(GREP) -v -E '(llvm|clang)' | $(GREP) -i -c -E '(gcc|g\+\+)')
@@ -101,7 +101,7 @@ $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
 
 # For feature tests
-BAD_RESULT="fatal|error|unknown|unrecognized|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
+BAD_RESULT="fatal|error|unknown|unrecognized|unexpected|illegal|ignored|incorrect|not found|not exist|cannot find|not supported|not compatible|no such instruction|invalid mnemonic"
 
 # Hack to skip CPU feature tests for some recipes
 DETECT_FEATURES ?= 1
@@ -118,8 +118,8 @@ endif
 # Fixup AIX
 ifeq ($(IS_AIX),1)
   TPROG = TestPrograms/test_64bit.cxx
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     IS_PPC64=1
   else
     IS_PPC32=1
@@ -617,23 +617,57 @@ ifeq ($(DETECT_FEATURES),1)
   #ifeq ($(findstring -qxlcompatmacros,$(CXXFLAGS)),)
   #  TPROG = TestPrograms/test_ppc_altivec.cxx
   #  TOPT = -qxlcompatmacros
-  #  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  #  ifeq ($(HAVE_OPT),0)
+  #  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  #  ifeq ($(strip $(HAVE_OPT)),0)
   #    CXXFLAGS += -qxlcompatmacros
   #  endif
   #endif
 
+  #####################################################################
+  # AES is a separate submodule of POWER8 due to possible export
+  # restrictions by the government. It is the reason LLVM choose
+  # different intrinsics than GCC and XLC.
+
+  TPROG = TestPrograms/test_ppc_aes.cxx
+  TOPT = $(POWER9_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    AES_FLAG = $(POWER9_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_aes.cxx
+  TOPT = $(POWER8_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    AES_FLAG = $(POWER8_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_sha.cxx
+  TOPT = $(POWER9_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    SHA_FLAG = $(POWER9_FLAG)
+  endif
+
+  TPROG = TestPrograms/test_ppc_sha.cxx
+  TOPT = $(POWER8_FLAG)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    SHA_FLAG = $(POWER8_FLAG)
+  endif
+
+  #####################################################################
+  # Looking for a POWER8 option
+
   TPROG = TestPrograms/test_ppc_power8.cxx
   TOPT = $(POWER9_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER9_FLAG)
-    AES_FLAG = $(POWER9_FLAG)
     BLAKE2B_FLAG = $(POWER9_FLAG)
     BLAKE2S_FLAG = $(POWER9_FLAG)
     CHACHA_FLAG = $(POWER9_FLAG)
     GCM_FLAG = $(POWER9_FLAG)
-    SHA_FLAG = $(POWER9_FLAG)
     SM4_FLAG = $(POWER9_FLAG)
     SIMON64_FLAG = $(POWER9_FLAG)
     SIMON128_FLAG = $(POWER9_FLAG)
@@ -645,15 +679,13 @@ ifeq ($(DETECT_FEATURES),1)
 
   TPROG = TestPrograms/test_ppc_power8.cxx
   TOPT = $(POWER8_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER8_FLAG)
-    AES_FLAG = $(POWER8_FLAG)
     BLAKE2B_FLAG = $(POWER8_FLAG)
     BLAKE2S_FLAG = $(POWER8_FLAG)
     CHACHA_FLAG = $(POWER8_FLAG)
     GCM_FLAG = $(POWER8_FLAG)
-    SHA_FLAG = $(POWER8_FLAG)
     SM4_FLAG = $(POWER8_FLAG)
     SIMON64_FLAG = $(POWER8_FLAG)
     SIMON128_FLAG = $(POWER8_FLAG)
@@ -663,10 +695,13 @@ ifeq ($(DETECT_FEATURES),1)
     POWER8_FLAG =
   endif
 
+  #####################################################################
+  # Looking for a POWER7 option
+
   TPROG = TestPrograms/test_ppc_power7.cxx
   TOPT = $(POWER7_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER7_FLAG)
     ARIA_FLAG = $(POWER7_FLAG)
     BLAKE2S_FLAG = $(POWER7_FLAG)
@@ -680,10 +715,13 @@ ifeq ($(DETECT_FEATURES),1)
     POWER7_FLAG =
   endif
 
+  #####################################################################
+  # Looking for an Altivec option
+
   TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = $(POWER6_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER6_FLAG)
   else
     POWER6_FLAG =
@@ -691,8 +729,8 @@ ifeq ($(DETECT_FEATURES),1)
 
   TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = $(POWER5_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER5_FLAG)
   else
     POWER5_FLAG =
@@ -700,12 +738,15 @@ ifeq ($(DETECT_FEATURES),1)
 
   TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = $(POWER4_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | $(GREP) -i -c -E $(BAD_RESULT))
-  ifeq ($(HAVE_OPT),0)
+  HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
     ALTIVEC_FLAG = $(POWER4_FLAG)
   else
     POWER4_FLAG =
   endif
+
+  #####################################################################
+  # Fixups for algorithms that can drop to a lower ISA, if needed
 
   # Drop to Power7 if Power8 is not available.
   ifeq ($(POWER8_FLAG),)
@@ -720,12 +761,28 @@ ifeq ($(DETECT_FEATURES),1)
     SPECK64_FLAG = $(ALTIVEC_FLAG)
   endif
 
+  #####################################################################
+  # Fixups for missing ISAs
+
   ifeq ($(ALTIVEC_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_ALTIVEC
   else ifeq ($(POWER9_FLAG)$(POWER8_FLAG)$(POWER7_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER7
   else ifeq ($(POWER9_FLAG)$(POWER8_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8
+  endif
+
+  #####################################################################
+  # Fixups for missing crypto
+
+  ifneq ($(POWER9_FLAG)$(POWER8_FLAG),)
+    ifeq ($(AES_FLAG),)
+      CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_AES
+    endif
+    ifeq ($(SHA_FLAG),)
+      CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_SHA
+    endif
+	# CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8_VMULL
   endif
 
 # DETECT_FEATURES
@@ -1448,9 +1505,17 @@ lea_simd.o : lea_simd.cpp
 neon_simd.o : neon_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(NEON_FLAG) -c) $<
 
-# AltiVec, Power7, Power8 available
+# AltiVec available
 ppc_simd.o : ppc_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(ALTIVEC_FLAG) -c) $<
+
+# Power7 available
+ppc_power7.o : ppc_power7.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(POWER7_FLAG) -c) $<
+
+# Power8 available
+ppc_power8.o : ppc_power8.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(POWER8_FLAG) -c) $<
 
 # AESNI or ARMv7a/ARMv8a available
 rijndael_simd.o : rijndael_simd.cpp
