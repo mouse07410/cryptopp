@@ -32,6 +32,12 @@
 # undef bool
 #endif
 
+// IBM XLC on AIX does not define __CRYPTO__ like it should. More LLVM goodness.
+#if defined(_AIX) && defined(__xlC__)
+# undef __CRYPTO__
+# define __CRYPTO__ 1
+#endif
+
 // VecLoad_ALTIVEC and VecStore_ALTIVEC are
 // too noisy on modern compilers
 #if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
@@ -150,10 +156,10 @@ inline uint32x4_p VecLoad(const byte src[16])
 #endif
 }
 
-/// \brief Loads a vector from a byte array
-/// \param src the byte array
-/// \param off offset into the byte array
-/// \details VecLoad loads a vector in from a byte array.
+/// \brief Loads a vector from a word array
+/// \param src the word array
+/// \param off offset into the word array
+/// \details VecLoad loads a vector in from a word array.
 /// \details VecLoad uses POWER7's <tt>vec_xl</tt> or
 ///   <tt>vec_vsx_ld</tt> if available. The instructions do not require
 ///   aligned effective memory addresses. VecLoad_ALTIVEC() is used if POWER7
@@ -175,9 +181,9 @@ inline uint32x4_p VecLoad(int off, const byte src[16])
 #endif
 }
 
-/// \brief Loads a vector from a byte array
-/// \param src the byte array
-/// \details VecLoad loads a vector in from a byte array.
+/// \brief Loads a vector from a word array
+/// \param src the word array
+/// \details VecLoad loads a vector in from a word array.
 /// \details VecLoad uses POWER7's <tt>vec_xl</tt> or
 ///   <tt>vec_vsx_ld</tt> if available. The instructions do not require
 ///   aligned effective memory addresses. VecLoad_ALTIVEC() is used if POWER7
@@ -191,10 +197,10 @@ inline uint32x4_p VecLoad(const word32 src[4])
     return VecLoad((const byte*)src);
 }
 
-/// \brief Loads a vector from a byte array
-/// \param src the byte array
-/// \param off offset into the byte array
-/// \details VecLoad loads a vector in from a byte array.
+/// \brief Loads a vector from a word array
+/// \param src the word array
+/// \param off offset into the word array
+/// \details VecLoad loads a vector in from a word array.
 /// \details VecLoad uses POWER7's <tt>vec_xl</tt> or
 ///   <tt>vec_vsx_ld</tt> if available. The instructions do not require
 ///   aligned effective memory addresses. VecLoad_ALTIVEC() is used if POWER7
@@ -207,6 +213,43 @@ inline uint32x4_p VecLoad(int off, const word32 src[4])
 {
     return VecLoad(off, (const byte*)src);
 }
+
+#if defined(_ARCH_PWR8)
+
+/// \brief Loads a vector from a word array
+/// \param src the word array
+/// \details VecLoad loads a vector in from a word array.
+/// \details VecLoad uses POWER7's <tt>vec_xl</tt> or
+///   <tt>vec_vsx_ld</tt> if available. The instructions do not require
+///   aligned effective memory addresses. VecLoad_ALTIVEC() is used if POWER7
+///   is not available. VecLoad_ALTIVEC() can be relatively expensive if
+///   extra instructions are required to fix up unaligned effective memory
+///   addresses.
+/// \note VecLoad does not require an aligned array.
+/// \since Crypto++ 8.0
+inline uint64x2_p VecLoad(const word64 src[2])
+{
+    return (uint64x2_p)VecLoad((const byte*)src);
+}
+
+/// \brief Loads a vector from a byte array
+/// \param src the word array
+/// \param off offset into the word array
+/// \details VecLoad loads a vector in from a word array.
+/// \details VecLoad uses POWER7's <tt>vec_xl</tt> or
+///   <tt>vec_vsx_ld</tt> if available. The instructions do not require
+///   aligned effective memory addresses. VecLoad_ALTIVEC() is used if POWER7
+///   is not available. VecLoad_ALTIVEC() can be relatively expensive if
+///   extra instructions are required to fix up unaligned effective memory
+///   addresses.
+/// \note VecLoad does not require an aligned array.
+/// \since Crypto++ 8.0
+inline uint64x2_p VecLoad(int off, const word64 src[2])
+{
+    return (uint64x2_p)VecLoad(off, (const byte*)src);
+}
+
+#endif  // _ARCH_PWR8
 
 /// \brief Loads a vector from a byte array
 /// \param src the byte array
@@ -406,8 +449,8 @@ inline void VecStore(const T data, int off, byte dest[16])
 /// \brief Stores a vector to a word array
 /// \tparam T vector type
 /// \param data the vector
-/// \param dest the byte array
-/// \details VecStore stores a vector to a byte array.
+/// \param dest the word array
+/// \details VecStore stores a vector to a word array.
 /// \details VecStore uses POWER7's <tt>vec_xst</tt> or
 ///   <tt>vec_vsx_st</tt> if available. The instructions do not require
 ///   aligned effective memory addresses. VecStore_ALTIVEC() is used if POWER7
@@ -426,8 +469,8 @@ inline void VecStore(const T data, word32 dest[4])
 /// \tparam T vector type
 /// \param data the vector
 /// \param off the byte offset into the array
-/// \param dest the byte array
-/// \details VecStore stores a vector to a byte array.
+/// \param dest the word array
+/// \details VecStore stores a vector to a word array.
 /// \details VecStore uses POWER7's <tt>vec_xst</tt> or
 ///   <tt>vec_vsx_st</tt> if available. The instructions do not require
 ///   aligned effective memory addresses. VecStore_ALTIVEC() is used if POWER7
@@ -441,6 +484,49 @@ inline void VecStore(const T data, int off, word32 dest[4])
 {
     VecStore((uint8x16_p)data, off, (byte*)dest);
 }
+
+#if defined(_ARCH_PWR8)
+
+/// \brief Stores a vector to a word array
+/// \tparam T vector type
+/// \param data the vector
+/// \param dest the word array
+/// \details VecStore stores a vector to a word array.
+/// \details VecStore uses POWER7's <tt>vec_xst</tt> or
+///   <tt>vec_vsx_st</tt> if available. The instructions do not require
+///   aligned effective memory addresses. VecStore_ALTIVEC() is used if POWER7
+///   is not available. VecStore_ALTIVEC() can be relatively expensive if
+///   extra instructions are required to fix up unaligned effective memory
+///   addresses.
+/// \note VecStore does not require an aligned array.
+/// \since Crypto++ 8.0
+template<class T>
+inline void VecStore(const T data, word64 dest[2])
+{
+    VecStore((uint8x16_p)data, 0, (byte*)dest);
+}
+
+/// \brief Stores a vector to a word array
+/// \tparam T vector type
+/// \param data the vector
+/// \param off the byte offset into the array
+/// \param dest the word array
+/// \details VecStore stores a vector to a word array.
+/// \details VecStore uses POWER7's <tt>vec_xst</tt> or
+///   <tt>vec_vsx_st</tt> if available. The instructions do not require
+///   aligned effective memory addresses. VecStore_ALTIVEC() is used if POWER7
+///   is not available. VecStore_ALTIVEC() can be relatively expensive if
+///   extra instructions are required to fix up unaligned effective memory
+///   addresses.
+/// \note VecStore does not require an aligned array.
+/// \since Crypto++ 8.0
+template<class T>
+inline void VecStore(const T data, int off, word64 dest[2])
+{
+    VecStore((uint8x16_p)data, off, (byte*)dest);
+}
+
+#endif  // _ARCH_PWR8
 
 /// \brief Stores a vector to a byte array
 /// \tparam T vector type
@@ -879,7 +965,7 @@ inline bool VecNotEqual(const T1 vec1, const T2 vec2)
 
 //////////////////////// Power8 Crypto ////////////////////////
 
-#if defined(_ARCH_PWR8) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+#if defined(__CRYPTO__) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief One round of AES encryption
 /// \tparam T1 vector type
@@ -893,8 +979,10 @@ inline bool VecNotEqual(const T1 vec1, const T2 vec2)
 template <class T1, class T2>
 inline T1 VecEncrypt(const T1 state, const T2 key)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T1)__vcipher((uint8x16_p)state, (uint8x16_p)key);
+#elif defined(__clang__)
+    return (T1)__builtin_altivec_crypto_vcipher((uint64x2_p)state, (uint64x2_p)key);
 #elif defined(__GNUC__)
     return (T1)__builtin_crypto_vcipher((uint64x2_p)state, (uint64x2_p)key);
 #else
@@ -914,8 +1002,10 @@ inline T1 VecEncrypt(const T1 state, const T2 key)
 template <class T1, class T2>
 inline T1 VecEncryptLast(const T1 state, const T2 key)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T1)__vcipherlast((uint8x16_p)state, (uint8x16_p)key);
+#elif defined(__clang__)
+    return (T1)__builtin_altivec_crypto_vcipherlast((uint64x2_p)state, (uint64x2_p)key);
 #elif defined(__GNUC__)
     return (T1)__builtin_crypto_vcipherlast((uint64x2_p)state, (uint64x2_p)key);
 #else
@@ -935,8 +1025,10 @@ inline T1 VecEncryptLast(const T1 state, const T2 key)
 template <class T1, class T2>
 inline T1 VecDecrypt(const T1 state, const T2 key)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T1)__vncipher((uint8x16_p)state, (uint8x16_p)key);
+#elif defined(__clang__)
+    return (T1)__builtin_altivec_crypto_vncipher((uint64x2_p)state, (uint64x2_p)key);
 #elif defined(__GNUC__)
     return (T1)__builtin_crypto_vncipher((uint64x2_p)state, (uint64x2_p)key);
 #else
@@ -956,8 +1048,10 @@ inline T1 VecDecrypt(const T1 state, const T2 key)
 template <class T1, class T2>
 inline T1 VecDecryptLast(const T1 state, const T2 key)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T1)__vncipherlast((uint8x16_p)state, (uint8x16_p)key);
+#elif defined(__clang__)
+    return (T1)__builtin_altivec_crypto_vncipherlast((uint64x2_p)state, (uint64x2_p)key);
 #elif defined(__GNUC__)
     return (T1)__builtin_crypto_vncipherlast((uint64x2_p)state, (uint64x2_p)key);
 #else
@@ -977,8 +1071,10 @@ inline T1 VecDecryptLast(const T1 state, const T2 key)
 template <int func, int subfunc, class T>
 inline T VecSHA256(const T vec)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T)__vshasigmaw((uint32x4_p)vec, func, subfunc);
+#elif defined(__clang__)
+    return (T)__builtin_altivec_crypto_vshasigmaw((uint32x4_p)vec, func, subfunc);
 #elif defined(__GNUC__)
     return (T)__builtin_crypto_vshasigmaw((uint32x4_p)vec, func, subfunc);
 #else
@@ -998,8 +1094,10 @@ inline T VecSHA256(const T vec)
 template <int func, int subfunc, class T>
 inline T VecSHA512(const T vec)
 {
-#if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#if defined(__ibmxl__) || (defined(_AIX) && defined(__xlC__))
     return (T)__vshasigmad((uint64x2_p)vec, func, subfunc);
+#elif defined(__clang__)
+    return (T)__builtin_altivec_crypto_vshasigmad((uint64x2_p)vec, func, subfunc);
 #elif defined(__GNUC__)
     return (T)__builtin_crypto_vshasigmad((uint64x2_p)vec, func, subfunc);
 #else
@@ -1007,7 +1105,7 @@ inline T VecSHA512(const T vec)
 #endif
 }
 
-#endif  // _ARCH_PWR8
+#endif  // __CRYPTO__
 
 #endif  // _ALTIVEC_
 
