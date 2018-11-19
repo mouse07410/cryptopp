@@ -19,6 +19,11 @@ else
 	MAKE=make
 fi
 
+# Fixup for AIX
+if [[ -z "$CMAKE" ]]; then
+	CMAKE=cmake
+fi
+
 # Feth the three required files
 if ! wget --no-check-certificate https://raw.githubusercontent.com/noloader/cryptopp-cmake/master/CMakeLists.txt -O CMakeLists.txt; then
 	echo "CMakeLists.txt download failed"
@@ -36,12 +41,12 @@ cd "$PWD_DIR/cmake_build"
 
 if [[ ! -z "$CXX" ]];
 then
-	if ! CXX="$CXX" cmake -DCMAKE_CXX_COMPILER="$CXX" ../; then
+	if ! CXX="$CXX" "$CMAKE" -DCMAKE_CXX_COMPILER="$CXX" ../; then
 		echo "cmake failed"
 		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 	fi
 else
-	if ! cmake ../; then
+	if ! "$CMAKE" ../; then
 		echo "cmake failed"
 		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 	fi

@@ -1,6 +1,17 @@
-// blake2.cpp - written and placed in the public domain by Jeffrey Walton and Zooko
-//              Wilcox-O'Hearn. Based on Aumasson, Neves, Wilcox-O'Hearn and Winnerlein's
-//              reference BLAKE2 implementation at http://github.com/BLAKE2/BLAKE2.
+// blake2.cpp - written and placed in the public domain by Jeffrey Walton
+//              and Zooko Wilcox-O'Hearn. Based on Aumasson, Neves,
+//              Wilcox-O'Hearn and Winnerlein's reference BLAKE2
+//              implementation at http://github.com/BLAKE2/BLAKE2.
+//
+// The BLAKE2b and BLAKE2s numbers are consistent with the BLAKE2 team's
+// numbers. However, we have an Altivec/POWER7 implementation of BLAKE2s,
+// and a POWER8 implementation of BLAKE2b (BLAKE2 is missing them). The
+// Altivec/POWER7 code is about 2x faster than C++ when using GCC 5.0 or
+// above. The POWER8 code is about 2.5x faster than C++ when using GCC 5.0
+// or above. If you use GCC 4.0 (PowerMac) or GCC 4.8 (GCC Compile Farm)
+// then the PowerPC code will be slower than C++. Be sure to use GCC 5.0
+// or above for PowerPC builds or disable Altivec for BLAKE2b and BLAKE2s
+// if using the old compilers.
 
 #include "pch.h"
 #include "config.h"
@@ -15,16 +26,12 @@
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 // #undef CRYPTOPP_ALTIVEC_AVAILABLE
+// #undef CRYPTOPP_POWER8_AVAILABLE
 
 // Disable NEON/ASIMD for Cortex-A53 and A57. The shifts are too slow and C/C++ is about
 // 3 cpb faster than NEON/ASIMD. Also see http://github.com/weidai11/cryptopp/issues/367.
 #if (defined(__aarch32__) || defined(__aarch64__)) && defined(CRYPTOPP_SLOW_ARMV8_SHIFT)
 # undef CRYPTOPP_ARM_NEON_AVAILABLE
-#endif
-
-#if !(CRYPTOPP_ALTIVEC_AVAILABLE)
-# undef CRYPTOPP_POWER7_AVAILABLE
-# undef CRYPTOPP_POWER8_AVAILABLE
 #endif
 
 NAMESPACE_BEGIN(CryptoPP)
@@ -157,6 +164,8 @@ extern void BLAKE2_Compress64_NEON(const byte* input, BLAKE2b_State& state);
 
 #if CRYPTOPP_POWER7_AVAILABLE
 extern void BLAKE2_Compress32_POWER7(const byte* input, BLAKE2s_State& state);
+#elif CRYPTOPP_ALTIVEC_AVAILABLE
+extern void BLAKE2_Compress32_ALTIVEC(const byte* input, BLAKE2s_State& state);
 #endif
 
 #if CRYPTOPP_POWER8_AVAILABLE
@@ -383,6 +392,9 @@ std::string BLAKE2s::AlgorithmProvider() const
 #if (CRYPTOPP_POWER7_AVAILABLE)
     if (HasPower7())
         return "Power7";
+#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
+    if (HasAltivec())
+        return "Altivec";
 #endif
     return "C++";
 }
@@ -659,6 +671,11 @@ void BLAKE2s::Compress(const byte *input)
     if(HasPower7())
     {
         return BLAKE2_Compress32_POWER7(input, *m_state.data());
+    }
+#elif CRYPTOPP_ALTIVEC_AVAILABLE
+    if(HasAltivec())
+    {
+        return BLAKE2_Compress32_ALTIVEC(input, *m_state.data());
     }
 #endif
     return BLAKE2_Compress32_CXX(input, *m_state.data());
