@@ -32,10 +32,27 @@
 # undef bool
 #endif
 
-// IBM XLC on AIX does not define __CRYPTO__ like it should. More LLVM goodness.
-#if defined(_AIX) && defined(__xlC__)
+// IBM XLC on AIX does not define __CRYPTO__ like it should with -qarch=pwr8.
+// Crypto is available in XLC 13.1 and above. More LLVM front-end goodness.
+#if defined(_AIX) && defined(_ARCH_PWR8) && (__xlC__ >= 0xd01)
 # undef __CRYPTO__
 # define __CRYPTO__ 1
+#endif
+
+// Hack to detect early XLC compilers. XLC compilers for POWER7 use
+// vec_xlw4 and vec_xstw4. Some XLC compilers for POWER7 and above
+// use vec_xl and vec_xst. The way to tell the difference is, XLC
+// compilers version 13.0 and earlier use vec_xlw4 and vec_xstw4.
+// XLC compilers 13.1 and later are use vec_xl and vec_xst. The open
+// question is, how to handle early Clang compilers for POWER7. We
+// know the latest Clang compilers support vec_xl and vec_xst. Also
+// see https://www-01.ibm.com/support/docview.wss?uid=swg21683541.
+
+#if defined(__xlc__) && (__xlc__ < 0x0d01)
+# define __early_xlc__ 1
+#endif
+#if defined(__xlC__) && (__xlC__ < 0x0d01)
+# define __early_xlC__ 1
 #endif
 
 // VecLoad_ALTIVEC and VecStore_ALTIVEC are
@@ -58,21 +75,21 @@ typedef __vector unsigned int    uint32x4_p;
 
 #if defined(_ARCH_PWR8) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 /// \brief Vector of 64-bit elements
-/// \details uint64x2_p is available on POWER8 and above
+/// \details uint64x2_p is available on POWER8 and above.
 typedef __vector unsigned long long uint64x2_p;
 #endif  // _ARCH_PWR8
 
 /// \brief Reverse bytes in a vector
 /// \tparam T vector type
-/// \param src the vector
+/// \param data the vector
 /// \returns vector
 /// \details VecReverse() reverses the bytes in a vector
 /// \since Crypto++ 6.0
 template <class T>
-inline T VecReverse(const T src)
+inline T VecReverse(const T data)
 {
     const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
-    return (T)vec_perm(src, src, mask);
+    return (T)vec_perm(data, data, mask);
 }
 
 //////////////////////// Loads ////////////////////////
@@ -146,7 +163,9 @@ inline uint32x4_p VecLoad_ALTIVEC(int off, const byte src[16])
 inline uint32x4_p VecLoad(const byte src[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+    return (uint32x4_p)vec_xlw4(0, (byte*)src);
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
     return (uint32x4_p)vec_xl(0, (byte*)src);
 #  else
     return (uint32x4_p)vec_vsx_ld(0, (byte*)src);
@@ -171,7 +190,9 @@ inline uint32x4_p VecLoad(const byte src[16])
 inline uint32x4_p VecLoad(int off, const byte src[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+    return (uint32x4_p)vec_xlw4(off, (byte*)src);
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
     return (uint32x4_p)vec_xl(off, (byte*)src);
 #  else
     return (uint32x4_p)vec_vsx_ld(off, (byte*)src);
@@ -214,7 +235,7 @@ inline uint32x4_p VecLoad(int off, const word32 src[4])
     return VecLoad(off, (const byte*)src);
 }
 
-#if defined(_ARCH_PWR8)
+#if defined(_ARCH_PWR8) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief Loads a vector from a word array
 /// \param src the word array
@@ -225,6 +246,7 @@ inline uint32x4_p VecLoad(int off, const word32 src[4])
 ///   is not available. VecLoad_ALTIVEC() can be relatively expensive if
 ///   extra instructions are required to fix up unaligned effective memory
 ///   addresses.
+/// \details VecLoad with 64-bit elements is available on POWER8 and above.
 /// \note VecLoad does not require an aligned array.
 /// \since Crypto++ 8.0
 inline uint64x2_p VecLoad(const word64 src[2])
@@ -242,6 +264,7 @@ inline uint64x2_p VecLoad(const word64 src[2])
 ///   is not available. VecLoad_ALTIVEC() can be relatively expensive if
 ///   extra instructions are required to fix up unaligned effective memory
 ///   addresses.
+/// \details VecLoad with 64-bit elements is available on POWER8 and above.
 /// \note VecLoad does not require an aligned array.
 /// \since Crypto++ 8.0
 inline uint64x2_p VecLoad(int off, const word64 src[2])
@@ -266,7 +289,13 @@ inline uint64x2_p VecLoad(int off, const word64 src[2])
 inline uint32x4_p VecLoadBE(const byte src[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+#    if (CRYPTOPP_BIG_ENDIAN)
+       return (uint32x4_p)vec_xlw4(0, (byte*)src);
+#    else
+       return (uint32x4_p)VecReverse(vec_xlw4(0, (byte*)src));
+#    endif
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
        return (uint32x4_p)vec_xl_be(0, (byte*)src);
 #  else
 #    if (CRYPTOPP_BIG_ENDIAN)
@@ -300,7 +329,13 @@ inline uint32x4_p VecLoadBE(const byte src[16])
 inline uint32x4_p VecLoadBE(int off, const byte src[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+#    if (CRYPTOPP_BIG_ENDIAN)
+       return (uint32x4_p)vec_xlw4(off, (byte*)src);
+#    else
+       return (uint32x4_p)VecReverse(vec_xlw4(off, (byte*)src));
+#    endif
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
        return (uint32x4_p)vec_xl_be(off, (byte*)src);
 #  else
 #    if (CRYPTOPP_BIG_ENDIAN)
@@ -408,13 +443,15 @@ template<class T>
 inline void VecStore(const T data, byte dest[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+    vec_xstw4((uint8x16_p)data, 0, (byte*)dest);
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
     vec_xst((uint8x16_p)data, 0, (byte*)dest);
 #  else
     vec_vsx_st((uint8x16_p)data, 0, (byte*)dest);
 #  endif
 #else
-    return VecStore_ALTIVEC(data, 0, dest);
+    VecStore_ALTIVEC((uint8x16_p)data, 0, (byte*)dest);
 #endif
 }
 
@@ -436,13 +473,15 @@ template<class T>
 inline void VecStore(const T data, int off, byte dest[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+    vec_xstw4((uint8x16_p)data, off, (byte*)dest);
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
     vec_xst((uint8x16_p)data, off, (byte*)dest);
 #  else
     vec_vsx_st((uint8x16_p)data, off, (byte*)dest);
 #  endif
 #else
-    return VecStore_ALTIVEC(data, off, dest);
+    VecStore_ALTIVEC((uint8x16_p)data, off, (byte*)dest);
 #endif
 }
 
@@ -485,7 +524,7 @@ inline void VecStore(const T data, int off, word32 dest[4])
     VecStore((uint8x16_p)data, off, (byte*)dest);
 }
 
-#if defined(_ARCH_PWR8)
+#if defined(_ARCH_PWR8) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \brief Stores a vector to a word array
 /// \tparam T vector type
@@ -498,6 +537,7 @@ inline void VecStore(const T data, int off, word32 dest[4])
 ///   is not available. VecStore_ALTIVEC() can be relatively expensive if
 ///   extra instructions are required to fix up unaligned effective memory
 ///   addresses.
+/// \details VecStore with 64-bit elements is available on POWER8 and above.
 /// \note VecStore does not require an aligned array.
 /// \since Crypto++ 8.0
 template<class T>
@@ -518,6 +558,7 @@ inline void VecStore(const T data, word64 dest[2])
 ///   is not available. VecStore_ALTIVEC() can be relatively expensive if
 ///   extra instructions are required to fix up unaligned effective memory
 ///   addresses.
+/// \details VecStore with 64-bit elements is available on POWER8 and above.
 /// \note VecStore does not require an aligned array.
 /// \since Crypto++ 8.0
 template<class T>
@@ -543,23 +584,29 @@ inline void VecStore(const T data, int off, word64 dest[2])
 /// \note VecStore does not require an aligned array.
 /// \since Crypto++ 6.0
 template <class T>
-inline void VecStoreBE(const T src, byte dest[16])
+inline void VecStoreBE(const T data, byte dest[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-     vec_xst_be((uint8x16_p)src, 0, (byte*)dest);
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+#    if (CRYPTOPP_BIG_ENDIAN)
+       vec_xstw4((uint8x16_p)data, 0, (byte*)dest);
+#    else
+       vec_xstw4((uint8x16_p)VecReverse(data), 0, (byte*)dest);
+#    endif
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+       vec_xst_be((uint8x16_p)data, 0, (byte*)dest);
 #  else
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_vsx_st((uint8x16_p)src, 0, (byte*)dest);
+       vec_vsx_st((uint8x16_p)data, 0, (byte*)dest);
 #    else
-       vec_vsx_st((uint8x16_p)VecReverse(src), 0, (byte*)dest);
+       vec_vsx_st((uint8x16_p)VecReverse(data), 0, (byte*)dest);
 #    endif
 #  endif
 #else  // _ARCH_PWR7
 #  if (CRYPTOPP_BIG_ENDIAN)
-     VecStore((uint8x16_p)src, (byte*)dest);
+     VecStore_ALTIVEC((uint8x16_p)data, 0, (byte*)dest);
 #  else
-     VecStore((uint8x16_p)VecReverse(src), (byte*)dest);
+     VecStore_ALTIVEC((uint8x16_p)VecReverse(data), 0, (byte*)dest);
 #  endif
 #endif  // _ARCH_PWR7
 }
@@ -580,23 +627,29 @@ inline void VecStoreBE(const T src, byte dest[16])
 /// \note VecStore does not require an aligned array.
 /// \since Crypto++ 6.0
 template <class T>
-inline void VecStoreBE(const T src, int off, byte dest[16])
+inline void VecStoreBE(const T data, int off, byte dest[16])
 {
 #if defined(_ARCH_PWR7)
-#  if defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-     vec_xst_be((uint8x16_p)src, off, (byte*)dest);
+#  if defined(__early_xlc__) || defined(__early_xlC__)
+#    if (CRYPTOPP_BIG_ENDIAN)
+       vec_xstw4((uint8x16_p)data, off, (byte*)dest);
+#    else
+       vec_xstw4((uint8x16_p)VecReverse(data), off, (byte*)dest);
+#    endif
+#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
+     vec_xst_be((uint8x16_p)data, off, (byte*)dest);
 #  else
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_vsx_st((uint8x16_p)src, off, (byte*)dest);
+       vec_vsx_st((uint8x16_p)data, off, (byte*)dest);
 #    else
-       vec_vsx_st((uint8x16_p)VecReverse(src), off, (byte*)dest);
+       vec_vsx_st((uint8x16_p)VecReverse(data), off, (byte*)dest);
 #    endif
 #  endif
 #else  // _ARCH_PWR7
 #  if (CRYPTOPP_BIG_ENDIAN)
-     VecStore((uint8x16_p)src, off, (byte*)dest);
+     VecStore_ALTIVEC((uint8x16_p)data, off, (byte*)dest);
 #  else
-     VecStore((uint8x16_p)VecReverse(src), off, (byte*)dest);
+     VecStore_ALTIVEC((uint8x16_p)VecReverse(data), off, (byte*)dest);
 #  endif
 #endif  // _ARCH_PWR7
 }
@@ -974,7 +1027,7 @@ inline bool VecNotEqual(const T1 vec1, const T2 vec2)
 /// \param key the subkey vector
 /// \details VecEncrypt performs one round of AES encryption of state
 ///   using subkey key. The return vector is the same type as vec1.
-/// \details VecEncrypt is available on POWER8 and above
+/// \details VecEncrypt is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <class T1, class T2>
 inline T1 VecEncrypt(const T1 state, const T2 key)
@@ -997,7 +1050,7 @@ inline T1 VecEncrypt(const T1 state, const T2 key)
 /// \param key the subkey vector
 /// \details VecEncryptLast performs the final round of AES encryption
 ///   of state using subkey key. The return vector is the same type as vec1.
-/// \details VecEncryptLast is available on POWER8 and above
+/// \details VecEncryptLast is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <class T1, class T2>
 inline T1 VecEncryptLast(const T1 state, const T2 key)
@@ -1020,7 +1073,7 @@ inline T1 VecEncryptLast(const T1 state, const T2 key)
 /// \param key the subkey vector
 /// \details VecDecrypt performs one round of AES decryption of state
 ///   using subkey key. The return vector is the same type as vec1.
-/// \details VecDecrypt is available on POWER8 and above
+/// \details VecDecrypt is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <class T1, class T2>
 inline T1 VecDecrypt(const T1 state, const T2 key)
@@ -1043,7 +1096,7 @@ inline T1 VecDecrypt(const T1 state, const T2 key)
 /// \param key the subkey vector
 /// \details VecDecryptLast performs the final round of AES decryption
 ///   of state using subkey key. The return vector is the same type as vec1.
-/// \details VecDecryptLast is available on POWER8 and above
+/// \details VecDecryptLast is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <class T1, class T2>
 inline T1 VecDecryptLast(const T1 state, const T2 key)
@@ -1066,7 +1119,7 @@ inline T1 VecDecryptLast(const T1 state, const T2 key)
 /// \param vec the block to transform
 /// \details VecSHA256 selects sigma0, sigma1, Sigma0, Sigma1 based on
 ///   func and subfunc. The return vector is the same type as vec.
-/// \details VecSHA256 is available on POWER8 and above
+/// \details VecSHA256 is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <int func, int subfunc, class T>
 inline T VecSHA256(const T vec)
@@ -1089,7 +1142,7 @@ inline T VecSHA256(const T vec)
 /// \param vec the block to transform
 /// \details VecSHA512 selects sigma0, sigma1, Sigma0, Sigma1 based on
 ///   func and subfunc. The return vector is the same type as vec.
-/// \details VecSHA512 is available on POWER8 and above
+/// \details VecSHA512 is available on POWER8 and above.
 /// \since Crypto++ 6.0
 template <int func, int subfunc, class T>
 inline T VecSHA512(const T vec)
