@@ -32,6 +32,16 @@ namespace std {
 }
 #endif
 
+// workaround needed for IBM XLC and debug heaps on AIX
+#if defined(_AIX) && (defined(__xlc__) || defined(__xlC__) || defined(__ibmxl__))
+# if defined(__DEBUG_ALLOC__)
+namespace std {
+  using ::_debug_memset;
+  using ::_debug_memcpy;
+}
+# endif
+#endif
+
 // make_unchecked_array_iterator
 #if _MSC_VER >= 1600
 #include <iterator>
@@ -81,4 +91,4 @@ namespace std {
 using std::log;
 #endif
 
-#endif
+#endif  // CRYPTOPP_STDCPP_H
