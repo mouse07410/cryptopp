@@ -354,6 +354,7 @@ NAMESPACE_END
 
 // Sun Studio Express 3 (December 2006) provides GCC-style attributes.
 // IBM XL C/C++ alignment modifier per Optimization Guide, pp. 19-20.
+// __IBM_ATTRIBUTES per XLC 12.1 AIX Compiler Manual, p. 473.
 // CRYPTOPP_ALIGN_DATA may not be reliable on AIX.
 #ifndef CRYPTOPP_ALIGN_DATA
 	#if defined(_MSC_VER)
@@ -1155,7 +1156,8 @@ NAMESPACE_END
 
 // nullptr_t: MS at VS2010 (16.00); GCC at 4.6; Clang at 3.3; Intel 10.0; SunCC 5.13.
 #if (CRYPTOPP_MSC_VERSION >= 1600) || __has_feature(cxx_nullptr) || \
-	(__INTEL_COMPILER >= 1000) || (CRYPTOPP_GCC_VERSION >= 40600) || (__SUNPRO_CC >= 0x5130)
+	(__INTEL_COMPILER >= 1000) || (CRYPTOPP_GCC_VERSION >= 40600) || \
+    (__SUNPRO_CC >= 0x5130) || defined(__IBMCPP_NULLPTR)
 # define CRYPTOPP_CXX11_NULLPTR 1
 #endif // nullptr_t compilers
 
