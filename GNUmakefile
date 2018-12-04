@@ -104,7 +104,7 @@ endif
 #   http://github.com/weidai11/cryptopp/issues/190
 ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER),11)
   ifeq ($(findstring -Wa,-q,$(CXXFLAGS)),)
-    CXXFLAGS += -Wa,-q -Wa,-mavx2 -Wa,-mavx512f
+    CXXFLAGS += -Wa,-q -Wa,-march=native
   endif
   ifeq ($(findstring -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER,$(CXXFLAGS)),)
     CXXFLAGS += -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER=1
@@ -1468,6 +1468,10 @@ sha_simd.o : sha_simd.cpp
 
 sha3_simd.o : sha3_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(SHA3_FLAG) -c) $<
+
+# integer.cpp
+integer.o : integer.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(CHACHA_AVX2_FLAG) $(SHA_FLAG) -c) $<
 
 # SSE4.2/SHA-NI or ARMv8a available
 shacal2_simd.o : shacal2_simd.cpp
