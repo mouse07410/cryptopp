@@ -50,13 +50,13 @@ do
   # i386 (simulator)
   if [ "$CL" == "i386" ]; then
     IOS_ARCH=i386
-	APPLE_SDK=iPhoneSimulator
+    APPLE_SDK=iPhoneSimulator
   fi
 
   # x86_64 (simulator)
   if [ "$CL" == "x86_64" ]; then
     IOS_ARCH=x86_64
-	APPLE_SDK=iPhoneSimulator
+    APPLE_SDK=iPhoneSimulator
   fi
 
   # ARMv5
@@ -221,18 +221,25 @@ if [ "$APPLE_SDK" == "AppleTVOS" ]; then
 fi
 
 # ARM64 Simulator fixup. Under Xcode 6/iOS 8, it uses x86_64 and not i386
+# -ios_simulator_version_min does not work though it is in LLVM sources.
 if [ "$IOS_ARCH" == "x86_64" ]; then
-  IOS_FLAGS="$IOS_FLAGS -miphoneos-version-min=8 -DCRYPTOPP_DISABLE_ASM"
+  IOS_FLAGS="$IOS_FLAGS -DCRYPTOPP_DISABLE_ASM"
 fi
 
-# Disable ASM for simulator
+# Disable ASM for simulator. We are failing on Travis due to missing _start.
+# We may need to link against crt1.o for simulator builds. Also see
+# https://stackoverflow.com/q/24841283/608639
+# -watchos_simulator_version_min does not work though it is in LLVM sources.
 if [ "$APPLE_SDK" == "WatchSimulator" ]; then
   IOS_FLAGS="$IOS_FLAGS -DCRYPTOPP_DISABLE_ASM"
 fi
 
-# Disable ASM for simulator
+# Disable ASM for simulator. We are failing on Travis due to missing _start.
+# We may need to link against crt1.o for simulator builds. Also see
+# https://stackoverflow.com/q/24841283/608639
+# -tvos_simulator_version_min does not work though it is in LLVM sources.
 if [ "$APPLE_SDK" == "AppleTVSimulator" ]; then
-  IOS_FLAGS="$IOS_FLAGS -DCRYPTOPP_DISABLE_ASM"
+  IOS_FLAGS="$IOS_FLAGS -tvos_simulator_version_min -DCRYPTOPP_DISABLE_ASM"
 fi
 
 # Simulator uses i386 or x86_64, Device uses ARMv5, ARMv6, ARMv7, ARMv7s or ARMv8
