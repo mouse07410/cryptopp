@@ -107,20 +107,20 @@ matrix:
         - PLATFORM=AppleTVOS
     - os: osx
       env:
-        - BUILD_MODE=ios
-        - PLATFORM=iPhoneSimulator
+        - BUILD_MODE=autotools
+    - os: osx
+      env:
+        - BUILD_MODE=cmake
 
   allow_failures:
     - os: osx
       env:
         - BUILD_MODE=ios
+        - PLATFORM=iPhoneSimulator
+    - os: osx
+      env:
+        - BUILD_MODE=ios
         - PLATFORM=WatchOS
-    - os: osx
-      env:
-        - BUILD_MODE=autotools
-    - os: osx
-      env:
-        - BUILD_MODE=cmake
     - os: linux
       env:
         - BUILD_MODE=autotools
