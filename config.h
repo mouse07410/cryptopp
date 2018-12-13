@@ -190,6 +190,7 @@
 ///   <ul>
 ///     <li>Name - namespace for names used with \p NameValuePairs and documented in argnames.h
 ///     <li>NaCl - namespace for NaCl library functions like crypto_box, crypto_box_open, crypto_sign, and crypto_sign_open
+///     <li>Donna - namespace for curve25519 library operations. The name was selected due to use of Adam Langley's curve25519-donna.
 ///     <li>Test - namespace for testing and benchmarks classes
 ///     <li>Weak - namespace for weak and wounded algorithms, like ARC4, MD5 and Pananma
 ///   </ul>
@@ -215,18 +216,6 @@ namespace CryptoPP { }
 #define USING_NAMESPACE(x) using namespace x;
 #define DOCUMENTED_NAMESPACE_BEGIN(x) namespace x {
 #define DOCUMENTED_NAMESPACE_END }
-
-// What is the type of the third parameter to bind?
-// For Unix, the new standard is ::socklen_t (typically unsigned int), and the old standard is int.
-// Unfortunately there is no way to tell whether or not socklen_t is defined.
-// To work around this, TYPE_OF_SOCKLEN_T is a macro so that you can change it from the makefile.
-#ifndef TYPE_OF_SOCKLEN_T
-#	if defined(_WIN32) || defined(__CYGWIN__)
-#		define TYPE_OF_SOCKLEN_T int
-#	else
-#		define TYPE_OF_SOCKLEN_T ::socklen_t
-#	endif
-#endif
 
 // Originally in global namespace to avoid ambiguity with other byte typedefs.
 // Moved to Crypto++ namespace due to C++17, std::byte and potential compile problems. Also see
