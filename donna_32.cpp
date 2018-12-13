@@ -54,6 +54,7 @@
 #include "config.h"
 #include "donna.h"
 #include "stdcpp.h"
+#include "cpu.h"
 
 // This macro is not in a header like config.h because
 // we don't want it exposed to user code. We also need
@@ -81,6 +82,44 @@ using CryptoPP::sword32;
 using CryptoPP::sword64;
 
 typedef sword64 limb;
+
+// Added by JW for SunCC. Avoid the bit twiddling hacks.
+inline int SignExtend(int val)
+{
+#if (__GNUC__ >= 3) || (__SUNPRO_CC >= 0x5100)
+# if CRYPTOPP_BOOL_X86
+    __asm__
+    (
+        "sar $31, %0      \n"
+        : "+g" (val) : : "cc"
+    );
+    return val;
+# endif
+// TODO: ARM
+#endif
+
+    // GCC and SunCC compile down to a shift and neg.
+    return (val >> 31) * -1;
+}
+
+// Added by JW for SunCC. Avoid the bit twiddling hacks.
+inline unsigned int SignExtend(unsigned int val)
+{
+#if (__GNUC__ >= 3) || (__SUNPRO_CC >= 0x5100)
+# if CRYPTOPP_BOOL_X86
+    __asm__
+    (
+        "sar $31, %0      \n"
+        : "+g" (val) : : "cc"
+    );
+    return val;
+# endif
+// TODO: ARM
+#endif
+
+    // GCC and SunCC compile down to a shift and neg.
+    return (unsigned int)(((signed int)(val >> 31)) * -1);
+}
 
 /* Field element representation:
  *
@@ -265,9 +304,10 @@ void freduce_degree(limb *output)
   output[0] += output[10];
 }
 
-#if (-1 & 3) != 3
-#error "This code only works on a two's complement system"
-#endif
+// Modified for SunCC. See comments for SignExtexnd function.
+// #if (-1 & 3) != 3
+// #error "This code only works on a two's complement system"
+// #endif
 
 /* return v / 2^26, using only shifts and adds.
  *
@@ -275,11 +315,15 @@ void freduce_degree(limb *output)
 inline limb div_by_2_26(const limb v)
 {
   /* High word of v; no shift needed. */
-  const uint32_t highword = (uint32_t) (((uint64_t) v) >> 32);
+  const word32 highword = (word32) (((word64) v) >> 32);
+
+  // Modified for SunCC. See comments for SignExtexnd function.
   /* Set to all 1s if v was negative; else set to 0s. */
-  const int32_t sign = ((int32_t) highword) >> 31;
+  /* const sword32 sign = ((sword32) highword) >> 31; */
+  const sword32 sign = SignExtend(highword);
+
   /* Set to 0x3ffffff if v was negative; else set to 0. */
-  const int32_t roundoff = ((uint32_t) sign) >> 6;
+  const sword32 roundoff = ((word32) sign) >> 6;
   /* Should return v / (1<<26) */
   return (v + roundoff) >> 26;
 }
@@ -290,11 +334,15 @@ inline limb div_by_2_26(const limb v)
 inline limb div_by_2_25(const limb v)
 {
   /* High word of v; no shift needed*/
-  const uint32_t highword = (uint32_t) (((uint64_t) v) >> 32);
+  const word32 highword = (word32) (((word64) v) >> 32);
+
+  // Modified for SunCC. See comments for SignExtexnd function.
   /* Set to all 1s if v was negative; else set to 0s. */
-  const int32_t sign = ((int32_t) highword) >> 31;
+  /* const sword32 sign = ((sword32) highword) >> 31; */
+  const sword32 sign = SignExtend(highword);
+
   /* Set to 0x1ffffff if v was negative; else set to 0. */
-  const int32_t roundoff = ((uint32_t) sign) >> 7;
+  const sword32 roundoff = ((word32) sign) >> 7;
   /* Should return v / (1<<25) */
   return (v + roundoff) >> 25;
 }
@@ -469,29 +517,34 @@ void fexpand(limb *output, const byte *input)
 #undef F
 }
 
-#if (-32 >> 1) != -16
-#error "This code only works when >> does sign-extension on negative numbers"
-#endif
+// Modified for SunCC. See comments for SignExtexnd function.
+// #if (-32 >> 1) != -16
+// #error "This code only works when >> does sign-extension on negative numbers"
+// #endif
 
 /* sword32_eq returns 0xffffffff iff a == b and zero otherwise. */
 sword32 sword32_eq(sword32 a, sword32 b)
 {
+  // Modified for SunCC. See comments for SignExtexnd function.
   a = ~(a ^ b);
   a &= a << 16;
   a &= a << 8;
   a &= a << 4;
   a &= a << 2;
   a &= a << 1;
-  return a >> 31;
+  /* return a >> 31; */
+  return (sword32)SignExtend(a);
 }
 
 /* sword32_gte returns 0xffffffff if a >= b and zero otherwise, where a and b are
  * both non-negative. */
 sword32 sword32_gte(sword32 a, sword32 b)
 {
+  // Modified for SunCC. See comments for SignExtexnd function.
   a -= b;
   /* a >= 0 iff a >= b. */
-  return ~(a >> 31);
+  /* return ~(a >> 31); */
+  return ~(sword32)SignExtend(a);
 }
 
 /* Take a fully reduced polynomial form number and contract it into a
@@ -873,23 +926,29 @@ ANONYMOUS_NAMESPACE_END
 NAMESPACE_BEGIN(CryptoPP)
 NAMESPACE_BEGIN(Donna)
 
-int curve25519(byte pubkey[32], const byte seckey[32], const byte basepoint[32])
+int curve25519(byte publicKey[32], const byte secretKey[32])
+{
+  const byte basePoint[32] = {9};
+  return curve25519(publicKey, secretKey, basePoint);
+}
+
+int curve25519(byte sharedKey[32], const byte secretKey[32], const byte othersKey[32])
 {
   limb bp[10], x[10], z[11], zmone[10];
-  byte e[32]; int i;
+  byte e[32];
 
-  for (i = 0; i < 32; ++i)
-    e[i] = seckey[i];
+  for (unsigned int i = 0; i < 32; ++i)
+    e[i] = secretKey[i];
 
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
 
-  fexpand(bp, basepoint);
+  fexpand(bp, othersKey);
   cmult(x, z, e, bp);
   crecip(zmone, z);
   fmul(z, x, zmone);
-  fcontract(pubkey, z);
+  fcontract(sharedKey, z);
   return 0;
 }
 

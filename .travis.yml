@@ -100,10 +100,6 @@ matrix:
     - os: osx
       env:
         - BUILD_MODE=ios
-        - PLATFORM=WatchOS
-    - os: osx
-      env:
-        - BUILD_MODE=ios
         - PLATFORM=AppleTVOS
     - os: osx
       env:
@@ -113,6 +109,10 @@ matrix:
         - BUILD_MODE=cmake
 
   allow_failures:
+    - os: osx
+      env:
+        - BUILD_MODE=ios
+        - PLATFORM=WatchOS
     - os: osx
       env:
         - BUILD_MODE=ios
