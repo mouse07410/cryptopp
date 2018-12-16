@@ -39,21 +39,38 @@ int curve25519(byte sharedKey[32], const byte secretKey[32], const byte othersKe
 
 //****************************** Internal ******************************//
 
-#if (UINTPTR_MAX == 0xffffffff) || !defined(CRYPTOPP_WORD128_AVAILABLE)
-# define CRYPTOPP_CURVE25519_32BIT 1
-#else
+// CRYPTOPP_WORD128_AVAILABLE mostly depends upon GCC support for
+// __SIZEOF_INT128__. If __SIZEOF_INT128__ is not available then Moon
+// provides routines for MSC and GCC. It should cover most platforms,
+// but there are gaps like MS ARM64 and XLC. We tried to enable the
+// 64-bit path for SunCC from 12.5 but we got the dreaded compile
+// error "The operand ___LCM cannot be assigned to".
+
+#if defined(CRYPTOPP_WORD128_AVAILABLE) || \
+   (defined(_MSC_VER) && defined(_M_X64)) || \
+   (defined(__GNUC__) && (defined(__amd64__) || defined(__x86_64__)))
 # define CRYPTOPP_CURVE25519_64BIT 1
+#else
+# define CRYPTOPP_CURVE25519_32BIT 1
 #endif
 
-// Benchmarking on a modern Core i5-6400 shows SSE2 on Linux is
-// not profitable. Here are the numbers in milliseconds/operation:
+// Benchmarking on a modern 64-bit Core i5-6400 @2.7 GHz shows SSE2 on Linux
+// is not profitable. Here are the numbers in milliseconds/operation:
 //
 //   * Langley, C++, 0.050
 //   * Moon, C++: 0.040
 //   * Moon, SSE2: 0.061
 //   * Moon, native: 0.045
+//
+// However, a modern 64-bit Core i5-3200 @2.3 GHz shows SSE2 is profitable
+// for MS compilers. Here are the numbers in milliseconds/operation:
+//
+//   * x86, no SSE2, 0.294
+//   * x86, SSE2, 0.097
+//   * x64, no SSE2, 0.081
+//   * x64, SSE2, 0.071
 
-#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE) && 0
+#if (CRYPTOPP_SSE2_INTRIN_AVAILABLE) && defined(_MSC_VER)
 # define CRYPTOPP_CURVE25519_SSE2 1
 #endif
 
