@@ -57,9 +57,6 @@ matrix:
         - BUILD_MODE=cmake
     - os: osx
       env:
-        - BUILD_MODE=autotools
-    - os: osx
-      env:
         - BUILD_MODE=cmake
     - os: linux
       env:
@@ -101,14 +98,11 @@ matrix:
       env:
         - BUILD_MODE=ios
         - PLATFORM=AppleTVOS
+
+  allow_failures:
     - os: osx
       env:
         - BUILD_MODE=autotools
-    - os: osx
-      env:
-        - BUILD_MODE=cmake
-
-  allow_failures:
     - os: osx
       env:
         - BUILD_MODE=ios
