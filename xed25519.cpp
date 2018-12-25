@@ -66,6 +66,9 @@ x25519::x25519(const byte x[SECRET_KEYLENGTH])
 {
     std::memcpy(m_sk, x, SECRET_KEYLENGTH);
     Donna::curve25519_mult(m_pk, m_sk);
+
+    CRYPTOPP_ASSERT(IsClamped(m_sk) == true);
+    CRYPTOPP_ASSERT(IsSmallOrder(m_pk) == false);
 }
 
 x25519::x25519(const Integer &y, const Integer &x)
@@ -349,7 +352,7 @@ void ed25519PrivateKey::ClampKeys(byte y[PUBLIC_KEYLENGTH], byte x[SECRET_KEYLEN
 {
     x[0] &= 248; x[31] &= 127; x[31] |= 64;
     int ret = Donna::ed25519_publickey(y, x);
-    CRYPTOPP_ASSERT(ret == 0);
+    CRYPTOPP_ASSERT(ret == 0); CRYPTOPP_UNUSED(ret);
 }
 
 bool ed25519PrivateKey::IsClamped(const byte x[SECRET_KEYLENGTH]) const
@@ -426,7 +429,7 @@ void ed25519PrivateKey::GenerateRandom(RandomNumberGenerator &rng, const NameVal
     rng.GenerateBlock(m_sk, 32);
     m_sk[0] &= 248; m_sk[31] &= 127; m_sk[31] |= 64;
     int ret = Donna::ed25519_publickey(m_pk, m_sk);
-    CRYPTOPP_ASSERT(ret == 0);
+    CRYPTOPP_ASSERT(ret == 0); CRYPTOPP_UNUSED(ret);
 }
 
 void ed25519PrivateKey::MakePublicKey (PublicKey &pub) const
@@ -622,8 +625,7 @@ ed25519Signer::ed25519Signer(RandomNumberGenerator &rng)
 
 ed25519Signer::ed25519Signer(BufferedTransformation &params)
 {
-    ed25519PrivateKey& key = static_cast<ed25519PrivateKey&>(AccessPrivateKey());
-    key.BERDecode(params);
+    AccessPrivateKey().Load(params);
 }
 
 size_t ed25519Signer::SignAndRestart(RandomNumberGenerator &rng, PK_MessageAccumulator &messageAccumulator, byte *signature, bool restart) const
@@ -632,7 +634,7 @@ size_t ed25519Signer::SignAndRestart(RandomNumberGenerator &rng, PK_MessageAccum
 
     ed25519_MessageAccumulator& accum = static_cast<ed25519_MessageAccumulator&>(messageAccumulator);
     const ed25519PrivateKey& pk = static_cast<const ed25519PrivateKey&>(GetPrivateKey());
-    int ret = Donna::ed25519_sign(accum.data(), accum.size(), pk.m_sk, pk.m_pk, signature);
+    int ret = Donna::ed25519_sign(accum.data(), accum.size(), pk.GetPrivateKeyBytePtr(), pk.GetPublicKeyBytePtr(), signature);
     CRYPTOPP_ASSERT(ret == 0);
 
     if (restart)
@@ -793,21 +795,7 @@ ed25519Verifier::ed25519Verifier(const Integer &y)
 
 ed25519Verifier::ed25519Verifier(BufferedTransformation &params)
 {
-    // TODO: Fix the on-disk format once we determine what it is.
-    BERSequenceDecoder seq(params);
-
-      size_t read;
-      BERSequenceDecoder pk(seq, OCTET_STRING);
-
-        CRYPTOPP_ASSERT(pk.MaxRetrievable() >= PUBLIC_KEYLENGTH);
-        read = pk.Get(m_key.m_pk, PUBLIC_KEYLENGTH);
-
-      pk.MessageEnd();
-
-      if (read != PUBLIC_KEYLENGTH)
-        throw BERDecodeErr();
-
-    seq.MessageEnd();
+    AccessPublicKey().Load(params);
 }
 
 ed25519Verifier::ed25519Verifier(const ed25519Signer& signer)
@@ -820,7 +808,7 @@ bool ed25519Verifier::VerifyAndRestart(PK_MessageAccumulator &messageAccumulator
 {
     ed25519_MessageAccumulator& accum = static_cast<ed25519_MessageAccumulator&>(messageAccumulator);
     const ed25519PublicKey& pk = static_cast<const ed25519PublicKey&>(GetPublicKey());
-    int ret = Donna::ed25519_sign_open(accum.data(), accum.size(), pk.m_pk.begin(), accum.signature());
+    int ret = Donna::ed25519_sign_open(accum.data(), accum.size(), pk.GetPublicKeyBytePtr(), accum.signature());
     accum.Restart();
 
     return ret == 0;

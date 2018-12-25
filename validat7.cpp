@@ -361,49 +361,71 @@ bool ValidateEC2N_Agreement()
 // TestX25519 called in Debug builds.
 bool TestX25519()
 {
-    std::cout << "\nTesting curve25519 Key Agreements...\n\n";
-    const unsigned int AGREE_COUNT = 64;
-    bool pass = true;
+	std::cout << "\nTesting curve25519 Key Agreements...\n\n";
+	const unsigned int AGREE_COUNT = 64;
+	bool pass = true;
 
-    SecByteBlock priv1(32), priv2(32), pub1(32), pub2(32), share1(32), share2(32);
-    for (unsigned int i=0; i<AGREE_COUNT; ++i)
-    {
-        GlobalRNG().GenerateBlock(priv1, priv1.size());
-        GlobalRNG().GenerateBlock(priv2, priv2.size());
+	try {
 
-        priv1[0] &= 248; priv1[31] &= 127; priv1[31] |= 64;
-        priv2[0] &= 248; priv2[31] &= 127; priv2[31] |= 64;
+		FileSource f1(DataDir("TestData/x25519.dat").c_str(), true, new HexDecoder);
+		FileSource f2(DataDir("TestData/x25519v0.dat").c_str(), true, new HexDecoder);
+		FileSource f3(DataDir("TestData/x25519v1.dat").c_str(), true, new HexDecoder);
 
-        // Andrew Moon's curve25519-donna
-        Donna::curve25519_mult(pub1, priv1);
-        Donna::curve25519_mult(pub2, priv2);
+		x25519 x1(f1);
+		x25519 x2(f2);
+		x25519 x3(f3);
 
-        int ret1 = Donna::curve25519_mult(share1, priv1, pub2);
-        int ret2 = Donna::curve25519_mult(share2, priv2, pub1);
-        int ret3 = std::memcmp(share1, share2, 32);
+		FileSource f4(DataDir("TestData/x25519.dat").c_str(), true, new HexDecoder);
+		FileSource f5(DataDir("TestData/x25519v0.dat").c_str(), true, new HexDecoder);
+		FileSource f6(DataDir("TestData/x25519v1.dat").c_str(), true, new HexDecoder);
+
+		x1.Load(f4);
+		x2.Load(f5);
+		x3.Load(f6);
+	}
+	catch (const BERDecodeErr&) {
+		pass = false;
+	}
+
+	SecByteBlock priv1(32), priv2(32), pub1(32), pub2(32), share1(32), share2(32);
+	for (unsigned int i=0; i<AGREE_COUNT; ++i)
+	{
+		GlobalRNG().GenerateBlock(priv1, priv1.size());
+		GlobalRNG().GenerateBlock(priv2, priv2.size());
+
+		priv1[0] &= 248; priv1[31] &= 127; priv1[31] |= 64;
+		priv2[0] &= 248; priv2[31] &= 127; priv2[31] |= 64;
+
+		// Andrew Moon's curve25519-donna
+		Donna::curve25519_mult(pub1, priv1);
+		Donna::curve25519_mult(pub2, priv2);
+
+		int ret1 = Donna::curve25519_mult(share1, priv1, pub2);
+		int ret2 = Donna::curve25519_mult(share2, priv2, pub1);
+		int ret3 = std::memcmp(share1, share2, 32);
 
 #if defined(NO_OS_DEPENDENCE)
-        int ret4=0, ret5=0, ret6=0;
+		int ret4=0, ret5=0, ret6=0;
 #else
-        // Bernstein's NaCl requires DefaultAutoSeededRNG.
-        NaCl::crypto_box_keypair(pub2, priv2);
+		// Bernstein's NaCl requires DefaultAutoSeededRNG.
+		NaCl::crypto_box_keypair(pub2, priv2);
 
-        int ret4 = Donna::curve25519_mult(share1, priv1, pub2);
-        int ret5 = NaCl::crypto_scalarmult(share2, priv2, pub1);
-        int ret6 = std::memcmp(share1, share2, 32);
+		int ret4 = Donna::curve25519_mult(share1, priv1, pub2);
+		int ret5 = NaCl::crypto_scalarmult(share2, priv2, pub1);
+		int ret6 = std::memcmp(share1, share2, 32);
 #endif
 
-        bool fail = ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0;
-        pass = pass && !fail;
-    }
+		bool fail = ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0;
+		pass = pass && !fail;
+	}
 
-    if (pass)
-        std::cout << "passed:";
-    else
-        std::cout << "FAILED:";
-    std::cout << "  " << AGREE_COUNT << " key agreements" << std::endl;
+	if (pass)
+		std::cout << "passed:";
+	else
+		std::cout << "FAILED:";
+	std::cout << "  " << AGREE_COUNT << " key agreements" << std::endl;
 
-    return pass;
+	return pass;
 }
 
 // TestEd25519 is slighty more comprehensive than ValidateEd25519
@@ -412,9 +434,34 @@ bool TestX25519()
 bool TestEd25519()
 {
 	std::cout << "\nTesting ed25519 Signatures...\n\n";
+	bool pass = true;
+
+	try {
+		FileSource f1(DataDir("TestData/ed25519.dat").c_str(), true, new HexDecoder);
+		FileSource f2(DataDir("TestData/ed25519v0.dat").c_str(), true, new HexDecoder);
+		FileSource f3(DataDir("TestData/ed25519v1.dat").c_str(), true, new HexDecoder);
+
+		ed25519::Signer s1(f1);
+		ed25519::Signer s2(f2);
+		ed25519::Signer s3(f3);
+
+		FileSource f4(DataDir("TestData/ed25519.dat").c_str(), true, new HexDecoder);
+		FileSource f5(DataDir("TestData/ed25519v0.dat").c_str(), true, new HexDecoder);
+		FileSource f6(DataDir("TestData/ed25519v1.dat").c_str(), true, new HexDecoder);
+
+		s1.AccessKey().Load(f4);
+		s2.AccessKey().Load(f5);
+		s3.AccessKey().Load(f6);
+	}
+	catch (const BERDecodeErr&) {
+		pass = false;
+	}
+
+#if defined(NO_OS_DEPENDENCE)
+	return pass;
+#else
 	const unsigned int SIGN_COUNT = 64, MSG_SIZE=128;
 	const unsigned int NACL_EXTRA=NaCl::crypto_sign_BYTES;
-	bool pass = true;
 
 	// Test key conversion
 	byte seed[32], sk1[64], sk2[64], pk1[32], pk2[32];
@@ -511,6 +558,7 @@ bool TestEd25519()
 	else
 		std::cout << "FAILED:";
 	std::cout << "  " << SIGN_COUNT << " verifications" << std::endl;
+#endif
 
 	return pass;
 }
