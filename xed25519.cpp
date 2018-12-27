@@ -173,9 +173,12 @@ void x25519::BERDecode(BufferedTransformation &bt)
             BERDecodePrivateKey(octetString, false, (size_t)privateKeyInfo.RemainingLength());
         octetString.MessageEnd();
 
+        // publicKey [1] IMPLICIT PublicKey OPTIONAL
         bool generatePublicKey = true;
-        if (version == 1)
+        if (privateKeyInfo.EndReached() == false /*version == 1?*/)
         {
+            // Should we test this before decoding? In either case we
+            // just throw a BERDecodeErr() when we can't parse it.
             BERGeneralDecoder publicKey(privateKeyInfo, CONTEXT_SPECIFIC | CONSTRUCTED | 1);
             SecByteBlock subjectPublicKey;
             unsigned int unusedBits;
@@ -264,6 +267,15 @@ bool x25519::Validate(RandomNumberGenerator &rng, unsigned int level) const
         return false;
     if (level >= 2 && IsSmallOrder(m_pk) == true)
         return false;
+    if (level >= 3)
+    {
+        SecByteBlock sk(m_sk, SECRET_KEYLENGTH), pk(PUBLIC_KEYLENGTH);
+        ClampKeys(pk, sk);
+
+        // Secret key is already clamped, bufs are equal
+        if (VerifyBufsEqual(pk, m_pk, PUBLIC_KEYLENGTH) == false)
+            return false;
+    }
 
     return true;
 }
@@ -372,7 +384,24 @@ bool ed25519PrivateKey::IsSmallOrder(const byte y[PUBLIC_KEYLENGTH]) const
 
 bool ed25519PrivateKey::Validate(RandomNumberGenerator &rng, unsigned int level) const
 {
-    CRYPTOPP_UNUSED(rng); CRYPTOPP_UNUSED(level);
+    CRYPTOPP_UNUSED(rng);
+    CRYPTOPP_ASSERT(IsClamped(m_sk) == true);
+    CRYPTOPP_ASSERT(IsSmallOrder(m_pk) == false);
+
+    if (level >= 1 && IsClamped(m_sk) == false)
+        return false;
+    if (level >= 2 && IsSmallOrder(m_pk) == true)
+        return false;
+    if (level >= 3)
+    {
+        SecByteBlock sk(m_sk, SECRET_KEYLENGTH), pk(PUBLIC_KEYLENGTH);
+        ClampKeys(pk, sk);
+
+        // Secret key is already clamped, bufs are equal
+        if (VerifyBufsEqual(pk, m_pk, PUBLIC_KEYLENGTH) == false)
+            return false;
+    }
+
     return true;
 }
 
@@ -484,9 +513,12 @@ void ed25519PrivateKey::BERDecode(BufferedTransformation &bt)
             BERDecodePrivateKey(octetString, false, (size_t)privateKeyInfo.RemainingLength());
         octetString.MessageEnd();
 
+        // publicKey [1] IMPLICIT PublicKey OPTIONAL
         bool generatePublicKey = true;
-        if (version == 1)
+        if (privateKeyInfo.EndReached() == false /*version == 1?*/)
         {
+            // Should we test this before decoding? In either case we
+            // just throw a BERDecodeErr() when we can't parse it.
             BERGeneralDecoder publicKey(privateKeyInfo, CONTEXT_SPECIFIC | CONSTRUCTED | 1);
             SecByteBlock subjectPublicKey;
             unsigned int unusedBits;
