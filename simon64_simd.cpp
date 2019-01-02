@@ -30,7 +30,7 @@
 # include <ammintrin.h>
 #endif
 
-#if defined(__AVX512F__)
+#if defined(__AVX512F__) && defined(CRYPTOPP_AVX512VL)
 # define CRYPTOPP_AVX512_ROTATE 1
 # include <immintrin.h>
 #endif
