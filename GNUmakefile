@@ -100,9 +100,9 @@ ifeq ($(wildcard adhoc.cpp),)
 $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
 
-# Tell MacPorts and Homebrew GCC to use Clang integrated assembler
+# Tell MacPorts and Homebrew GCC to use Clang integrated assembler (only on Intel-based Macs)
 #   http://github.com/weidai11/cryptopp/issues/190
-ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER),11)
+ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER)$(IS_PPC32)$(IS_PPC64),1100)
   ifeq ($(findstring -Wa,-q,$(CXXFLAGS)),)
     CXXFLAGS += -Wa,-q -Wa,-march=native
   endif
@@ -389,6 +389,13 @@ ifeq ($(DETECT_FEATURES),1)
       CXXFLAGS += -DCRYPTOPP_DISABLE_AVX2
     else ifeq ($(SHANI_FLAG),)
       CXXFLAGS += -DCRYPTOPP_DISABLE_SHANI
+    endif
+  endif
+
+  # Drop to SSSE2 if available
+  ifeq ($(SSSE3_FLAG),)
+    ifneq ($(SSE2_FLAG),)
+      GCM_FLAG = $(SSE2_FLAG)
     endif
   endif
 
@@ -1335,7 +1342,7 @@ libcryptopp.pc:
 	@echo '' >> libcryptopp.pc
 	@echo 'Name: Crypto++' >> libcryptopp.pc
 	@echo 'Description: Crypto++ cryptographic library' >> libcryptopp.pc
-	@echo 'Version: 7.1' >> libcryptopp.pc
+	@echo 'Version: 8.1' >> libcryptopp.pc
 	@echo 'URL: https://cryptopp.com/' >> libcryptopp.pc
 	@echo '' >> libcryptopp.pc
 	@echo 'Cflags: -I$${includedir}' >> libcryptopp.pc
