@@ -282,7 +282,7 @@ inline void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
 template <unsigned int R>
 inline __m128i RotateLeft64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_rol_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, R);
@@ -295,7 +295,7 @@ inline __m128i RotateLeft64(const __m128i& val)
 template <unsigned int R>
 inline __m128i RotateRight64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_ror_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, 64-R);
