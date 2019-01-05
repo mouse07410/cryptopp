@@ -31,13 +31,14 @@
 # include <immintrin.h>
 #endif
 
+// C1189: error: This header is specific to ARM targets
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
 # include "adv_simd.h"
-# include <arm_neon.h>
+# ifndef _M_ARM64
+#  include <arm_neon.h>
+# endif
 #endif
 
-// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
-// compilers don't follow ACLE conventions for the include.
 #if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
@@ -1036,17 +1037,15 @@ size_t LEA_Dec_AdvancedProcessBlocks_SSSE3(const word32* subKeys, size_t rounds,
 size_t LEA_Enc_AdvancedProcessBlocks_NEON(const word32* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
-    uint32x4_t unused;  // Avoid template argument deduction/substitution failures
     return AdvancedProcessBlocks128_4x1_NEON(LEA_Enc_Block, LEA_Enc_4_Blocks,
-        unused, subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
 }
 
 size_t LEA_Dec_AdvancedProcessBlocks_NEON(const word32* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
-    uint32x4_t unused;  // Avoid template argument deduction/substitution failures
     return AdvancedProcessBlocks128_4x1_NEON(LEA_Dec_Block, LEA_Dec_4_Blocks,
-        unused, subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
+        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
 }
 #endif // CRYPTOPP_ARM_NEON_AVAILABLE
 
