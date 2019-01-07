@@ -201,7 +201,6 @@ LDFLAGS = $(LDFLAGS) /MACHINE:X64
 LDLIBS = $(LDLIBS) kernel32.lib
 !ENDIF
 
-# We still don't know what we need for ARM64 on Windows. ARM64 and arm64 may be incorrect
 !IF "$(PLATFORM)" == "ARM" || "$(PLATFORM)" == "arm" || "$(PLATFORM)" == "ARM64" || "$(PLATFORM)" == "arm64"
 # CXXFLAGS = $(CXXFLAGS) /D_ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE=1 /DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP
 CXXFLAGS = $(CXXFLAGS) /DWINAPI_FAMILY=WINAPI_FAMILY_PHONE_APP
@@ -218,6 +217,27 @@ cryptest.exe: pch.pch cryptlib.lib $(TEST_OBJS)
 
 cryptlib.lib: $(LIB_OBJS)
 	$(AR) $(ARFLAGS) $(LIB_OBJS) /out:$@
+
+#map2def source code available in TestPrograms/
+# map2def.exe: map2def.obj
+#	$(LD) map2def.obj kernel32.lib /out:$@
+
+#dump2def source code available in TestPrograms/
+#dump2def.exe: dump2def.obj
+#	$(LD) dump2def.obj kernel32.lib /out:$@
+
+cryptopp.map:
+	$(LD) $(LDFLAGS) /DLL /MAP /MAPINFO:EXPORTS $(LIB_OBJS)
+	mv cryptlib.map cryptopp.map
+
+cryptopp.dump: cryptlib.lib
+	dumpbin.exe /LINKERMEMBER cryptlib.lib /OUT:$@
+
+cryptopp.def: cryptlib.lib cryptopp.dump
+	dump2def.exe cryptopp.dump cryptopp.def
+
+cryptopp.dll: $(LIB_OBJS) cryptopp.def
+	$(LD) $(LDFLAGS) /DLL /DEF:cryptopp.def /IGNORE:4102 $(LIB_OBJS) $(LDLIBS) /out:$@
 
 clean:
 	$(RM) /F /Q pch.pch $(LIB_OBJS) pch.obj rdrand-x86.obj rdrand-x64.obj x64masm.obj x64dll.obj cryptlib.lib $(TEST_OBJS) cryptest.exe *.pdb

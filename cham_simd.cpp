@@ -642,7 +642,7 @@ NAMESPACE_BEGIN(W32)  // CHAM128, 32-bit word size
 template <unsigned int R>
 inline __m128i RotateLeft32(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE) && defined(CRYPTOPP_AVX512VL)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_rol_epi32(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi32(val, R);
@@ -655,7 +655,7 @@ inline __m128i RotateLeft32(const __m128i& val)
 template <unsigned int R>
 inline __m128i RotateRight32(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)  && defined(CRYPTOPP_AVX512VL)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_ror_epi32(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi32(val, 32-R);

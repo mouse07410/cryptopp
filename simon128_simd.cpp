@@ -31,13 +31,14 @@
 # include <immintrin.h>
 #endif
 
+// C1189: error: This header is specific to ARM targets
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
 # include "adv_simd.h"
-# include <arm_neon.h>
+# ifndef _M_ARM64
+#  include <arm_neon.h>
+# endif
 #endif
 
-// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
-// compilers don't follow ACLE conventions for the include.
 #if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
@@ -61,6 +62,14 @@ using CryptoPP::vec_swap;  // SunCC
 // *************************** ARM NEON ************************** //
 
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
+
+// Missing from Microsoft's ARM A-32 implementation
+#if defined(_MSC_VER) && !defined(_M_ARM64)
+inline uint64x2_t vld1q_dup_u64(const uint64_t* ptr)
+{
+	return vmovq_n_u64(*ptr);
+}
+#endif
 
 template <class T>
 inline T UnpackHigh64(const T& a, const T& b)
@@ -318,7 +327,7 @@ inline void Swap128(__m128i& a,__m128i& b)
 template <unsigned int R>
 inline __m128i RotateLeft64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE) && defined(CRYPTOPP_AVX512VL)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_rol_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, R);
@@ -331,7 +340,7 @@ inline __m128i RotateLeft64(const __m128i& val)
 template <unsigned int R>
 inline __m128i RotateRight64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE) && defined(CRYPTOPP_AVX512VL)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_ror_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, 64-R);
