@@ -90,6 +90,17 @@ F2N_Multiply_256x256_ARMv8(uint64x2_t& c3, uint64x2_t& c2, uint64x2_t& c1, uint6
     c2 = veorq_u64(c2, c5);
 }
 
+// c3c2c1c0 = a1a0 * a1a0
+inline void
+F2N_Square_256_ARMv8(uint64x2_t& c3, uint64x2_t& c2, uint64x2_t& c1,
+    uint64x2_t& c0, const uint64x2_t& a1, const uint64x2_t& a0)
+{
+    c0 = PMULL_00(a0, a0);
+    c1 = PMULL_11(a0, a0);
+    c2 = PMULL_00(a1, a1);
+    c3 = PMULL_11(a1, a1);
+}
+
 // x = (x << n), z = 0
 template <unsigned int N>
 inline uint64x2_t ShiftLeft128_ARMv8(uint64x2_t x)
@@ -156,28 +167,6 @@ GF2NT_233_Reduce_ARMv8(uint64x2_t& c3, uint64x2_t& c2, uint64x2_t& c1, uint64x2_
     c1 = vandq_u64(c1, m0);
 }
 
-inline void
-GF2NT_233_Multiply_Reduce_ARMv8(const word* pA, const word* pB, word* pC)
-{
-    // word is either 32-bit or 64-bit, depending on the platform.
-    // Load using a 32-bit pointer to avoid possible alignment issues.
-    const uint32_t* pAA = reinterpret_cast<const uint32_t*>(pA);
-    const uint32_t* pBB = reinterpret_cast<const uint32_t*>(pB);
-
-    uint64x2_t a0 = vreinterpretq_u64_u32(vld1q_u32(pAA+0));
-    uint64x2_t a1 = vreinterpretq_u64_u32(vld1q_u32(pAA+4));
-    uint64x2_t b0 = vreinterpretq_u64_u32(vld1q_u32(pBB+0));
-    uint64x2_t b1 = vreinterpretq_u64_u32(vld1q_u32(pBB+4));
-
-    uint64x2_t c0, c1, c2, c3;
-    F2N_Multiply_256x256_ARMv8(c3, c2, c1, c0, a1, a0, b1, b0);
-    GF2NT_233_Reduce_ARMv8(c3, c2, c1, c0);
-
-    uint32_t* pCC = reinterpret_cast<uint32_t*>(pC);
-    vst1q_u32(pCC+0, vreinterpretq_u32_u64(c0));
-    vst1q_u32(pCC+4, vreinterpretq_u32_u64(c1));
-}
-
 #endif
 
 // ************************** SSE ************************** //
@@ -230,6 +219,17 @@ F2N_Multiply_256x256_CLMUL(__m128i& c3, __m128i& c2, __m128i& c1, __m128i& c0,
     c5 = _mm_xor_si128(c5, c3);
     c1 = _mm_xor_si128(c1, c4);
     c2 = _mm_xor_si128(c2, c5);
+}
+
+// c3c2c1c0 = a1a0 * a1a0
+inline void
+F2N_Square_256_CLMUL(__m128i& c3, __m128i& c2, __m128i& c1,
+    __m128i& c0, const __m128i& a1, const __m128i& a0)
+{
+    c0 = _mm_clmulepi64_si128(a0, a0, 0x00);
+    c1 = _mm_clmulepi64_si128(a0, a0, 0x11);
+    c2 = _mm_clmulepi64_si128(a1, a1, 0x00);
+    c3 = _mm_clmulepi64_si128(a1, a1, 0x11);
 }
 
 // x = (x << n), z = 0
@@ -299,25 +299,6 @@ GF2NT_233_Reduce_CLMUL(__m128i& c3, __m128i& c2, __m128i& c1, __m128i& c0)
     c1 = _mm_and_si128(c1, m0);
 }
 
-inline void
-GF2NT_233_Multiply_Reduce_CLMUL(const word* pA, const word* pB, word* pC)
-{
-    const __m128i* pAA = reinterpret_cast<const __m128i*>(pA);
-    const __m128i* pBB = reinterpret_cast<const __m128i*>(pB);
-    __m128i a0 = _mm_loadu_si128(pAA+0);
-    __m128i a1 = _mm_loadu_si128(pAA+1);
-    __m128i b0 = _mm_loadu_si128(pBB+0);
-    __m128i b1 = _mm_loadu_si128(pBB+1);
-
-    __m128i c0, c1, c2, c3;
-    F2N_Multiply_256x256_CLMUL(c3, c2, c1, c0, a1, a0, b1, b0);
-    GF2NT_233_Reduce_CLMUL(c3, c2, c1, c0);
-
-    __m128i* pCC = reinterpret_cast<__m128i*>(pC);
-    _mm_storeu_si128(pCC+0, c0);
-    _mm_storeu_si128(pCC+1, c1);
-}
-
 #endif
 
 // ************************* Power8 ************************* //
@@ -337,8 +318,8 @@ using CryptoPP::VecXor;
 using CryptoPP::VecAnd;
 
 using CryptoPP::VecPermute;
-using CryptoPP::VecMergeHi;
-using CryptoPP::VecMergeLo;
+using CryptoPP::VecMergeHigh;
+using CryptoPP::VecMergeLow;
 using CryptoPP::VecShiftLeft;
 using CryptoPP::VecShiftRight;
 using CryptoPP::VecRotateLeftOctet;
@@ -355,16 +336,16 @@ F2N_Multiply_128x128_POWER8(uint64x2_p& c1, uint64x2_p& c0, const uint64x2_p& a,
 
     c0 = VecPolyMultiply00LE(a, b);
     c1 = VecPolyMultiply11LE(a, b);
-    t1 = VecMergeLo(a, a);
+    t1 = VecMergeLow(a, a);
     t1 = VecXor(a, t1);
-    t2 = VecMergeLo(b, b);
+    t2 = VecMergeLow(b, b);
     t2 = VecXor(b, t2);
     t1 = VecPolyMultiply00LE(t1, t2);
     t1 = VecXor(c0, t1);
     t1 = VecXor(c1, t1);
     t2 = t1;
-    t1 = VecMergeHi(z0, t1);
-    t2 = VecMergeLo(t2, z0);
+    t1 = VecMergeHigh(z0, t1);
+    t2 = VecMergeLow(t2, z0);
     c0 = VecXor(c0, t1);
     c1 = VecXor(c1, t2);
 }
@@ -393,6 +374,17 @@ F2N_Multiply_256x256_POWER8(uint64x2_p& c3, uint64x2_p& c2, uint64x2_p& c1, uint
     c2 = VecXor(c2, c5);
 }
 
+// c3c2c1c0 = a1a0 * a1a0
+inline void
+F2N_Square_256_POWER8(uint64x2_p& c3, uint64x2_p& c2, uint64x2_p& c1,
+    uint64x2_p& c0, const uint64x2_p& a1, const uint64x2_p& a0)
+{
+    c0 = VecPolyMultiply00LE(a0, a0);
+    c1 = VecPolyMultiply11LE(a0, a0);
+    c2 = VecPolyMultiply00LE(a1, a1);
+    c3 = VecPolyMultiply11LE(a1, a1);
+}
+
 // x = (x << n), z = 0
 template <unsigned int N>
 inline uint64x2_p ShiftLeft128_POWER8(uint64x2_p x)
@@ -402,7 +394,7 @@ inline uint64x2_p ShiftLeft128_POWER8(uint64x2_p x)
 
     x = VecShiftLeft<N>(x);
     u = VecShiftRight<64-N>(u);
-    v = VecMergeHi(z, u);
+    v = VecMergeHigh(z, u);
     x = VecOr(x, v);
     return x;
 }
@@ -419,41 +411,41 @@ GF2NT_233_Reduce_POWER8(uint64x2_p& c3, uint64x2_p& c2, uint64x2_p& c1, uint64x2
     const uint64x2_p z0={0};
 
     b1 = c1; a1 = c1;
-    a0 = VecMergeHi(c1, z0);
+    a0 = VecMergeHigh(c1, z0);
     a1 = VecShiftLeft<23>(a1);
     a1 = VecShiftRight<23>(a1);
     c1 = VecOr(a1, a0);
     b2 = VecShiftRight<64-23>(c2);
     c3 = ShiftLeft128_POWER8<23>(c3);
-    a0 = VecMergeLo(b2, z0);
+    a0 = VecMergeLow(b2, z0);
     c3 = VecOr(c3, a0);
     b1 = VecShiftRight<64-23>(b1);
     c2 = ShiftLeft128_POWER8<23>(c2);
-    a0 = VecMergeLo(b1, z0);
+    a0 = VecMergeLow(b1, z0);
     c2 = VecOr(c2, a0);
     b3 = c3;
     b2 = VecShiftRight<64-10>(c2);
     b3 = ShiftLeft128_POWER8<10>(b3);
-    a0 = VecMergeLo(b2, z0);
+    a0 = VecMergeLow(b2, z0);
     b3 = VecOr(b3, a0);
-    a0 = VecMergeLo(c3, z0);
+    a0 = VecMergeLow(c3, z0);
     b3 = VecXor(b3, a0);
     b1 = VecShiftRight<64-23>(b3);
     b3 = ShiftLeft128_POWER8<23>(b3);
-    b3 = VecMergeLo(b3, z0);
+    b3 = VecMergeLow(b3, z0);
     b3 = VecOr(b3, b1);
     c2 = VecXor(c2, b3);
     b3 = c3;
     b2 = VecShiftRight<64-10>(c2);
     b3 = ShiftLeft128_POWER8<10>(b3);
-    b2 = VecMergeLo(b2, z0);
+    b2 = VecMergeLow(b2, z0);
     b3 = VecOr(b3, b2);
     b2 = c2;
     b2 = ShiftLeft128_POWER8<10>(b2);
-    a0 = VecMergeHi(z0, b2);
+    a0 = VecMergeHigh(z0, b2);
     c2 = VecXor(c2, a0);
-    a0 = VecMergeHi(z0, b3);
-    a1 = VecMergeLo(b2, z0);
+    a0 = VecMergeHigh(z0, b3);
+    a1 = VecMergeLow(b2, z0);
     a0 = VecOr(a0, a1);
     c3 = VecXor(c3, a0);
     c0 = VecXor(c0, c2);
@@ -461,7 +453,94 @@ GF2NT_233_Reduce_POWER8(uint64x2_p& c3, uint64x2_p& c2, uint64x2_p& c1, uint64x2
     c1 = VecAnd(c1, m0);
 }
 
-inline void
+#endif
+
+ANONYMOUS_NAMESPACE_END
+
+NAMESPACE_BEGIN(CryptoPP)
+
+#if defined(CRYPTOPP_CLMUL_AVAILABLE)
+
+void
+GF2NT_233_Multiply_Reduce_CLMUL(const word* pA, const word* pB, word* pC)
+{
+    const __m128i* pAA = reinterpret_cast<const __m128i*>(pA);
+    const __m128i* pBB = reinterpret_cast<const __m128i*>(pB);
+    __m128i a0 = _mm_loadu_si128(pAA+0);
+    __m128i a1 = _mm_loadu_si128(pAA+1);
+    __m128i b0 = _mm_loadu_si128(pBB+0);
+    __m128i b1 = _mm_loadu_si128(pBB+1);
+
+    __m128i c0, c1, c2, c3;
+    F2N_Multiply_256x256_CLMUL(c3, c2, c1, c0, a1, a0, b1, b0);
+    GF2NT_233_Reduce_CLMUL(c3, c2, c1, c0);
+
+    __m128i* pCC = reinterpret_cast<__m128i*>(pC);
+    _mm_storeu_si128(pCC+0, c0);
+    _mm_storeu_si128(pCC+1, c1);
+}
+
+void
+GF2NT_233_Square_Reduce_CLMUL(const word* pA, word* pC)
+{
+    const __m128i* pAA = reinterpret_cast<const __m128i*>(pA);
+    __m128i a0 = _mm_loadu_si128(pAA+0);
+    __m128i a1 = _mm_loadu_si128(pAA+1);
+
+    __m128i c0, c1, c2, c3;
+    F2N_Square_256_CLMUL(c3, c2, c1, c0, a1, a0);
+    GF2NT_233_Reduce_CLMUL(c3, c2, c1, c0);
+
+    __m128i* pCC = reinterpret_cast<__m128i*>(pC);
+    _mm_storeu_si128(pCC+0, c0);
+    _mm_storeu_si128(pCC+1, c1);
+}
+
+#elif defined(CRYPTOPP_ARM_PMULL_AVAILABLE)
+
+void
+GF2NT_233_Multiply_Reduce_ARMv8(const word* pA, const word* pB, word* pC)
+{
+    // word is either 32-bit or 64-bit, depending on the platform.
+    // Load using a 32-bit pointer to avoid possible alignment issues.
+    const uint32_t* pAA = reinterpret_cast<const uint32_t*>(pA);
+    const uint32_t* pBB = reinterpret_cast<const uint32_t*>(pB);
+
+    uint64x2_t a0 = vreinterpretq_u64_u32(vld1q_u32(pAA+0));
+    uint64x2_t a1 = vreinterpretq_u64_u32(vld1q_u32(pAA+4));
+    uint64x2_t b0 = vreinterpretq_u64_u32(vld1q_u32(pBB+0));
+    uint64x2_t b1 = vreinterpretq_u64_u32(vld1q_u32(pBB+4));
+
+    uint64x2_t c0, c1, c2, c3;
+    F2N_Multiply_256x256_ARMv8(c3, c2, c1, c0, a1, a0, b1, b0);
+    GF2NT_233_Reduce_ARMv8(c3, c2, c1, c0);
+
+    uint32_t* pCC = reinterpret_cast<uint32_t*>(pC);
+    vst1q_u32(pCC+0, vreinterpretq_u32_u64(c0));
+    vst1q_u32(pCC+4, vreinterpretq_u32_u64(c1));
+}
+
+void
+GF2NT_233_Square_Reduce_ARMv8(const word* pA, word* pC)
+{
+    // word is either 32-bit or 64-bit, depending on the platform.
+    // Load using a 32-bit pointer to avoid possible alignment issues.
+    const uint32_t* pAA = reinterpret_cast<const uint32_t*>(pA);
+    uint64x2_t a0 = vreinterpretq_u64_u32(vld1q_u32(pAA+0));
+    uint64x2_t a1 = vreinterpretq_u64_u32(vld1q_u32(pAA+4));
+
+    uint64x2_t c0, c1, c2, c3;
+    F2N_Square_256_ARMv8(c3, c2, c1, c0, a1, a0);
+    GF2NT_233_Reduce_ARMv8(c3, c2, c1, c0);
+
+    uint32_t* pCC = reinterpret_cast<uint32_t*>(pC);
+    vst1q_u32(pCC+0, vreinterpretq_u32_u64(c0));
+    vst1q_u32(pCC+4, vreinterpretq_u32_u64(c1));
+}
+
+#elif defined(CRYPTOPP_POWER8_VMULL_AVAILABLE)
+
+void
 GF2NT_233_Multiply_Reduce_POWER8(const word* pA, const word* pB, word* pC)
 {
     // word is either 32-bit or 64-bit, depending on the platform.
@@ -497,23 +576,36 @@ GF2NT_233_Multiply_Reduce_POWER8(const word* pA, const word* pB, word* pC)
     VecStore(c1, pCC+16);
 }
 
-#endif
-
-ANONYMOUS_NAMESPACE_END
-
-NAMESPACE_BEGIN(CryptoPP)
-
-void GF2NT_233_Multiply_Reduce(const word* pA, const word* pB, word* pC)
+void
+GF2NT_233_Square_Reduce_POWER8(const word* pA, word* pC)
 {
-#if defined(CRYPTOPP_CLMUL_AVAILABLE)
-    return GF2NT_233_Multiply_Reduce_CLMUL(pA, pB, pC);
-#elif (CRYPTOPP_ARM_PMULL_AVAILABLE)
-    return GF2NT_233_Multiply_Reduce_ARMv8(pA, pB, pC);
-#elif defined(CRYPTOPP_POWER8_VMULL_AVAILABLE)
-    return GF2NT_233_Multiply_Reduce_POWER8(pA, pB, pC);
-#else
-    CRYPTOPP_ASSERT(0);
+    // word is either 32-bit or 64-bit, depending on the platform.
+    // Load using a byte pointer to avoid possible alignment issues.
+    const byte* pAA = reinterpret_cast<const byte*>(pA);
+    uint64x2_p a0 = (uint64x2_p)VecLoad(pAA+0);
+    uint64x2_p a1 = (uint64x2_p)VecLoad(pAA+16);
+
+#if (CRYPTOPP_BIG_ENDIAN)
+    const uint8_t mb[] = {4,5,6,7, 0,1,2,3, 12,13,14,15, 8,9,10,11};
+    const uint8x16_p m = (uint8x16_p)VecLoad(mb);
+    a0 = VecPermute(a0, m);
+    a1 = VecPermute(a1, m);
 #endif
+
+    uint64x2_p c0, c1, c2, c3;
+    F2N_Square_256_POWER8(c3, c2, c1, c0, a1, a0);
+    GF2NT_233_Reduce_POWER8(c3, c2, c1, c0);
+
+#if (CRYPTOPP_BIG_ENDIAN)
+    c0 = VecPermute(c0, m);
+    c1 = VecPermute(c1, m);
+#endif
+
+    byte* pCC = reinterpret_cast<byte*>(pC);
+    VecStore(c0, pCC+0);
+    VecStore(c1, pCC+16);
 }
+
+#endif
 
 NAMESPACE_END
