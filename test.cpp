@@ -473,7 +473,7 @@ void SetArgvPathHint(const char* argv0, std::string& pathHint)
 #if defined(AT_EXECFN)
 	if (getauxval(AT_EXECFN))
 		pathHint = getauxval(AT_EXECFN);
-#elif defined(CRYPTOPP_WIN32_AVAILABLE)
+#elif defined(_MSC_VER)
 	char* pgmptr = NULLPTR;
 	errno_t err = _get_pgmptr(&pgmptr);
 	if (err == 0 && pgmptr != NULLPTR)
@@ -547,7 +547,8 @@ void PrintSeedAndThreads()
 		tc = omp_get_num_threads();
 	}
 
-	std::cout << "Using " << tc << " OMP " << (tc == 1 ? "thread" : "threads") << std::endl;
+	std::cout << "OpenMP version " << (int)_OPENMP << ", ";
+	std::cout << tc << (tc == 1 ? " thread" : " threads") << std::endl;
 #endif
 }
 
@@ -982,10 +983,11 @@ bool Validate(int alg, bool thorough, const char *seedInput)
 	case 68: result = ValidateTTMAC(); break;
 	case 70: result = ValidateSalsa(); break;
 	case 71: result = ValidateChaCha(); break;
-	case 72: result = ValidateSosemanuk(); break;
-	case 73: result = ValidateRabbit(); break;
-	case 74: result = ValidateHC128(); break;
-	case 75: result = ValidateHC256(); break;
+	case 72: result = ValidateChaChaTLS(); break;
+	case 73: result = ValidateSosemanuk(); break;
+	case 74: result = ValidateRabbit(); break;
+	case 75: result = ValidateHC128(); break;
+	case 76: result = ValidateHC256(); break;
 	case 80: result = ValidateVMAC(); break;
 	case 81: result = ValidateCCM(); break;
 	case 82: result = ValidateGCM(); break;

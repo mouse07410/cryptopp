@@ -305,6 +305,7 @@ ifeq ($(DETECT_FEATURES),1)
   HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
   ifeq ($(strip $(HAVE_OPT)),0)
     GCM_FLAG = $(SSSE3_FLAG) $(CLMUL_FLAG)
+    GF2N_FLAG = $(CLMUL_FLAG)
     SUN_LDFLAGS += $(CLMUL_FLAG)
   else
     CLMUL_FLAG =
@@ -523,6 +524,7 @@ ifeq ($(IS_ARMV8),1)
     HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
     ifeq ($(strip $(HAVE_OPT)),0)
       GCM_FLAG = -march=armv8-a+crypto
+      GF2N_FLAG = -march=armv8-a+crypto
     else
       CXXFLAGS += -DCRYPTOPP_ARM_PMULL_AVAILABLE=0
     endif
@@ -618,6 +620,7 @@ ifeq ($(DETECT_FEATURES),1)
     BLAKE2B_FLAG = $(POWER8_FLAG)
     CRC_FLAG = $(POWER8_FLAG)
     GCM_FLAG = $(POWER8_FLAG)
+    GF2N_FLAG = $(POWER8_FLAG)
     AES_FLAG = $(POWER8_FLAG)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
@@ -810,14 +813,14 @@ ifeq ($(IS_SUN)$(SUN_COMPILER),11)
 endif  # SunOS
 
 # TODO: can we remove this since removing sockets?
-ifneq ($(IS_MINGW),0)
-  LDLIBS += -lws2_32
-endif
+#ifneq ($(IS_MINGW),0)
+#  LDLIBS += -lws2_32
+#endif
 
 # TODO: can we remove this since removing sockets?
-ifneq ($(IS_SUN),0)
-  LDLIBS += -lnsl -lsocket
-endif
+#ifneq ($(IS_SUN),0)
+#  LDLIBS += -lnsl -lsocket
+#endif
 
 ifeq ($(IS_LINUX),1)
   ifeq ($(findstring -fopenmp,$(CXXFLAGS)),-fopenmp)
@@ -1452,6 +1455,10 @@ chacha_avx.o : chacha_avx.cpp
 cham_simd.o : cham_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(CHAM_FLAG) -c) $<
 
+# SSE4.2 or ARMv8a available
+crc_simd.o : crc_simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(CRC_FLAG) -c) $<
+
 # Power9 available
 darn.o : darn.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(DARN_FLAG) -c) $<
@@ -1460,17 +1467,13 @@ darn.o : darn.cpp
 donna_sse.o : donna_sse.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
 
-# SSE2 on i686
-sse_simd.o : sse_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
-
-# SSE4.2 or ARMv8a available
-crc_simd.o : crc_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(CRC_FLAG) -c) $<
-
-# PCLMUL or ARMv7a/ARMv8a available
+# Carryless multiply
 gcm_simd.o : gcm_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(GCM_FLAG) -c) $<
+
+# Carryless multiply
+gf2n_simd.o : gf2n_simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(GF2N_FLAG) -c) $<
 
 # SSSE3 available
 lea_simd.o : lea_simd.cpp
@@ -1547,7 +1550,15 @@ sm4_simd.o : sm4_simd.cpp
 ifeq ($(XLC_COMPILER),1)
 sm3.o : sm3.cpp
 	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
+donna_32.o : donna_32.cpp
+	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
+donna_64.o : donna_64.cpp
+	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
 endif
+
+# SSE2 on i686
+sse_simd.o : sse_simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
 
 # Don't build Rijndael with UBsan. Too much noise due to unaligned data accesses.
 ifneq ($(findstring -fsanitize=undefined,$(CXXFLAGS)),)
