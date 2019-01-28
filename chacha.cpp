@@ -79,13 +79,14 @@ typedef word32 WordType;
 enum {BYTES_PER_ITERATION=64};
 
 // MultiBlockSafe detects a condition that can arise in the SIMD
-// implementations where we overflow one of the 32-bit state words
-// during addition in an intermediate result. Conditions to trigger
-// issue include a user seeks to around 2^32 blocks (256 GB of data).
-// https://github.com/weidai11/cryptopp/issues/732
-inline bool MultiBlockSafe(unsigned int state12, unsigned int blocks)
+// implementations where we overflow one of the 32-bit state words during
+// addition in an intermediate result. Preconditions for the issue include
+// a user seeks to around 2^32 blocks (256 GB of data) for ChaCha; or a
+// user specifies an arbitrarily large initial counter block for ChaChaTLS.
+// Also see https://github.com/weidai11/cryptopp/issues/732.
+inline bool MultiBlockSafe(unsigned int ctrLow, unsigned int blocks)
 {
-    return 0xffffffff - state12 > blocks;
+    return 0xffffffff - ctrLow > blocks;
 }
 
 // OperateKeystream always produces a key stream. The key stream is written
@@ -217,6 +218,9 @@ void ChaCha_OperateKeystream(KeystreamOperation operation,
 
     // We may re-enter a SIMD keystream operation from here.
     } while (iterationCount--);
+
+    #undef CHACHA_QUARTER_ROUND
+    #undef CHACHA_OUTPUT
 }
 
 std::string ChaCha_AlgorithmProvider()
@@ -314,7 +318,7 @@ void ChaCha_Policy::CipherSetKey(const NameValuePairs &params, const byte *key, 
     CRYPTOPP_ASSERT(key); CRYPTOPP_ASSERT(length == 16 || length == 32);
 
     m_rounds = params.GetIntValueWithDefault(Name::Rounds(), 20);
-    if (!(m_rounds == 8 || m_rounds == 12 || m_rounds == 20))
+    if (m_rounds != 20 && m_rounds != 12 && m_rounds != 8)
         throw InvalidRounds(ChaCha::StaticAlgorithmName(), m_rounds);
 
     // "expand 16-byte k" or "expand 32-byte k"
@@ -356,9 +360,6 @@ unsigned int ChaCha_Policy::GetOptimalBlockSize() const
     return ChaCha_GetOptimalBlockSize();
 }
 
-// OperateKeystream always produces a key stream. The key stream is written
-// to output. Optionally a message may be supplied to xor with the key stream.
-// The message is input, and output = output ^ input.
 void ChaCha_Policy::OperateKeystream(KeystreamOperation operation,
         byte *output, const byte *input, size_t iterationCount)
 {
@@ -383,26 +384,30 @@ void ChaChaTLS_Policy::CipherSetKey(const NameValuePairs &params, const byte *ke
     CRYPTOPP_ASSERT(key); CRYPTOPP_ASSERT(length == 32);
 
     // ChaChaTLS is always 20 rounds. Fetch Rounds() to avoid a spurious failure.
-    int rounds = params.GetIntValueWithDefault(Name::Rounds(), m_rounds);
+    int rounds = params.GetIntValueWithDefault(Name::Rounds(), ROUNDS);
     if (rounds != 20)
         throw InvalidRounds(ChaChaTLS::StaticAlgorithmName(), rounds);
 
-    // RFC 7539 test vectors use an initial block counter. However, some of them
-    // don't start at 0. If Resynchronize() is called we set to 0. Hence, stash
-    // the initial block counter in m_state[16]. Then use it in Resynchronize().
+    // RFC 8439 test vectors use an initial block counter. However, the counter
+    // can be an arbitrary value per RFC 8439 Section 2.4. We stash the counter
+    // away in state[16] and use it for a Resynchronize() operation. I think
+    // the initial counter is used more like a Tweak when non-0, and it should
+    // be provided in Resynchronize() (light-weight re-keying). However,
+    // Resynchronize() does not have an overload that allows us to pass it into
+    // the function, so we have to use the heavier-weight SetKey to change it.
     word64 block;
     if (params.GetValue("InitialBlock", block))
         m_state[16] = static_cast<word32>(block);
     else
         m_state[16] = 0;
 
-    // State words are defined in RFC 7539, Section 2.3.
+    // State words are defined in RFC 8439, Section 2.3.
     m_state[0] = 0x61707865;
     m_state[1] = 0x3320646e;
     m_state[2] = 0x79622d32;
     m_state[3] = 0x6b206574;
 
-    // State words are defined in RFC 7539, Section 2.3. Key is 32-bytes.
+    // State words are defined in RFC 8439, Section 2.3. Key is 32-bytes.
     GetBlock<word32, LittleEndian> get(key);
     get(m_state[4])(m_state[5])(m_state[6])(m_state[7])(m_state[8])(m_state[9])(m_state[10])(m_state[11]);
 }
@@ -412,7 +417,7 @@ void ChaChaTLS_Policy::CipherResynchronize(byte *keystreamBuffer, const byte *IV
     CRYPTOPP_UNUSED(keystreamBuffer), CRYPTOPP_UNUSED(length);
     CRYPTOPP_ASSERT(length==12);
 
-    // State words are defined in RFC 7539, Section 2.3
+    // State words are defined in RFC 8439, Section 2.3
     GetBlock<word32, LittleEndian> get(IV);
     m_state[12] = m_state[16];
     get(m_state[13])(m_state[14])(m_state[15]);
@@ -420,8 +425,10 @@ void ChaChaTLS_Policy::CipherResynchronize(byte *keystreamBuffer, const byte *IV
 
 void ChaChaTLS_Policy::SeekToIteration(lword iterationCount)
 {
-    // State words are defined in RFC 7539, Section 2.3
-    // Should we throw here???
+    // Should we throw here??? If the initial block counter is
+    // large then we can wrap and process more data as long as
+    // data processed in the security context does not exceed
+    // 2^32 blocks or approximately 256 GB of data.
     CRYPTOPP_ASSERT(iterationCount <= std::numeric_limits<word32>::max());
     m_state[12] = (word32)iterationCount;  // low word
 }
@@ -436,21 +443,20 @@ unsigned int ChaChaTLS_Policy::GetOptimalBlockSize() const
     return ChaCha_GetOptimalBlockSize();
 }
 
-// OperateKeystream always produces a key stream. The key stream is written
-// to output. Optionally a message may be supplied to xor with the key stream.
-// The message is input, and output = output ^ input.
 void ChaChaTLS_Policy::OperateKeystream(KeystreamOperation operation,
         byte *output, const byte *input, size_t iterationCount)
 {
     word32 discard=0;
     ChaCha_OperateKeystream(operation, m_state, m_state[12], discard,
-            m_rounds, output, input, iterationCount);
+            ROUNDS, output, input, iterationCount);
 
-    // If this fires it means ChaCha_OperateKeystream generated a carry
-    // that was discarded. The problem is, the RFC does not specify what
-    // should happen when the counter block wraps. All we can do is
-    // inform the user that something bad may happen because we don't
+    // If this fires it means ChaCha_OperateKeystream generated a counter
+    // block carry that was discarded. The problem is, the RFC does not
+    // specify what should happen when the counter block wraps. All we can
+    // do is inform the user that something bad may happen because we don't
     // know what we should do.
+    // Also see https://github.com/weidai11/cryptopp/issues/790 and
+    // https://mailarchive.ietf.org/arch/msg/cfrg/gsOnTJzcbgG6OqD8Sc0GO5aR_tU
     CRYPTOPP_ASSERT(discard==0);
 }
 
