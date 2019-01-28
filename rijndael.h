@@ -15,12 +15,12 @@
 
 // Clang 3.3 integrated assembler crash on Linux. Clang 3.4 due to compiler
 // error with .intel_syntax, http://llvm.org/bugs/show_bug.cgi?id=24232
-#if CRYPTOPP_BOOL_X32 || defined(CRYPTOPP_DISABLE_INTEL_ASM)
+#if CRYPTOPP_BOOL_X32 || defined(CRYPTOPP_DISABLE_MIXED_ASM)
 # define CRYPTOPP_DISABLE_RIJNDAEL_ASM 1
 #endif
 
 #if CRYPTOPP_BOOL_X64 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_ARM32 || \
-	CRYPTOPP_BOOL_ARM64 || CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64
+	CRYPTOPP_BOOL_ARMV8 || CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64
 # define CRYPTOPP_RIJNDAEL_ADVANCED_PROCESS_BLOCKS 1
 #endif
 
@@ -30,7 +30,7 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \details All key sizes are supported. The library only provides Rijndael with 128-bit blocks,
 ///   and not 192-bit or 256-bit blocks
 /// \since Rijndael since Crypto++ 3.1, Intel AES-NI since Crypto++ 5.6.1, ARMv8 AES since Crypto++ 6.0,
-///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 7.1
+///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 8.0
 struct Rijndael_Info : public FixedBlockSize<16>, public VariableKeyLength<16, 16, 32, 8>
 {
 	CRYPTOPP_DLL static const char * CRYPTOPP_API StaticAlgorithmName() {return CRYPTOPP_RIJNDAEL_NAME;}
@@ -40,7 +40,7 @@ struct Rijndael_Info : public FixedBlockSize<16>, public VariableKeyLength<16, 1
 /// \details All key sizes are supported. The library only provides Rijndael with 128-bit blocks,
 ///   and not 192-bit or 256-bit blocks
 /// \since Rijndael since Crypto++ 3.1, Intel AES-NI since Crypto++ 5.6.1, ARMv8 AES since Crypto++ 6.0,
-///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 7.1
+///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 8.0
 /// \sa <a href="http://www.cryptopp.com/wiki/Rijndael">Rijndael</a>
 class CRYPTOPP_DLL Rijndael : public Rijndael_Info, public BlockCipherDocumentation
 {
@@ -72,7 +72,7 @@ class CRYPTOPP_DLL Rijndael : public Rijndael_Info, public BlockCipherDocumentat
 	/// \details Enc provides implementation for encryption transformation. All key sizes are supported.
 	///   The library only provides Rijndael with 128-bit blocks, and not 192-bit or 256-bit blocks
 	/// \since Rijndael since Crypto++ 3.1, Intel AES-NI since Crypto++ 5.6.1, ARMv8 AES since Crypto++ 6.0,
-	///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 7.1
+	///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 8.0
 	class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE Enc : public Base
 	{
 	public:
@@ -86,7 +86,7 @@ class CRYPTOPP_DLL Rijndael : public Rijndael_Info, public BlockCipherDocumentat
 	/// \details Dec provides implementation for decryption transformation. All key sizes are supported.
 	///   The library only provides Rijndael with 128-bit blocks, and not 192-bit or 256-bit blocks
 	/// \since Rijndael since Crypto++ 3.1, Intel AES-NI since Crypto++ 5.6.1, ARMv8 AES since Crypto++ 6.0,
-	///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 7.1
+	///   Power8 AES since Crypto++ 6.0, ARMv7 AES since Crypto++ 8.0
 	class CRYPTOPP_DLL CRYPTOPP_NO_VTABLE Dec : public Base
 	{
 	public:

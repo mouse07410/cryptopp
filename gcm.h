@@ -12,7 +12,7 @@
 
 // Clang 3.3 integrated assembler crash on Linux. Clang 3.4 due to compiler
 // error with .intel_syntax, http://llvm.org/bugs/show_bug.cgi?id=24232
-#if CRYPTOPP_BOOL_X32 || defined(CRYPTOPP_DISABLE_INTEL_ASM)
+#if CRYPTOPP_BOOL_X32 || defined(CRYPTOPP_DISABLE_MIXED_ASM)
 # define CRYPTOPP_DISABLE_GCM_ASM 1
 #endif
 
@@ -80,7 +80,7 @@ protected:
 	virtual BlockCipher & AccessBlockCipher() =0;
 	virtual GCM_TablesOption GetTablesOption() const =0;
 
-	const BlockCipher & GetBlockCipher() const {return const_cast<GCM_Base *>(this)->AccessBlockCipher();};
+	const BlockCipher & GetBlockCipher() const {return const_cast<GCM_Base *>(this)->AccessBlockCipher();}
 	byte *HashBuffer() {return m_buffer+REQUIRED_BLOCKSIZE;}
 	byte *HashKey() {return m_buffer+2*REQUIRED_BLOCKSIZE;}
 	byte *MulTable() {return m_buffer+3*REQUIRED_BLOCKSIZE;}

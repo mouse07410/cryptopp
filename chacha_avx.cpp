@@ -49,6 +49,12 @@ extern const char CHACHA_AVX_FNAME[] = __FILE__;
 # endif
 #endif
 
+// The data is aligned, but Clang issues warning based on type
+// and not the actual alignment of the variable and data.
+#if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
+# pragma GCC diagnostic ignored "-Wcast-align"
+#endif
+
 ANONYMOUS_NAMESPACE_BEGIN
 
 #if (CRYPTOPP_AVX2_AVAILABLE)
@@ -374,7 +380,7 @@ void ChaCha_OperateKeystream_AVX2(const word32 *state, const byte* input, byte *
         _mm256_storeu_si256(output_mm + 15, _mm256_permute2x128_si256(X3_2, X3_3, 0 + (2 << 4)));
     }
 
-    // https://stackoverflow.com/a/7841251/608639
+    // https://software.intel.com/en-us/articles/avoiding-avx-sse-transition-penalties
     _mm256_zeroupper();
 }
 

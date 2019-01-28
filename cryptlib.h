@@ -3,7 +3,7 @@
 /// \file cryptlib.h
 /// \brief Abstract base classes that provide a uniform interface to this library.
 
-/*!	\mainpage Crypto++ Library 7.1 API Reference
+/*!	\mainpage Crypto++ Library 8.1 API Reference
 <dl>
 <dt>Abstract Base Classes<dd>
 	cryptlib.h
@@ -17,29 +17,31 @@
 	\ref SHACAL2 "SHACAL-2", SHARK, \ref SIMECK64 "SIMECK (32/64)" SKIPJACK, SM4, Square, TEA,
 	\ref ThreeWay "3-Way", \ref Threefish256 "Threefish (256/512/1024)", Twofish, XTEA
 <dt>Stream Ciphers<dd>
-	ChaCha (ChaCha-8/12/20), \ref HC128 "HC-128/256", \ref Panama "Panama-LE", \ref Panama "Panama-BE",
+	\ref ChaCha "ChaCha (8/12/20)", \ref HC128 "HC-128/256", \ref Panama "Panama-LE", \ref Panama "Panama-BE",
 	Rabbit, Salsa20, \ref SEAL "SEAL-LE", \ref SEAL "SEAL-BE", WAKE, XSalsa20
 <dt>Hash Functions<dd>
 	BLAKE2s, BLAKE2b, \ref Keccak "Keccak (F1600)", SHA1, SHA224, SHA256, SHA384, SHA512,
 	\ref SHA3 "SHA-3", SM3, Tiger, RIPEMD160, RIPEMD320, RIPEMD128, RIPEMD256, SipHash, Whirlpool,
 	Weak::MD2, Weak::MD4, Weak::MD5
 <dt>Non-Cryptographic Checksums<dd>
-	CRC32, Adler32
+	CRC32, CRC32C, Adler32
 <dt>Message Authentication Codes<dd>
 	BLAKE2b, BLAKE2s, CBC_MAC, CMAC, DMAC, \ref GCM "GCM (GMAC)", HMAC, Poly1305, TTMAC, VMAC
 <dt>Random Number Generators<dd>
-	NullRNG(), LC_RNG, RandomPool, BlockingRng, NonblockingRng, AutoSeededRandomPool, AutoSeededX917RNG,
-	NIST Hash_DRBG and HMAC_DRBG, \ref MersenneTwister "MersenneTwister (MT19937 and MT19937-AR)", RDRAND, RDSEED
+	NullRNG, LC_RNG, RandomPool, BlockingRng, NonblockingRng, AutoSeededRandomPool, AutoSeededX917RNG,
+	NIST Hash_DRBG and HMAC_DRBG, \ref MersenneTwister "MersenneTwister (MT19937 and MT19937-AR)",
+	DARN, RDRAND, RDSEED
 <dt>Key Derivation and Password-based Cryptography<dd>
 	HKDF, \ref PKCS12_PBKDF "PBKDF (PKCS #12)", \ref PKCS5_PBKDF1 "PBKDF-1 (PKCS #5)",
 	\ref PKCS5_PBKDF2_HMAC "PBKDF-2/HMAC (PKCS #5)"
 <dt>Public Key Cryptosystems<dd>
 	DLIES, ECIES, LUCES, RSAES, RabinES, LUC_IES
 <dt>Public Key Signature Schemes<dd>
-	DSA2, GDSA, ECDSA, NR, ECNR, LUCSS, RSASS, RSASS_ISO, RabinSS, RWSS, ESIGN
+	DSA, DSA2, \ref ed25519 "Ed25519", GDSA, ECDSA, NR, ECNR, LUCSS, RSASS, RSASS_ISO,
+	RabinSS, RWSS, ESIGN
 <dt>Key Agreement<dd>
-	DH, DH2, \ref MQV_Domain "MQV", \ref HMQV_Domain "HMQV", \ref FHMQV_Domain "FHMQV", ECDH, ECMQV, ECHMQV,
-	ECFHMQV, XTR_DH
+	DH, DH2, \ref x25519 "X25519", \ref MQV_Domain "MQV", \ref HMQV_Domain "HMQV",
+    \ref FHMQV_Domain "FHMQV", ECDH, x25519, ECMQV, ECHMQV, ECFHMQV, XTR_DH
 <dt>Algebraic Structures<dd>
 	Integer, PolynomialMod2, PolynomialOver, RingOfPolynomialsOver,
 	ModularArithmetic, MontgomeryRepresentation, GFP2_ONB, GF2NP, GF256, GF2_32, EC2N, ECP
@@ -602,7 +604,7 @@ public:
 	///    dominant one. For example on x86 <tt>AES/GCM</tt> returns "AESNI" rather than
 	///    "CLMUL" or "AES+SSE4.1" or "AES+CLMUL" or "AES+SSE4.1+CLMUL".
 	/// \note Provider is not universally implemented yet.
-	/// \since Crypto++ 7.1
+	/// \since Crypto++ 8.0
 	virtual std::string AlgorithmProvider() const {return "C++";}
 };
 

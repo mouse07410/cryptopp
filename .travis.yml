@@ -8,7 +8,7 @@ dist: xenial
 sudo: required
 
 # OS X only supports one image. Use the latest.
-osx_image: xcode9.4
+osx_image: xcode10.1
 
 git:
   depth: 3
@@ -57,9 +57,6 @@ matrix:
         - BUILD_MODE=cmake
     - os: osx
       env:
-        - BUILD_MODE=autotools
-    - os: osx
-      env:
         - BUILD_MODE=cmake
     - os: linux
       env:
@@ -95,12 +92,19 @@ matrix:
         - PLATFORM=iPhoneOS
     - os: osx
       env:
-        - BUILD_MODE=ios
-        - PLATFORM=Arm64
+        - BUILD_MODE=autotools
+    - os: linux
+      env:
+        - BUILD_MODE=autotools
+    - os: linux
+      env:
+        - BUILD_MODE=cmake
+
+  allow_failures:
     - os: osx
       env:
         - BUILD_MODE=ios
-        - PLATFORM=WatchOS
+        - PLATFORM=Arm64
     - os: osx
       env:
         - BUILD_MODE=ios
@@ -108,25 +112,15 @@ matrix:
     - os: osx
       env:
         - BUILD_MODE=ios
+        - PLATFORM=WatchOS
+    - os: osx
+      env:
+        - BUILD_MODE=ios
         - PLATFORM=iPhoneSimulator
-
-  allow_failures:
     - os: osx
       env:
         - BUILD_MODE=ios
         - PLATFORM=WatchOS
-    - os: osx
-      env:
-        - BUILD_MODE=autotools
-    - os: osx
-      env:
-        - BUILD_MODE=cmake
-    - os: linux
-      env:
-        - BUILD_MODE=autotools
-    - os: linux
-      env:
-        - BUILD_MODE=cmake
     - os: linux
       env:
         - BUILD_MODE=android

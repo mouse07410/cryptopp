@@ -20,6 +20,12 @@
 NAMESPACE_BEGIN(CryptoPP)
 NAMESPACE_BEGIN(Test)
 
+// A hint to help locate TestData/ and TestVectors/ after install. Due to
+// execve the path can be malicious. If the path is ficticous then we move
+// onto the next potential path. Also note we only read from the path; we
+// never write through it. Storage for the string is in test.cpp.
+extern std::string g_argvPathHint;
+
 bool ValidateAll(bool thorough);
 bool TestSettings();
 bool TestOS_RNG();
@@ -100,6 +106,7 @@ bool ValidateHC256();
 bool ValidateRabbit();
 bool ValidateSalsa();
 bool ValidateChaCha();
+bool ValidateChaChaTLS();
 bool ValidateSosemanuk();
 
 bool ValidateVMAC();
@@ -133,6 +140,10 @@ bool ValidateESIGN();
 bool ValidateHashDRBG();
 bool ValidateHmacDRBG();
 
+bool TestX25519();
+bool TestEd25519();
+bool ValidateX25519();
+bool ValidateEd25519();
 bool ValidateNaCl();
 
 // If CRYPTOPP_DEBUG or CRYPTOPP_COVERAGE is in effect, then perform additional tests
@@ -201,10 +212,10 @@ inline std::string TimeToString(const time_t& t)
 
 	// Cleanup whitespace
 	std::string::size_type pos = 0;
-	while (!str.empty() && std::isspace(*(str.end()-1)))
+	while (!str.empty() && std::isspace(str[str.length()-1]))
 		{str.erase(str.end()-1);}
 	while (!str.empty() && std::string::npos != (pos = str.find("  ", pos)))
-		{ str.erase(pos, 1); }
+		{str.erase(pos, 1);}
 
 	return str;
 }
@@ -223,7 +234,7 @@ inline T StringToValue(const std::string& str)
 	iss >> std::noskipws >> value;
 
 	// Use fail(), not bad()
-	if (iss.fail() || !iss.eof())
+	if (iss.fail())
 		throw InvalidArgument(str + "' is not a value");
 
 	if (NON_NEGATIVE && value < 0)
@@ -246,8 +257,68 @@ inline int StringToValue<int, true>(const std::string& str)
 	return r;
 }
 
+inline std::string AddSeparator(std::string str)
+{
+	const char last = (str.empty() ? '\0' : str[str.length()-1]);
+	if (last != '/' && last != '\\')
+		return str + "/";
+	return str;
+}
+
+static std::string GetDataDir()
+{
+	std::ifstream file;
+	std::string name, filename = "TestData/usage.dat";
+
+#ifndef CRYPTOPP_DISABLE_DATA_DIR_SEARCH
+	name = AddSeparator(g_argvPathHint) + filename;
+	file.open(name.c_str());
+	if (file.is_open())
+		return AddSeparator(g_argvPathHint);
+#endif
+#ifndef CRYPTOPP_DISABLE_DATA_DIR_SEARCH
+	// Look in $ORIGIN/../share/. This is likely a Linux install directory.
+	name = AddSeparator(g_argvPathHint) + std::string("../share/cryptopp/") + filename;
+	file.open(name.c_str());
+	if (file.is_open())
+		return AddSeparator(g_argvPathHint) + std::string("../share/cryptopp/");
+#endif
+	return "./";
+}
+
+inline std::string DataDir(const std::string& filename)
+{
+	std::string name;
+	std::ifstream file;
+
+#ifdef CRYPTOPP_DATA_DIR
+	// Honor CRYPTOPP_DATA_DIR. This is likely an install directory if it is not "./".
+	name = AddSeparator(CRYPTOPP_DATA_DIR) + filename;
+	file.open(name.c_str());
+	if (file.is_open())
+		return name;
+#endif
+
+#if CRYPTOPP_CXX11_DYNAMIC_INIT
+	static std::string path = AddSeparator(GetDataDir());
+	name = path + filename;
+	file.open(name.c_str());
+	if (file.is_open())
+		return name;
+#else
+	// Avoid static initialization problems
+	name = AddSeparator(GetDataDir()) + filename;
+	file.open(name.c_str());
+	if (file.is_open())
+		return name;
+#endif
+
+	// This will cause the expected exception in the caller
+	return filename;
+}
+
 // Definition in test.cpp
-RandomNumberGenerator & GlobalRNG();
+RandomNumberGenerator& GlobalRNG();
 
 // Definition in datatest.cpp
 bool RunTestDataFile(const char *filename, const NameValuePairs &overrideParameters=g_nullNameValuePairs, bool thorough=true);

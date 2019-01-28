@@ -90,9 +90,15 @@ void Salsa20_Core(word32* data, unsigned int rounds)
 		x[15] ^= rotlConstant<18>(x[14]+x[13]);
 	}
 
+// OpenMP 4.0 released July 2013.
+#if _OPENMP >= 201307
 	#pragma omp simd
 	for (size_t i = 0; i < 16; ++i)
 		data[i] += x[i];
+#else
+	for (size_t i = 0; i < 16; ++i)
+		data[i] += x[i];
+#endif
 }
 
 std::string Salsa20_Policy::AlgorithmProvider() const

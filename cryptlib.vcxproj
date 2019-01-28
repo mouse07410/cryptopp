@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- Microsoft documentation for VCXPROJ file format is located at -->
   <!-- the following URL. The documentation leaves a lot to be desired. -->
@@ -213,6 +213,9 @@
     <ClCompile Include="dll.cpp">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="donna_32.cpp" />
+    <ClCompile Include="donna_64.cpp" />
+    <ClCompile Include="donna_sse.cpp" />
     <ClCompile Include="dsa.cpp" />
     <ClCompile Include="eax.cpp" />
     <ClCompile Include="ec2n.cpp" />
@@ -235,6 +238,7 @@
     <ClCompile Include="gf256.cpp" />
     <ClCompile Include="gf2_32.cpp" />
     <ClCompile Include="gf2n.cpp" />
+    <ClCompile Include="gf2n_simd.cpp" />
     <ClCompile Include="gfpcrypt.cpp" />
     <ClCompile Include="gost.cpp" />
     <ClCompile Include="gzip.cpp" />
@@ -335,6 +339,7 @@
     <ClCompile Include="vmac.cpp" />
     <ClCompile Include="wake.cpp" />
     <ClCompile Include="whrlpool.cpp" />
+    <ClCompile Include="xed25519.cpp" />
     <ClCompile Include="xtr.cpp" />
     <ClCompile Include="xtrcrypt.cpp" />
     <ClCompile Include="zdeflate.cpp" />
@@ -413,6 +418,10 @@
     <ClInclude Include="dh2.h" />
     <ClInclude Include="dmac.h" />
     <ClInclude Include="drbg.h" />
+    <ClInclude Include="donna.h" />
+    <ClInclude Include="donna_32.h" />
+    <ClInclude Include="donna_64.h" />
+    <ClInclude Include="donna_sse.h" />
     <ClInclude Include="dsa.h" />
     <ClInclude Include="eax.h" />
     <ClInclude Include="ec2n.h" />
@@ -529,6 +538,7 @@
     <ClInclude Include="wake.h" />
     <ClInclude Include="whrlpool.h" />
     <ClInclude Include="words.h" />
+    <ClInclude Include="xed25519.h" />
     <ClInclude Include="xtr.h" />
     <ClInclude Include="xtrcrypt.h" />
     <ClInclude Include="zdeflate.h" />

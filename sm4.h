@@ -19,7 +19,9 @@
 #include "secblock.h"
 
 #if (CRYPTOPP_BOOL_X64 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X86)
-# define CRYPTOPP_SM4_ADVANCED_PROCESS_BLOCKS 1
+# ifndef CRYPTOPP_DISABLE_SM4_SIMD
+#  define CRYPTOPP_SM4_ADVANCED_PROCESS_BLOCKS 1
+# endif
 #endif
 
 NAMESPACE_BEGIN(CryptoPP)
@@ -60,7 +62,7 @@ public:
     /// \details SM4 encryption is accelerated on machines with AES-NI. Decryption is
     ///   not acclerated because it is not profitable. Thanks to Markku-Juhani Olavi
     ///   Saarinen.
-    /// \since Crypto++ 6.0, AESNI encryption since Crypto++ 7.1
+    /// \since Crypto++ 6.0, AESNI encryption since Crypto++ 8.0
     class CRYPTOPP_NO_VTABLE Enc : public Base
     {
     public:

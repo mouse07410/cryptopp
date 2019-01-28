@@ -617,7 +617,7 @@ template <class T1, class T2> inline const T1 UnsignedMin(const T1& a, const T2&
 template <class T1, class T2>
 inline bool SafeConvert(T1 from, T2 &to)
 {
-	to = (T2)from;
+	to = static_cast<T2>(from);
 	if (from != to || (from > 0) != (to > 0))
 		return false;
 	return true;
@@ -632,7 +632,7 @@ template <class T>
 std::string IntToString(T value, unsigned int base = 10)
 {
 	// Hack... set the high bit for uppercase.
-	static const unsigned int HIGH_BIT = (1U << 31);
+	const unsigned int HIGH_BIT = (1U << 31);
 	const char CH = !!(base & HIGH_BIT) ? 'A' : 'a';
 	base &= ~HIGH_BIT;
 
@@ -1077,19 +1077,24 @@ inline unsigned int GetAlignmentOf()
 /// \brief Determines whether ptr is aligned to a minimum value
 /// \param ptr the pointer being checked for alignment
 /// \param alignment the alignment value to test the pointer against
-/// \returns true if <tt>ptr</tt> is aligned on at least <tt>alignment</tt> boundary, false otherwise
-/// \details Internally the function tests whether alignment is 1. If so, the function returns true.
-///   If not, then the function effectively performs a modular reduction and returns true if the residue is 0
+/// \returns true if <tt>ptr</tt> is aligned on at least <tt>alignment</tt>
+///  boundary, false otherwise
+/// \details Internally the function tests whether alignment is 1. If so,
+///  the function returns true. If not, then the function effectively
+///  performs a modular reduction and returns true if the residue is 0.
 inline bool IsAlignedOn(const void *ptr, unsigned int alignment)
 {
-	return alignment==1 || (IsPowerOf2(alignment) ? ModPowerOf2(reinterpret_cast<size_t>(ptr), alignment) == 0 : reinterpret_cast<size_t>(ptr) % alignment == 0);
+	const uintptr_t x = reinterpret_cast<uintptr_t>(ptr);
+	return alignment==1 || (IsPowerOf2(alignment) ? ModPowerOf2(x, alignment) == 0 : x % alignment == 0);
 }
 
 /// \brief Determines whether ptr is minimally aligned
 /// \tparam T class or type
 /// \param ptr the pointer to check for alignment
-/// \returns true if <tt>ptr</tt> is aligned to at least <tt>T</tt> boundary, false otherwise
-/// \details Internally the function calls IsAlignedOn with a second parameter of GetAlignmentOf<T>
+/// \returns true if <tt>ptr</tt> is aligned to at least <tt>T</tt>
+///  boundary, false otherwise
+/// \details Internally the function calls IsAlignedOn with a second
+///  parameter of GetAlignmentOf<T>.
 template <class T>
 inline bool IsAligned(const void *ptr)
 {
@@ -1105,14 +1110,15 @@ inline bool IsAligned(const void *ptr)
 #endif
 
 /// \brief Returns NativeByteOrder as an enumerated ByteOrder value
-/// \returns LittleEndian if the native byte order is little-endian, and BigEndian if the
-///   native byte order is big-endian
-/// \details NativeByteOrder is a typedef depending on the platform. If CRYPTOPP_LITTLE_ENDIAN is
-///   set in config.h, then GetNativeByteOrder returns LittleEndian. If
-///   (CRYPTOPP_BIG_ENDIAN) is set, then GetNativeByteOrder returns BigEndian.
-/// \note There are other byte orders besides little- and big-endian, and they include bi-endian
-///   and PDP-endian. If a system is neither little-endian nor big-endian, then a compile time
-///   error occurs.
+/// \returns LittleEndian if the native byte order is little-endian,
+///  and BigEndian if the native byte order is big-endian
+/// \details NativeByteOrder is a typedef depending on the platform.
+///  If CRYPTOPP_LITTLE_ENDIAN is set in config.h, then
+///  GetNativeByteOrder returns LittleEndian. If CRYPTOPP_BIG_ENDIAN
+///  is set, then GetNativeByteOrder returns BigEndian.
+/// \note There are other byte orders besides little- and big-endian,
+///  and they include bi-endian and PDP-endian. If a system is neither
+///  little-endian nor big-endian, then a compile time error occurs.
 inline ByteOrder GetNativeByteOrder()
 {
 	return NativeByteOrder::ToEnum();
@@ -1150,6 +1156,7 @@ inline CipherDir GetCipherDir(const T &obj)
 ///   to free memory. There is no guarantee CallNewHandler will be able to procure more memory so
 ///   an allocation succeeds. If the call to set_new_handler fails, then CallNewHandler throws
 ///   a bad_alloc exception.
+/// \sa AlignedAllocate, AlignedDeallocate, UnalignedAllocate, UnalignedDeallocate
 CRYPTOPP_DLL void CRYPTOPP_API CallNewHandler();
 
 /// \brief Performs an addition with carry on a block of bytes
@@ -1288,7 +1295,7 @@ template<> inline void SecureWipeBuffer(word64 *buf, size_t n)
 # ifdef __GNUC__
 	asm volatile("rep stosq" : "+c"(n), "+D"(p) : "a"(0) : "memory");
 # else
-	__stosq(reinterpret_cast<word64 *>(reinterpret_cast<size_t>(p)), 0, n);
+	__stosq(const_cast<word64 *>(p), 0, n);
 # endif
 #else
 	SecureWipeBuffer(reinterpret_cast<word32 *>(buf), 2*n);
@@ -1374,37 +1381,44 @@ std::string StringNarrow(const wchar_t *str, bool throwOnError = true);
 ///   then a 0x21 error is returned on Windows which eventually results in an InvalidArgument() exception.
 std::wstring StringWiden(const char *str, bool throwOnError = true);
 
-#ifdef CRYPTOPP_DOXYGEN_PROCESSING
-
 /// \brief Allocates a buffer on 16-byte boundary
 /// \param size the size of the buffer
-/// \details AlignedAllocate is primarily used when the data will be proccessed by MMX, SSE2 and NEON
-///   instructions. The assembly language routines rely on the alignment. If the alignment is not
+/// \details AlignedAllocate is primarily used when the data will be
+///   proccessed by SSE, NEON, ARMv8 or PowerPC instructions. The assembly
+///   language routines rely on the alignment. If the alignment is not
 ///   respected, then a SIGBUS could be generated on Unix and Linux, and an
 ///   EXCEPTION_DATATYPE_MISALIGNMENT could be generated on Windows.
-/// \note AlignedAllocate and AlignedDeallocate are available when CRYPTOPP_BOOL_ALIGN16 is
-///   defined. CRYPTOPP_BOOL_ALIGN16 is defined in config.h
+/// \details Formerly, AlignedAllocate and AlignedDeallocate were only
+///   available on certain platforms when CRYTPOPP_DISABLE_ASM was not in
+///   effect. However, Android and iOS debug simulator builds got into a
+///   state where the aligned allocator was not available and caused link
+///   failures.
+/// \since AlignedAllocate for SIMD since Crypto++ 1.0, AlignedAllocate
+///   for all builds since Crypto++ 8.1
+/// \sa AlignedDeallocate, UnalignedAllocate, UnalignedDeallocate, CallNewHandler,
+///   <A HREF="http://github.com/weidai11/cryptopp/issues/779">Issue 779</A>
 CRYPTOPP_DLL void* CRYPTOPP_API AlignedAllocate(size_t size);
 
 /// \brief Frees a buffer allocated with AlignedAllocate
 /// \param ptr the buffer to free
-/// \note AlignedAllocate and AlignedDeallocate are available when CRYPTOPP_BOOL_ALIGN16 is
-///   defined. CRYPTOPP_BOOL_ALIGN16 is defined in config.h
+/// \since AlignedDeallocate for SIMD since Crypto++ 1.0, AlignedAllocate
+///   for all builds since Crypto++ 8.1
+/// \sa AlignedAllocate, UnalignedAllocate, UnalignedDeallocate, CallNewHandler,
+///   <A HREF="http://github.com/weidai11/cryptopp/issues/779">Issue 779</A>
 CRYPTOPP_DLL void CRYPTOPP_API AlignedDeallocate(void *ptr);
-
-#endif // CRYPTOPP_DOXYGEN_PROCESSING
-
-#if CRYPTOPP_BOOL_ALIGN16
-CRYPTOPP_DLL void* CRYPTOPP_API AlignedAllocate(size_t size);
-CRYPTOPP_DLL void CRYPTOPP_API AlignedDeallocate(void *ptr);
-#endif // CRYPTOPP_BOOL_ALIGN16
 
 /// \brief Allocates a buffer
 /// \param size the size of the buffer
+/// \since Crypto++ 1.0
+/// \sa AlignedAllocate, AlignedDeallocate, UnalignedDeallocate, CallNewHandler,
+///   <A HREF="http://github.com/weidai11/cryptopp/issues/779">Issue 779</A>
 CRYPTOPP_DLL void * CRYPTOPP_API UnalignedAllocate(size_t size);
 
 /// \brief Frees a buffer allocated with UnalignedAllocate
 /// \param ptr the buffer to free
+/// \since Crypto++ 1.0
+/// \sa AlignedAllocate, AlignedDeallocate, UnalignedAllocate, CallNewHandler,
+///   <A HREF="http://github.com/weidai11/cryptopp/issues/779">Issue 779</A>
 CRYPTOPP_DLL void CRYPTOPP_API UnalignedDeallocate(void *ptr);
 
 // ************** rotate functions ***************
@@ -1430,8 +1444,8 @@ template <unsigned int R, class T> inline T rotlConstant(T x)
 	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
 	// http://software.intel.com/en-us/forums/topic/580884
 	// and http://llvm.org/bugs/show_bug.cgi?id=24226
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(R < THIS_SIZE);
 	return T((x<<R)|(x>>(-R&MASK)));
 }
@@ -1456,8 +1470,8 @@ template <unsigned int R, class T> inline T rotrConstant(T x)
 	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
 	// http://software.intel.com/en-us/forums/topic/580884
 	// and http://llvm.org/bugs/show_bug.cgi?id=24226
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(R < THIS_SIZE);
 	return T((x >> R)|(x<<(-R&MASK)));
 }
@@ -1481,8 +1495,8 @@ template <class T> inline T rotlFixed(T x, unsigned int y)
 	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
 	// http://software.intel.com/en-us/forums/topic/580884
 	// and http://llvm.org/bugs/show_bug.cgi?id=24226
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(y < THIS_SIZE);
 	return T((x<<y)|(x>>(-y&MASK)));
 }
@@ -1506,8 +1520,8 @@ template <class T> inline T rotrFixed(T x, unsigned int y)
 	// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57157,
 	// http://software.intel.com/en-us/forums/topic/580884
 	// and http://llvm.org/bugs/show_bug.cgi?id=24226
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(y < THIS_SIZE);
 	return T((x >> y)|(x<<(-y&MASK)));
 }
@@ -1526,8 +1540,8 @@ template <class T> inline T rotrFixed(T x, unsigned int y)
 /// \since Crypto++ 3.0
 template <class T> inline T rotlVariable(T x, unsigned int y)
 {
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(y < THIS_SIZE);
 	return T((x<<y)|(x>>(-y&MASK)));
 }
@@ -1546,8 +1560,8 @@ template <class T> inline T rotlVariable(T x, unsigned int y)
 /// \since Crypto++ 3.0
 template <class T> inline T rotrVariable(T x, unsigned int y)
 {
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	CRYPTOPP_ASSERT(y < THIS_SIZE);
 	return T((x>>y)|(x<<(-y&MASK)));
 }
@@ -1563,8 +1577,8 @@ template <class T> inline T rotrVariable(T x, unsigned int y)
 /// \since Crypto++ 3.0
 template <class T> inline T rotlMod(T x, unsigned int y)
 {
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	return T((x<<(y&MASK))|(x>>(-y&MASK)));
 }
 
@@ -1579,8 +1593,8 @@ template <class T> inline T rotlMod(T x, unsigned int y)
 /// \since Crypto++ 3.0
 template <class T> inline T rotrMod(T x, unsigned int y)
 {
-	static const unsigned int THIS_SIZE = sizeof(T)*8;
-	static const unsigned int MASK = THIS_SIZE-1;
+	CRYPTOPP_CONSTANT(THIS_SIZE = sizeof(T)*8)
+	CRYPTOPP_CONSTANT(MASK = THIS_SIZE-1)
 	return T((x>>(y&MASK))|(x<<(-y&MASK)));
 }
 

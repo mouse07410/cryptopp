@@ -527,7 +527,7 @@ void TestSymmetricCipher(TestData &v, const NameValuePairs &overrideParameters)
 		// been processed. Also note we only unlatch from testDataPairs. If
 		// overrideParameters are specified, the caller is responsible for
 		// managing the parameter.
-		v.erase("Tweak"); v.erase("BlockSize"); v.erase("BlockPaddingScheme");
+		v.erase("Tweak"); v.erase("InitialBlock"); v.erase("BlockSize"); v.erase("BlockPaddingScheme");
 
 		std::string encrypted, xorDigest, ciphertext, ciphertextXorDigest;
 		if (test == "EncryptionMCT" || test == "DecryptionMCT")
@@ -913,13 +913,7 @@ void OutputNameValuePairs(const NameValuePairs &v)
 
 void TestDataFile(std::string filename, const NameValuePairs &overrideParameters, unsigned int &totalTests, unsigned int &failedTests)
 {
-	static const std::string dataDirectory(CRYPTOPP_DATA_DIR);
-	if (!dataDirectory.empty())
-	{
-		if(dataDirectory != filename.substr(0, dataDirectory.length()))
-			filename.insert(0, dataDirectory);
-	}
-
+	filename = DataDir(filename);
 	std::ifstream file(filename.c_str());
 	if (!file.good())
 		throw Exception(Exception::OTHER_ERROR, "Can not open file " + filename + " for reading");

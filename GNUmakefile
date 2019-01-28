@@ -24,21 +24,16 @@ RANLIB ?= ranlib
 CP ?= cp
 MV ?= mv
 RM ?= rm -f
+GREP ?= grep
 CHMOD ?= chmod
 MKDIR ?= mkdir -p
 
 LN ?= ln -sf
 LDCONF ?= /sbin/ldconfig -n
 
-INSTALL = install
-INSTALL_PROGRAM = $(INSTALL)
-INSTALL_DATA = $(INSTALL) -m 644
-
 # Solaris provides a non-Posix grep at /usr/bin
 ifneq ($(wildcard /usr/xpg4/bin/grep),)
-  GREP ?= /usr/xpg4/bin/grep
-else
-  GREP ?= grep
+  GREP := /usr/xpg4/bin/grep
 endif
 
 # Attempt to determine target machine, fallback to "this" machine.
@@ -100,14 +95,11 @@ ifeq ($(wildcard adhoc.cpp),)
 $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
 
-# Tell MacPorts and Homebrew GCC to use Clang integrated assembler
+# Tell MacPorts and Homebrew GCC to use Clang integrated assembler (only on Intel-based Macs)
 #   http://github.com/weidai11/cryptopp/issues/190
-ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER),11)
+ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER)$(IS_PPC32)$(IS_PPC64),1100)
   ifeq ($(findstring -Wa,-q,$(CXXFLAGS)),)
     CXXFLAGS += -Wa,-q -Wa,-march=native
-  endif
-  ifeq ($(findstring -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER,$(CXXFLAGS)),)
-    CXXFLAGS += -DCRYPTOPP_CLANG_INTEGRATED_ASSEMBLER=1
   endif
 endif
 
@@ -125,7 +117,7 @@ endif
 
 # Strip out -Wall, -Wextra and friends for feature testing
 ifeq ($(DETECT_FEATURES),1)
-  TCXXFLAGS := $(filter-out -Wall -Wextra -Werror -Wunused -Wconversion, $(CXXFLAGS))
+  TCXXFLAGS := $(filter-out -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CXXFLAGS))
   ifneq ($(strip $(TCXXFLAGS)),)
     $(info Using testing flags: $(TCXXFLAGS))
   endif
@@ -313,6 +305,7 @@ ifeq ($(DETECT_FEATURES),1)
   HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
   ifeq ($(strip $(HAVE_OPT)),0)
     GCM_FLAG = $(SSSE3_FLAG) $(CLMUL_FLAG)
+    GF2N_FLAG = $(CLMUL_FLAG)
     SUN_LDFLAGS += $(CLMUL_FLAG)
   else
     CLMUL_FLAG =
@@ -395,6 +388,13 @@ ifeq ($(DETECT_FEATURES),1)
     endif
   endif
 
+  # Drop to SSSE2 if available
+  ifeq ($(SSSE3_FLAG),)
+    ifneq ($(SSE2_FLAG),)
+      GCM_FLAG = $(SSE2_FLAG)
+    endif
+  endif
+
 # DETECT_FEATURES
 endif
 
@@ -416,6 +416,15 @@ ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CXXFLAGS)),)
   ifeq ($(IS_SUN)$(GCC_COMPILER),11)
     CXXFLAGS += -Wa,--divide
   endif
+endif
+
+# Most Clang cannot handle mixed asm with positional arguments, where the
+# body is Intel style with no prefix and the templates are AT&T style.
+# Also see https://bugs.llvm.org/show_bug.cgi?id=39895 .
+TPROG = TestPrograms/test_mixed_asm.cxx
+HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+ifneq ($(strip $(HAVE_OPT)),0)
+  CXXFLAGS += -DCRYPTOPP_DISABLE_MIXED_ASM
 endif
 
 # IS_X86, IS_X32 and IS_X64
@@ -515,6 +524,7 @@ ifeq ($(IS_ARMV8),1)
     HAVE_OPT = $(shell $(CXX) $(CXXFLAGS) $(ACLE_FLAG) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
     ifeq ($(strip $(HAVE_OPT)),0)
       GCM_FLAG = -march=armv8-a+crypto
+      GF2N_FLAG = -march=armv8-a+crypto
     else
       CXXFLAGS += -DCRYPTOPP_ARM_PMULL_AVAILABLE=0
     endif
@@ -610,6 +620,7 @@ ifeq ($(DETECT_FEATURES),1)
     BLAKE2B_FLAG = $(POWER8_FLAG)
     CRC_FLAG = $(POWER8_FLAG)
     GCM_FLAG = $(POWER8_FLAG)
+    GF2N_FLAG = $(POWER8_FLAG)
     AES_FLAG = $(POWER8_FLAG)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
@@ -802,14 +813,14 @@ ifeq ($(IS_SUN)$(SUN_COMPILER),11)
 endif  # SunOS
 
 # TODO: can we remove this since removing sockets?
-ifneq ($(IS_MINGW),0)
-  LDLIBS += -lws2_32
-endif
+#ifneq ($(IS_MINGW),0)
+#  LDLIBS += -lws2_32
+#endif
 
 # TODO: can we remove this since removing sockets?
-ifneq ($(IS_SUN),0)
-  LDLIBS += -lnsl -lsocket
-endif
+#ifneq ($(IS_SUN),0)
+#  LDLIBS += -lnsl -lsocket
+#endif
 
 ifeq ($(IS_LINUX),1)
   ifeq ($(findstring -fopenmp,$(CXXFLAGS)),-fopenmp)
@@ -1220,11 +1231,14 @@ distclean: clean autotools-clean cmake-clean
 .PHONY: install
 install: cryptest.exe install-lib
 	@-$(MKDIR) $(DESTDIR)$(BINDIR)
-	$(INSTALL_PROGRAM) cryptest.exe $(DESTDIR)$(BINDIR)
+	$(CP) cryptest.exe $(DESTDIR)$(BINDIR)
+	$(CHMOD) 0755 $(DESTDIR)$(BINDIR)/cryptest.exe
 	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestData
 	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
-	$(INSTALL_DATA) TestData/*.dat $(DESTDIR)$(DATADIR)/cryptopp/TestData
-	$(INSTALL_DATA) TestVectors/*.txt $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
+	$(CP) TestData/*.dat $(DESTDIR)$(DATADIR)/cryptopp/TestData
+	$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestData/*.dat
+	$(CP) TestVectors/*.txt $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
+	$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors/*.txt
 
 # A recipe to install only the library, and not cryptest.exe. Also
 # see https://github.com/weidai11/cryptopp/issues/653. Some users
@@ -1233,19 +1247,23 @@ install: cryptest.exe install-lib
 .PHONY: install-lib
 install-lib:
 	@-$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	$(INSTALL_DATA) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
+	$(CP) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
+	$(CHMOD) 0644 $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
 ifneq ($(wildcard libcryptopp.a),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
-	$(INSTALL_DATA) libcryptopp.a $(DESTDIR)$(LIBDIR)
+	$(CP) libcryptopp.a $(DESTDIR)$(LIBDIR)
+	$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/libcryptopp.a
 endif
 ifneq ($(wildcard libcryptopp.dylib),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
-	$(INSTALL_PROGRAM) libcryptopp.dylib $(DESTDIR)$(LIBDIR)
+	$(CP) libcryptopp.dylib $(DESTDIR)$(LIBDIR)
+	$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
 	-install_name_tool -id $(DESTDIR)$(LIBDIR)/libcryptopp.dylib $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
 endif
 ifneq ($(wildcard libcryptopp.so$(SOLIB_VERSION_SUFFIX)),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
-	$(INSTALL_PROGRAM) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)
+	$(CP) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)
+	$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_VERSION_SUFFIX)
 ifeq ($(HAS_SOLIB_VERSION),1)
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)/libcryptopp.so
 	$(LDCONF) $(DESTDIR)$(LIBDIR)
@@ -1253,7 +1271,8 @@ endif
 endif
 ifneq ($(wildcard libcryptopp.pc),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)/pkgconfig
-	$(INSTALL_DATA) libcryptopp.pc $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
+	$(CP) libcryptopp.pc $(DESTDIR)$(LIBDIR)/pkgconfig
+	$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
 endif
 
 .PHONY: remove uninstall
@@ -1329,7 +1348,7 @@ libcryptopp.pc:
 	@echo '' >> libcryptopp.pc
 	@echo 'Name: Crypto++' >> libcryptopp.pc
 	@echo 'Description: Crypto++ cryptographic library' >> libcryptopp.pc
-	@echo 'Version: 7.1' >> libcryptopp.pc
+	@echo 'Version: 8.1' >> libcryptopp.pc
 	@echo 'URL: https://cryptopp.com/' >> libcryptopp.pc
 	@echo '' >> libcryptopp.pc
 	@echo 'Cflags: -I$${includedir}' >> libcryptopp.pc
@@ -1436,21 +1455,25 @@ chacha_avx.o : chacha_avx.cpp
 cham_simd.o : cham_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(CHAM_FLAG) -c) $<
 
-# Power9 available
-darn.o : darn.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(DARN_FLAG) -c) $<
-
-# SSE2 on i586
-sse_simd.o : sse_simd.cpp
-	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
-
 # SSE4.2 or ARMv8a available
 crc_simd.o : crc_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(CRC_FLAG) -c) $<
 
-# PCLMUL or ARMv7a/ARMv8a available
+# Power9 available
+darn.o : darn.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(DARN_FLAG) -c) $<
+
+# SSE2 on i686
+donna_sse.o : donna_sse.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
+
+# Carryless multiply
 gcm_simd.o : gcm_simd.cpp
 	$(CXX) $(strip $(CXXFLAGS) $(GCM_FLAG) -c) $<
+
+# Carryless multiply
+gf2n_simd.o : gf2n_simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(GF2N_FLAG) -c) $<
 
 # SSSE3 available
 lea_simd.o : lea_simd.cpp
@@ -1527,7 +1550,15 @@ sm4_simd.o : sm4_simd.cpp
 ifeq ($(XLC_COMPILER),1)
 sm3.o : sm3.cpp
 	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
+donna_32.o : donna_32.cpp
+	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
+donna_64.o : donna_64.cpp
+	$(CXX) $(strip $(subst -O3,-O2,$(CXXFLAGS)) -c) $<
 endif
+
+# SSE2 on i686
+sse_simd.o : sse_simd.cpp
+	$(CXX) $(strip $(CXXFLAGS) $(SSE2_FLAG) -c) $<
 
 # Don't build Rijndael with UBsan. Too much noise due to unaligned data accesses.
 ifneq ($(findstring -fsanitize=undefined,$(CXXFLAGS)),)

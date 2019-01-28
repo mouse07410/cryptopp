@@ -10,15 +10,6 @@
 
 #include "speck.h"
 #include "misc.h"
-#include "adv_simd.h"
-
-#ifndef CRYPTOPP_INLINE
-# if defined(CRYPTOPP_DEBUG)
-#  define CRYPTOPP_INLINE static
-# else
-#  define CRYPTOPP_INLINE inline
-# endif
-#endif
 
 // Uncomment for benchmarking C++ against SSE or NEON.
 // Do so in both speck.cpp and speck-simd.cpp.
@@ -26,6 +17,7 @@
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 
 #if (CRYPTOPP_SSSE3_AVAILABLE)
+# include "adv_simd.h"
 # include <pmmintrin.h>
 # include <tmmintrin.h>
 #endif
@@ -34,23 +26,26 @@
 # include <ammintrin.h>
 #endif
 
-#if defined(__AVX512F__) && defined(__AVX512VL__)
+#if defined(__AVX512F__) && defined(CRYPTOPP_AVX512VL)
 # define CRYPTOPP_AVX512_ROTATE 1
 # include <immintrin.h>
 #endif
 
+// C1189: error: This header is specific to ARM targets
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
-# include <arm_neon.h>
+# include "adv_simd.h"
+# ifndef _M_ARM64
+#  include <arm_neon.h>
+# endif
 #endif
 
-// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
-// compilers don't follow ACLE conventions for the include.
 #if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
 #endif
 
 #if defined(CRYPTOPP_POWER8_AVAILABLE)
+# include "adv_simd.h"
 # include "ppc_simd.h"
 #endif
 
@@ -67,8 +62,16 @@ using CryptoPP::word64;
 
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
 
+// Missing from Microsoft's ARM A-32 implementation
+#if defined(_MSC_VER) && !defined(_M_ARM64)
+inline uint64x2_t vld1q_dup_u64(const uint64_t* ptr)
+{
+	return vmovq_n_u64(*ptr);
+}
+#endif
+
 template <class T>
-CRYPTOPP_INLINE T UnpackHigh64(const T& a, const T& b)
+inline T UnpackHigh64(const T& a, const T& b)
 {
     const uint64x1_t x(vget_high_u64((uint64x2_t)a));
     const uint64x1_t y(vget_high_u64((uint64x2_t)b));
@@ -76,7 +79,7 @@ CRYPTOPP_INLINE T UnpackHigh64(const T& a, const T& b)
 }
 
 template <class T>
-CRYPTOPP_INLINE T UnpackLow64(const T& a, const T& b)
+inline T UnpackLow64(const T& a, const T& b)
 {
     const uint64x1_t x(vget_low_u64((uint64x2_t)a));
     const uint64x1_t y(vget_low_u64((uint64x2_t)b));
@@ -84,7 +87,7 @@ CRYPTOPP_INLINE T UnpackLow64(const T& a, const T& b)
 }
 
 template <unsigned int R>
-CRYPTOPP_INLINE uint64x2_t RotateLeft64(const uint64x2_t& val)
+inline uint64x2_t RotateLeft64(const uint64x2_t& val)
 {
     const uint64x2_t a(vshlq_n_u64(val, R));
     const uint64x2_t b(vshrq_n_u64(val, 64 - R));
@@ -92,7 +95,7 @@ CRYPTOPP_INLINE uint64x2_t RotateLeft64(const uint64x2_t& val)
 }
 
 template <unsigned int R>
-CRYPTOPP_INLINE uint64x2_t RotateRight64(const uint64x2_t& val)
+inline uint64x2_t RotateRight64(const uint64x2_t& val)
 {
     const uint64x2_t a(vshlq_n_u64(val, 64 - R));
     const uint64x2_t b(vshrq_n_u64(val, R));
@@ -102,7 +105,7 @@ CRYPTOPP_INLINE uint64x2_t RotateRight64(const uint64x2_t& val)
 #if defined(__aarch32__) || defined(__aarch64__)
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
 template <>
-CRYPTOPP_INLINE uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
+inline uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 {
 #if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 14,13,12,11, 10,9,8,15, 6,5,4,3, 2,1,0,7 };
@@ -118,7 +121,7 @@ CRYPTOPP_INLINE uint64x2_t RotateLeft64<8>(const uint64x2_t& val)
 
 // Faster than two Shifts and an Or. Thanks to Louis Wingers and Bryan Weeks.
 template <>
-CRYPTOPP_INLINE uint64x2_t RotateRight64<8>(const uint64x2_t& val)
+inline uint64x2_t RotateRight64<8>(const uint64x2_t& val)
 {
 #if (CRYPTOPP_BIG_ENDIAN)
     const uint8_t maskb[16] = { 8,15,14,13, 12,11,10,9, 0,7,6,5, 4,3,2,1 };
@@ -133,7 +136,7 @@ CRYPTOPP_INLINE uint64x2_t RotateRight64<8>(const uint64x2_t& val)
 }
 #endif
 
-CRYPTOPP_INLINE void SPECK128_Enc_Block(uint64x2_t &block0, uint64x2_t &block1,
+inline void SPECK128_Enc_Block(uint64x2_t &block0, uint64x2_t &block1,
     const word64 *subkeys, unsigned int rounds)
 {
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
@@ -156,7 +159,7 @@ CRYPTOPP_INLINE void SPECK128_Enc_Block(uint64x2_t &block0, uint64x2_t &block1,
     block1 = UnpackHigh64(y1, x1);
 }
 
-CRYPTOPP_INLINE void SPECK128_Enc_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
+inline void SPECK128_Enc_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t &block2, uint64x2_t &block3, uint64x2_t &block4, uint64x2_t &block5,
     const word64 *subkeys, unsigned int rounds)
 {
@@ -198,7 +201,7 @@ CRYPTOPP_INLINE void SPECK128_Enc_6_Blocks(uint64x2_t &block0, uint64x2_t &block
     block5 = UnpackHigh64(y3, x3);
 }
 
-CRYPTOPP_INLINE void SPECK128_Dec_Block(uint64x2_t &block0, uint64x2_t &block1,
+inline void SPECK128_Dec_Block(uint64x2_t &block0, uint64x2_t &block1,
     const word64 *subkeys, unsigned int rounds)
 {
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
@@ -221,7 +224,7 @@ CRYPTOPP_INLINE void SPECK128_Dec_Block(uint64x2_t &block0, uint64x2_t &block1,
     block1 = UnpackHigh64(y1, x1);
 }
 
-CRYPTOPP_INLINE void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
+inline void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t &block2, uint64x2_t &block3, uint64x2_t &block4, uint64x2_t &block5,
     const word64 *subkeys, unsigned int rounds)
 {
@@ -286,9 +289,9 @@ CRYPTOPP_INLINE void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block
 #endif
 
 template <unsigned int R>
-CRYPTOPP_INLINE __m128i RotateLeft64(const __m128i& val)
+inline __m128i RotateLeft64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_rol_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, R);
@@ -299,9 +302,9 @@ CRYPTOPP_INLINE __m128i RotateLeft64(const __m128i& val)
 }
 
 template <unsigned int R>
-CRYPTOPP_INLINE __m128i RotateRight64(const __m128i& val)
+inline __m128i RotateRight64(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_ror_epi64(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi64(val, 64-R);
@@ -335,7 +338,7 @@ __m128i RotateRight64<8>(const __m128i& val)
 #endif
 }
 
-CRYPTOPP_INLINE void SPECK128_Enc_Block(__m128i &block0, __m128i &block1,
+inline void SPECK128_Enc_Block(__m128i &block0, __m128i &block1,
     const word64 *subkeys, unsigned int rounds)
 {
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
@@ -359,7 +362,7 @@ CRYPTOPP_INLINE void SPECK128_Enc_Block(__m128i &block0, __m128i &block1,
     block1 = _mm_unpackhi_epi64(y1, x1);
 }
 
-CRYPTOPP_INLINE void SPECK128_Enc_6_Blocks(__m128i &block0, __m128i &block1,
+inline void SPECK128_Enc_6_Blocks(__m128i &block0, __m128i &block1,
     __m128i &block2, __m128i &block3, __m128i &block4, __m128i &block5,
     const word64 *subkeys, unsigned int rounds)
 {
@@ -402,7 +405,7 @@ CRYPTOPP_INLINE void SPECK128_Enc_6_Blocks(__m128i &block0, __m128i &block1,
     block5 = _mm_unpackhi_epi64(y3, x3);
 }
 
-CRYPTOPP_INLINE void SPECK128_Dec_Block(__m128i &block0, __m128i &block1,
+inline void SPECK128_Dec_Block(__m128i &block0, __m128i &block1,
     const word64 *subkeys, unsigned int rounds)
 {
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
@@ -426,7 +429,7 @@ CRYPTOPP_INLINE void SPECK128_Dec_Block(__m128i &block0, __m128i &block1,
     block1 = _mm_unpackhi_epi64(y1, x1);
 }
 
-CRYPTOPP_INLINE void SPECK128_Dec_6_Blocks(__m128i &block0, __m128i &block1,
+inline void SPECK128_Dec_6_Blocks(__m128i &block0, __m128i &block1,
     __m128i &block2, __m128i &block3, __m128i &block4, __m128i &block5,
     const word64 *subkeys, unsigned int rounds)
 {
@@ -486,7 +489,7 @@ using CryptoPP::VecPermute;
 
 // Rotate left by bit count
 template<unsigned int C>
-CRYPTOPP_INLINE uint64x2_p RotateLeft64(const uint64x2_p val)
+inline uint64x2_p RotateLeft64(const uint64x2_p val)
 {
     const uint64x2_p m = {C, C};
     return vec_rl(val, m);
@@ -494,7 +497,7 @@ CRYPTOPP_INLINE uint64x2_p RotateLeft64(const uint64x2_p val)
 
 // Rotate right by bit count
 template<unsigned int C>
-CRYPTOPP_INLINE uint64x2_p RotateRight64(const uint64x2_p val)
+inline uint64x2_p RotateRight64(const uint64x2_p val)
 {
     const uint64x2_p m = {64-C, 64-C};
     return vec_rl(val, m);

@@ -14,7 +14,8 @@
 # include <nmmintrin.h>
 #endif
 
-#if (CRYPTOPP_ARM_NEON_AVAILABLE)
+// C1189: error: This header is specific to ARM targets
+#if (CRYPTOPP_ARM_NEON_AVAILABLE) && !defined(_M_ARM64)
 # include <arm_neon.h>
 #endif
 
@@ -49,7 +50,7 @@ extern "C" {
 }
 #endif  // Not CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
 
-#if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
+#if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARMV8)
 
 bool CPU_ProbeCRC32()
 {

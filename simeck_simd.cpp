@@ -10,7 +10,6 @@
 
 #include "simeck.h"
 #include "misc.h"
-#include "adv_simd.h"
 
 // Uncomment for benchmarking C++ against SSE or NEON.
 // Do so in both simon.cpp and simon-simd.cpp.
@@ -18,6 +17,7 @@
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 
 #if (CRYPTOPP_SSSE3_AVAILABLE)
+# include "adv_simd.h"
 # include <pmmintrin.h>
 # include <tmmintrin.h>
 #endif
@@ -26,7 +26,7 @@
 # include <ammintrin.h>
 #endif
 
-#if defined(__AVX512F__) && defined(__AVX512VL__)
+#if defined(__AVX512F__)
 # define CRYPTOPP_AVX512_ROTATE 1
 # include <immintrin.h>
 #endif
@@ -46,7 +46,7 @@ using CryptoPP::word32;
 template <unsigned int R>
 inline __m128i RotateLeft32(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_rol_epi32(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi32(val, R);
@@ -59,7 +59,7 @@ inline __m128i RotateLeft32(const __m128i& val)
 template <unsigned int R>
 inline __m128i RotateRight32(const __m128i& val)
 {
-#if defined(CRYPTOPP_AVX512_ROTATE)
+#if defined(CRYPTOPP_AVX512_ROTATE) && defined(__AVX512VL__)
     return _mm_ror_epi32(val, R);
 #elif defined(__XOP__)
     return _mm_roti_epi32(val, 32-R);

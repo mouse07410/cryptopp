@@ -10,7 +10,6 @@
 
 #include "simon.h"
 #include "misc.h"
-#include "adv_simd.h"
 
 // Uncomment for benchmarking C++ against SSE or NEON.
 // Do so in both simon.cpp and simon-simd.cpp.
@@ -18,6 +17,7 @@
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 
 #if (CRYPTOPP_SSSE3_AVAILABLE)
+# include "adv_simd.h"
 # include <pmmintrin.h>
 # include <tmmintrin.h>
 #endif
@@ -35,18 +35,21 @@
 # include <immintrin.h>
 #endif
 
+// C1189: error: This header is specific to ARM targets
 #if (CRYPTOPP_ARM_NEON_AVAILABLE)
-# include <arm_neon.h>
+# include "adv_simd.h"
+# ifndef _M_ARM64
+#  include <arm_neon.h>
+# endif
 #endif
 
-// Can't use CRYPTOPP_ARM_XXX_AVAILABLE because too many
-// compilers don't follow ACLE conventions for the include.
 #if (CRYPTOPP_ARM_ACLE_AVAILABLE)
 # include <stdint.h>
 # include <arm_acle.h>
 #endif
 
 #if defined(CRYPTOPP_ALTIVEC_AVAILABLE)
+# include "adv_simd.h"
 # include "ppc_simd.h"
 #endif
 

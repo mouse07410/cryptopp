@@ -57,7 +57,7 @@
 
 // Define this to disable ASM, intrinsics and built-ins. The library will be
 // compiled using C++ only. The library code will not include SSE2 (and
-// above), NEON, Aarch32, Aarch64, Power4, Power7 or Power8. Note the compiler
+// above), NEON, Aarch32, Aarch64, or Altivec (and above). Note the compiler
 // may use higher ISAs depending on compiler options, but the library will not
 // explictly use the ISAs. When disabling ASM, it is best to do it from
 // config.h to ensure the library and all programs share the setting.
@@ -66,6 +66,30 @@
 // https://github.com/weidai11/cryptopp/issues/719
 #if defined(__native_client__)
 # define CRYPTOPP_DISABLE_ASM 1
+#endif
+
+// Some Clang and SunCC cannot handle mixed asm with positional arguments,
+// where the body is Intel style with no prefix and the templates are
+// AT&T style. Define this is the Makefile misdetects the configuration.
+// Also see https://bugs.llvm.org/show_bug.cgi?id=39895 .
+// #define CRYPTOPP_DISABLE_MIXED_ASM 1
+
+// Several compilers discard SIMD code that loads unaligned data. The symptom
+// is often self test failures and UBsan findings for unaligned loads. For
+// example, Power7 can load unaligned data using vec_vsx_ld but some versions
+// of GCC and Clang require 16-byte aligned data when using the builtin.
+// It is not limited to SSE and PowerPC code. Define this to disable
+// Crypto++ code that uses potentially problematic builtins or intrinsics.
+// Also see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88234 and
+// https://bugs.llvm.org/show_bug.cgi?id=39704
+// #define CRYPTOPP_BUGGY_SIMD_LOAD_AND_STORE 1
+
+// This list will probably grow over time as more compilers are identified.
+#if defined(CRYPTOPP_BUGGY_SIMD_LOAD_AND_STORE)
+# define CRYPTOPP_DISABLE_LEA_SIMD 1
+# define CRYPTOPP_DISABLE_SIMON_SIMD 1
+# define CRYPTOPP_DISABLE_SPECK_SIMD 1
+# define CRYPTOPP_DISABLE_SM4_SIMD 1
 #endif
 
 // Define CRYPTOPP_NO_CXX11 to avoid C++11 related features shown at the
@@ -92,14 +116,25 @@
 //   the version of the library the headers came from. It is not
 //   necessarily the version of the library built as a shared object if
 //   versions are inadvertently mixed and matched.
-#define CRYPTOPP_VERSION 710
+#define CRYPTOPP_VERSION 810
 
 // Define this if you want to set a prefix for TestData/ and TestVectors/
-//   Be mindful of the trailing slash since its simple concatenation.
-//   g++ ... -DCRYPTOPP_DATA_DIR='"/tmp/cryptopp_test/share/"'
+//   Be sure to add the trailing slash since its simple concatenation.
+//   After https://github.com/weidai11/cryptopp/issues/760 the library
+//   should find the test vectors and data without much effort. It
+//   will search in "./" and "$ORIGIN/../share/cryptopp" automatically.
 #ifndef CRYPTOPP_DATA_DIR
 # define CRYPTOPP_DATA_DIR "/opt/local/share/cryptopp/"
 #endif
+
+// Define this to disable the test suite from searching for test
+//   vectors and data in "./" and "$ORIGIN/../share/cryptopp". The
+//   library will still search in CRYPTOPP_DATA_DIR, regardless.
+//   Some distros may want to disable this feature. Also see
+//   https://github.com/weidai11/cryptopp/issues/760
+// #ifndef CRYPTOPP_DISABLE_DATA_DIR_SEARCH
+// # define CRYPTOPP_DISABLE_DATA_DIR_SEARCH
+// #endif
 
 // Define this if you want or need the library's memcpy_s and memmove_s.
 //   See http://github.com/weidai11/cryptopp/issues/28.
@@ -179,6 +214,7 @@
 ///   <ul>
 ///     <li>Name - namespace for names used with \p NameValuePairs and documented in argnames.h
 ///     <li>NaCl - namespace for NaCl library functions like crypto_box, crypto_box_open, crypto_sign, and crypto_sign_open
+///     <li>Donna - namespace for curve25519 library operations. The name was selected due to use of Adam Langley's curve25519-donna.
 ///     <li>Test - namespace for testing and benchmarks classes
 ///     <li>Weak - namespace for weak and wounded algorithms, like ARC4, MD5 and Pananma
 ///   </ul>
@@ -204,18 +240,6 @@ namespace CryptoPP { }
 #define USING_NAMESPACE(x) using namespace x;
 #define DOCUMENTED_NAMESPACE_BEGIN(x) namespace x {
 #define DOCUMENTED_NAMESPACE_END }
-
-// What is the type of the third parameter to bind?
-// For Unix, the new standard is ::socklen_t (typically unsigned int), and the old standard is int.
-// Unfortunately there is no way to tell whether or not socklen_t is defined.
-// To work around this, TYPE_OF_SOCKLEN_T is a macro so that you can change it from the makefile.
-#ifndef TYPE_OF_SOCKLEN_T
-#	if defined(_WIN32) || defined(__CYGWIN__)
-#		define TYPE_OF_SOCKLEN_T int
-#	else
-#		define TYPE_OF_SOCKLEN_T ::socklen_t
-#	endif
-#endif
 
 // Originally in global namespace to avoid ambiguity with other byte typedefs.
 // Moved to Crypto++ namespace due to C++17, std::byte and potential compile problems. Also see
@@ -278,10 +302,8 @@ const lword LWORD_MAX = W64LIT(0xffffffffffffffff);
 // Apple and LLVM's Clang. Apple Clang version 7.0 roughly equals LLVM Clang version 3.7
 #if defined(__clang__) && defined(__apple_build_version__)
 	#define CRYPTOPP_APPLE_CLANG_VERSION (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
-	#define CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER 1
 #elif defined(__clang__)
 	#define CRYPTOPP_LLVM_CLANG_VERSION  (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
-	#define CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER 1
 #endif
 
 #ifdef _MSC_VER
@@ -291,14 +313,6 @@ const lword LWORD_MAX = W64LIT(0xffffffffffffffff);
 // Need GCC 4.6/Clang 1.7/Apple Clang 2.0 or above due to "GCC diagnostic {push|pop}"
 #if (CRYPTOPP_GCC_VERSION >= 40600) || (CRYPTOPP_LLVM_CLANG_VERSION >= 10700) || (CRYPTOPP_APPLE_CLANG_VERSION >= 20000)
 	#define CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE 1
-#endif
-
-// Clang due to "Inline assembly operands don't work with .intel_syntax", http://llvm.org/bugs/show_bug.cgi?id=24232. Still broke as of Clang 3.9.
-//   TODO: supply the upper version when LLVM fixes it. We set it to 20.0 for compilation purposes.
-#if (defined(CRYPTOPP_LLVM_CLANG_VERSION) && (CRYPTOPP_LLVM_CLANG_VERSION <= 200000)) || \
-	(defined(CRYPTOPP_APPLE_CLANG_VERSION) && (CRYPTOPP_APPLE_CLANG_VERSION <= 200000)) || \
-	defined(CRYPTOPP_CLANG_INTEGRATED_ASSEMBLER)
-	#define CRYPTOPP_DISABLE_INTEL_ASM 1
 #endif
 
 // define hword, word, and dword. these are used for multiprecision integer arithmetic
@@ -393,16 +407,8 @@ NAMESPACE_END
 
 #ifdef _MSC_VER
 	// 4127: conditional expression is constant
-	// 4231: nonstandard extension used : 'extern' before template explicit instantiation
-	// 4250: dominance
-	// 4251: member needs to have dll-interface
-	// 4275: base needs to have dll-interface
-	// 4505: unreferenced local function
 	// 4512: assignment operator not generated
-	// 4660: explicitly instantiating a class that's already implicitly instantiated
 	// 4661: no suitable definition provided for explicit template instantiation request
-	// 4786: identifier was truncated in debug information
-	// 4355: 'this' : used in base member initializer list
 	// 4910: '__declspec(dllexport)' and 'extern' are incompatible on an explicit instantiation
 #	pragma warning(disable: 4127 4512 4661 4910)
 	// Security related, possible defects
@@ -434,9 +440,11 @@ NAMESPACE_END
 
 // ***************** Platform and CPU features ********************
 
-// Linux provides X32, which is 32-bit integers, longs and pointers on x86_64 using the full x86_64 register set.
-// Detect via __ILP32__ (http://wiki.debian.org/X32Port). However, __ILP32__ shows up in more places than
-// the System V ABI specs calls out, like on some Solaris installations and just about any 32-bit system with Clang.
+// Linux provides X32, which is 32-bit integers, longs and pointers on x86_64
+// using the full x86_64 register set. Detect via __ILP32__
+// (http://wiki.debian.org/X32Port). However, __ILP32__ shows up in more places
+// than the System V ABI specs calls out, like on some Solaris installations
+// and just about any 32-bit system with Clang.
 #if (defined(__ILP32__) || defined(_ILP32)) && defined(__x86_64__)
 	#define CRYPTOPP_BOOL_X32 1
 #endif
@@ -450,26 +458,32 @@ NAMESPACE_END
 	#define CRYPTOPP_BOOL_X64 1
 #endif
 
-// Undo the ASM and Intrinsic related defines due to X32.
+// Undo the ASM related defines due to X32.
 #if CRYPTOPP_BOOL_X32
 # undef CRYPTOPP_BOOL_X64
 # undef CRYPTOPP_X64_ASM_AVAILABLE
 # undef CRYPTOPP_X64_MASM_AVAILABLE
 #endif
 
-// Microsoft plans to support ARM-64, but its not clear how to detect it.
-//   TODO: Add MSC_VER and ARM-64 platform define when available
-#if defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
-	#define CRYPTOPP_BOOL_ARM64 1
-#elif defined(__arm__) || defined(__aarch32__) || defined(_M_ARM)
+// Microsoft added ARM64 define December 2017.
+#if defined(__arm64__) || defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
+	#define CRYPTOPP_BOOL_ARMV8 1
+#elif defined(__arm__) || defined(_M_ARM)
 	#define CRYPTOPP_BOOL_ARM32 1
 #endif
 
 // AltiVec and Power8 crypto
-#if defined(__powerpc64__) || defined(_ARCH_PPC64)
+#if defined(__ppc64__) || defined(__powerpc64__) || defined(_ARCH_PPC64)
 	#define CRYPTOPP_BOOL_PPC64 1
 #elif defined(__powerpc__) || defined(_ARCH_PPC)
 	#define CRYPTOPP_BOOL_PPC32 1
+#endif
+
+// And MIPS. TODO: finish these defines
+#if defined(__mips64__)
+	#define CRYPTOPP_BOOL_MIPS64 1
+#elif defined(__mips__)
+	#define CRYPTOPP_BOOL_MIPS32 1
 #endif
 
 #if defined(_MSC_VER) || defined(__BORLANDC__)
@@ -622,7 +636,7 @@ NAMESPACE_END
 
 // ***************** ARM CPU features ********************
 
-#if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARM64)
+#if (CRYPTOPP_BOOL_ARM32 || CRYPTOPP_BOOL_ARMV8)
 
 // We don't have an ARM big endian test rig. Disable
 // ARM-BE ASM and instrinsics until we can test it.
@@ -649,7 +663,7 @@ NAMESPACE_END
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_NEON) || defined(__ARM_FEATURE_NEON) || defined(__ARM_FEATURE_ASIMD) || \
       (CRYPTOPP_GCC_VERSION >= 40800) || (CRYPTOPP_CLANG_VERSION >= 30300) || \
-      (CRYPTOPP_MSC_VERSION >= 1910)
+      (CRYPTOPP_MSC_VERSION >= 1916)
 #   define CRYPTOPP_ARM_NEON_AVAILABLE 1
 #   define CRYPTOPP_ARM_ASIMD_AVAILABLE 1
 #  endif  // Compilers
@@ -662,7 +676,7 @@ NAMESPACE_END
 #if !defined(CRYPTOPP_ARM_CRC32_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_FEATURE_CRC32) || (CRYPTOPP_GCC_VERSION >= 40800) || \
-      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1910)
+      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1916)
 #   define CRYPTOPP_ARM_CRC32_AVAILABLE 1
 #  endif  // Compilers
 # endif  // Platforms
@@ -674,7 +688,7 @@ NAMESPACE_END
 #if !defined(CRYPTOPP_ARM_PMULL_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_FEATURE_CRYPTO) || (CRYPTOPP_GCC_VERSION >= 40800) || \
-      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1910)
+      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1916)
 #   define CRYPTOPP_ARM_PMULL_AVAILABLE 1
 #  endif  // Compilers
 # endif  // Platforms
@@ -698,7 +712,7 @@ NAMESPACE_END
 #if !defined(CRYPTOPP_ARM_SHA_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_FEATURE_CRYPTO) || (CRYPTOPP_GCC_VERSION >= 40800) || \
-      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1910)
+      (CRYPTOPP_CLANG_VERSION >= 30300) || (CRYPTOPP_MSC_VERSION >= 1916)
 #   define CRYPTOPP_ARM_SHA1_AVAILABLE 1
 #   define CRYPTOPP_ARM_SHA2_AVAILABLE 1
 #  endif  // Compilers
@@ -711,7 +725,7 @@ NAMESPACE_END
 #if !defined(CRYPTOPP_ARM_SHA_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_FEATURE_SHA3) || (CRYPTOPP_GCC_VERSION >= 80000) || \
-      (CRYPTOPP_MSC_VERSION >= 2100)
+      (CRYPTOPP_MSC_VERSION >= 5000)
 #   define CRYPTOPP_ARM_SHA512_AVAILABLE 1
 #   define CRYPTOPP_ARM_SHA3_AVAILABLE 1
 #  endif  // Compilers
@@ -724,7 +738,7 @@ NAMESPACE_END
 #if !defined(CRYPTOPP_ARM_SM3_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__aarch32__) || defined(__aarch64__) || defined(_M_ARM64)
 #  if defined(__ARM_FEATURE_SM3) || (CRYPTOPP_GCC_VERSION >= 80000) || \
-      (CRYPTOPP_MSC_VERSION >= 2100)
+      (CRYPTOPP_MSC_VERSION >= 5000)
 #   define CRYPTOPP_ARM_SM3_AVAILABLE 1
 #   define CRYPTOPP_ARM_SM4_AVAILABLE 1
 #  endif  // Compilers
@@ -925,7 +939,7 @@ NAMESPACE_END
 
 #ifndef NO_OS_DEPENDENCE
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
 #define CRYPTOPP_WIN32_AVAILABLE
 #endif
 
