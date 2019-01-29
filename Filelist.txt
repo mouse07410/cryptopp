@@ -56,6 +56,8 @@ chacha.cpp
 chacha_avx.cpp
 chacha_simd.cpp
 chacha.h
+chachapoly.cpp
+chachapoly.h
 cham.cpp
 cham_simd.cpp
 cham.h
@@ -504,8 +506,9 @@ TestVectors/keccak.txt
 TestVectors/lea.txt
 TestVectors/mars.txt
 TestVectors/nr.txt
-TestVectors/ocb.txt
 TestVectors/panama.txt
+TestVectors/poly1305aes.txt
+TestVectors/poly1305_tls.txt
 TestVectors/rabbit.txt
 TestVectors/Readme.txt
 TestVectors/rsa_oaep.txt
