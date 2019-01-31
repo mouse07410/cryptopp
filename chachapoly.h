@@ -62,11 +62,11 @@ public:
 	unsigned int DigestSize() const
 		{return 16;}
 	lword MaxHeaderLength() const
-		{return LWORD_MAX;}
+		{return LWORD_MAX;}  // 2^64-1 bytes
 	lword MaxMessageLength() const
-		{return LWORD_MAX;}
+		{return W64LIT(274877906880);}  // 2^38-1 blocks
 	lword MaxFooterLength() const
-		{return 16;}
+		{return 0;}
 
 	/// \brief Encrypts and calculates a MAC in one call
 	/// \param ciphertext the encryption buffer
@@ -111,15 +111,14 @@ protected:
 	void AuthenticateLastFooterBlock(byte *mac, size_t macSize);
 
 protected:
-	// ChaCha20 does not stash away the user key. There's no way to restart
-	// ChaCha once an encryption or decryption is performed. In fact, we
-	// cannot even Resynchronize it correctly. Compensate here.
+	// See comments in chachapoly.cpp
 	void RekeyCipherAndMac(const byte *userKey, size_t userKeyLength, const NameValuePairs &params);
 
 	SecByteBlock m_userKey;
 };
 
 /// \brief ChaCha20Poly1305 cipher final implementation
+/// \tparam T_IsEncryption flag indicating cipher direction
 /// \details ChaCha20Poly1305 is an authenticated encryption scheme that combines
 ///  ChaCha20TLS and Poly1305TLS. The scheme is defined in RFC 8439, section 2.8,
 ///  AEAD_CHACHA20_POLY1305 construction, and uses the IETF versions of ChaCha
@@ -127,6 +126,7 @@ protected:
 /// \sa <A HREF="http://tools.ietf.org/html/rfc8439">RFC 8439, ChaCha20 and Poly1305
 ///  for IETF Protocols</A>.
 /// \since Crypto++ 8.1
+template <bool T_IsEncryption>
 class ChaCha20Poly1305_Final : public ChaCha20Poly1305_Base
 {
 public:
@@ -139,7 +139,7 @@ protected:
 	SymmetricCipher & AccessSymmetricCipher()
 		{return m_cipher;}
 	bool IsForwardTransformation() const
-		{return m_cipher.IsForwardTransformation();}
+		{return T_IsEncryption;}
 
 	const MessageAuthenticationCode & GetMAC() const
 		{return const_cast<ChaCha20Poly1305_Final *>(this)->AccessMAC();}
@@ -161,10 +161,9 @@ private:
 /// \since Crypto++ 8.1
 struct ChaCha20Poly1305 : public AuthenticatedSymmetricCipherDocumentation
 {
-	typedef ChaCha20Poly1305_Final Encryption;
-	typedef Encryption Decryption;
+	typedef ChaCha20Poly1305_Final<true> Encryption;
+	typedef ChaCha20Poly1305_Final<false> Decryption;
 };
-
 
 NAMESPACE_END
 
