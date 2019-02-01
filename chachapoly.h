@@ -24,8 +24,7 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \brief ChaCha20Poly1305 cipher base implementation
 /// \details Base implementation of the AuthenticatedSymmetricCipher interface
 /// \since Crypto++ 8.1
-class ChaCha20Poly1305_Base
-	: public FixedKeyLength<32, SimpleKeyingInterface::UNIQUE_IV, 12>, public AuthenticatedSymmetricCipherBase
+class ChaCha20Poly1305_Base : public AuthenticatedSymmetricCipherBase
 {
 public:
 	virtual ~ChaCha20Poly1305_Base() {}
@@ -38,7 +37,7 @@ public:
 	std::string AlgorithmName() const
 		{return std::string("ChaCha20/Poly1305");}
 	std::string AlgorithmProvider() const
-		{return "C++";}
+		{return GetSymmetricCipher().AlgorithmProvider();}
 	size_t MinKeyLength() const
 		{return 32;}
 	size_t MaxKeyLength() const
