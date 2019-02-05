@@ -62,6 +62,7 @@ ifeq ($(SYSTEMX),)
 endif
 
 IS_LINUX := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Linux")
+IS_HURD := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c -E "GNU|Hurd")
 IS_MINGW := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "MinGW")
 IS_CYGWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Cygwin")
 IS_DARWIN := $(shell echo "$(SYSTEMX)" | $(GREP) -i -c "Darwin")
@@ -86,7 +87,7 @@ endif
 
 # Enable shared object versioning for Linux and Solaris
 HAS_SOLIB_VERSION ?= 0
-ifneq ($(IS_LINUX)$(IS_SUN),00)
+ifneq ($(IS_LINUX)$(IS_HURD)$(IS_SUN),000)
   HAS_SOLIB_VERSION := 1
 endif
 
@@ -121,6 +122,9 @@ ifeq ($(DETECT_FEATURES),1)
   ifneq ($(strip $(TCXXFLAGS)),)
     $(info Using testing flags: $(TCXXFLAGS))
   endif
+  #TPROG = TestPrograms/test_cxx.cxx
+  #$(info Testing compile... )
+  #$(info $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 1>/dev/null))
 endif
 
 # Fixup AIX
@@ -822,13 +826,13 @@ endif  # SunOS
 #  LDLIBS += -lnsl -lsocket
 #endif
 
-ifeq ($(IS_LINUX),1)
+ifneq ($(IS_LINUX)$(IS_HURD),00)
   ifeq ($(findstring -fopenmp,$(CXXFLAGS)),-fopenmp)
     ifeq ($(findstring -lgomp,$(LDLIBS)),)
       LDLIBS += -lgomp
     endif # LDLIBS
   endif # OpenMP
-endif # IS_LINUX
+endif # IS_LINUX or IS_HURD
 
 # Add -errtags=yes to get the name for a warning suppression
 ifneq ($(SUN_COMPILER),0)	# override flags for CC Sun C++ compiler
@@ -1012,7 +1016,7 @@ ifeq ($(HAS_SOLIB_VERSION),1)
 # Different patchlevels and minors are compatible since 6.1
 SOLIB_COMPAT_SUFFIX=.$(LIB_MAJOR)
 # Linux uses -Wl,-soname
-ifeq ($(IS_LINUX),1)
+ifneq ($(IS_LINUX)$(IS_HURD),00)
 # Linux uses full version suffix for shared library
 SOLIB_VERSION_SUFFIX=.$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)
 SOLIB_FLAGS=-Wl,-soname,libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
@@ -1127,9 +1131,13 @@ lcov coverage: cryptest.exe
 	lcov --base-directory . --directory . --zerocounters -q
 	./cryptest.exe v
 	./cryptest.exe tv all
+	./cryptest.exe b 0.25
 	lcov --base-directory . --directory . -c -o cryptest.info
-	lcov --remove cryptest.info "adhoc.cpp" "wait.*" "network.*" "socketft.*" "fips140.*" "*test.*" "bench*.cpp" "validat*.*" "/usr/*" -o cryptest.info
-	genhtml -o ./TestCoverage/ -t "cryptest.exe test coverage" --num-spaces 4 cryptest.info
+	lcov --remove cryptest.info "adhoc.*" -o cryptest.info
+	lcov --remove cryptest.info "fips140.*" -o cryptest.info
+	lcov --remove cryptest.info "*test.*" -o cryptest.info
+	lcov --remove cryptest.info "/usr/*" -o cryptest.info
+	genhtml -o ./TestCoverage/ -t "Crypto++ test coverage" --num-spaces 4 cryptest.info
 
 # Travis CI and CodeCov rule
 .PHONY: gcov codecov
@@ -1401,7 +1409,7 @@ ifneq ($(IS_DARWIN),0)
 	$(CP) cryptopp$(LIB_VER).zip $(PWD)/cryptopp$(LIB_VER)
 	hdiutil makehybrid -iso -joliet -o cryptopp$(LIB_VER).iso $(PWD)/cryptopp$(LIB_VER)
 	@-$(RM) -r $(PWD)/cryptopp$(LIB_VER)
-else ifneq ($(IS_LINUX),0)
+else ifneq ($(IS_LINUX)$(IS_HURD),00)
 	$(MKDIR) $(PWD)/cryptopp$(LIB_VER)
 	$(CP) cryptopp$(LIB_VER).zip $(PWD)/cryptopp$(LIB_VER)
 	genisoimage -q -o cryptopp$(LIB_VER).iso $(PWD)/cryptopp$(LIB_VER)
