@@ -111,11 +111,10 @@ public:
     x25519(const OID &oid);
 
     /// \brief Clamp a private key
-    /// \param y public key
     /// \param x private key
     /// \details ClampKeys() clamps a private key and then regenerates the
     ///   public key from the private key.
-    void ClampKeys(byte y[PUBLIC_KEYLENGTH], byte x[SECRET_KEYLENGTH]) const;
+    void ClampKey(byte x[SECRET_KEYLENGTH]) const;
 
     /// \brief Determine if private key is clamped
     /// \param x private key
@@ -235,6 +234,10 @@ public:
     void GeneratePrivateKey(RandomNumberGenerator &rng, byte *privateKey) const;
     void GeneratePublicKey(RandomNumberGenerator &rng, const byte *privateKey, byte *publicKey) const;
     bool Agree(byte *agreedValue, const byte *privateKey, const byte *otherPublicKey, bool validateOtherPublicKey=true) const;
+
+protected:
+    // Create a public key from a private key
+    void SecretToPublicKey(byte y[PUBLIC_KEYLENGTH], const byte x[SECRET_KEYLENGTH]) const;
 
 protected:
     FixedSizeSecBlock<byte, SECRET_KEYLENGTH> m_sk;
@@ -452,17 +455,6 @@ struct ed25519PrivateKey : public PKCS8PrivateKey
     void SetPrivateExponent(const Integer &x);
     const Integer& GetPrivateExponent() const;
 
-    /// \brief Clamp a private key
-    /// \param y public key
-    /// \param x private key
-    /// \details ClampKeys() clamps a private key and then regenerates the
-    ///   public key from the private key.
-    void ClampKeys(byte y[PUBLIC_KEYLENGTH], byte x[SECRET_KEYLENGTH]) const;
-
-    /// \brief Determine if private key is clamped
-    /// \param x private key
-    bool IsClamped(const byte x[SECRET_KEYLENGTH]) const;
-
     /// \brief Test if a key has small order
     /// \param y public key
     bool IsSmallOrder(const byte y[PUBLIC_KEYLENGTH]) const;
@@ -480,6 +472,10 @@ struct ed25519PrivateKey : public PKCS8PrivateKey
     const byte* GetPublicKeyBytePtr() const {
         return m_pk.begin();
     }
+
+protected:
+    // Create a public key from a private key
+    void SecretToPublicKey(byte y[PUBLIC_KEYLENGTH], const byte x[SECRET_KEYLENGTH]) const;
 
 protected:
     FixedSizeSecBlock<byte, SECRET_KEYLENGTH> m_sk;
