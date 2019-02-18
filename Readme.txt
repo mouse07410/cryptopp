@@ -10,27 +10,28 @@ Currently the library contains the following algorithms:
                                    XChaCha20Poly1305
 
         high speed stream ciphers  ChaCha (8/12/20), ChaCha (IETF), Panama, Salsa20,
-                                   Sosemanuk, XSalsa20 XChaCha20
+                                   Sosemanuk, XSalsa20, XChaCha20
 
            AES and AES candidates  AES (Rijndael), RC6, MARS, Twofish, Serpent,
                                    CAST-256
 
-                                   ARIA, IDEA, Blowfish, Triple-DES (DES-EDE2 and
-                                   DES-EDE3), Camellia, SEED, Kalyna (128/256/512),
-              other block ciphers  RC5, SIMON (64/128), SPECK (64/128), Skipjack,
-                                   SHACAL-2, SM4, Threefish (256/512/1024), TEA,
-                                   XTEA
+                                   ARIA, Blowfish, Camellia, CHAM, HIGHT, IDEA,
+                                   Kalyna (128/256/512), LEA, SEED, RC5, SHACAL-2,
+              other block ciphers  SIMON (64/128), Skipjack, SPECK (64/128),
+                                   Simeck, SM4, Threefish (256/512/1024),
+                                   Triple-DES (DES-EDE2 and DES-EDE3), TEA, XTEA
 
   block cipher modes of operation  ECB, CBC, CBC ciphertext stealing (CTS),
                                    CFB, OFB, counter mode (CTR)
 
      message authentication codes  BLAKE2s, BLAKE2b, CMAC, CBC-MAC, DMAC, GMAC, HMAC,
-                                   Poly1305, SipHash, Two-Track-MAC, VMAC,
+                                   Poly1305, Poly1305 (IETF), SipHash, Two-Track-MAC,
+                                   VMAC
 
                                    BLAKE2s, BLAKE2b, Keccack (F1600), SHA-1,
                    hash functions  SHA-2 (224/256/384/512), SHA-3 (224/256/384/512),
-                                   SipHash, SM3, Tiger, RIPEMD-128, RIPEMD-160,
-                                   RIPEMD-256, RIPEMD-320, WHIRLPOOL
+                                   SHAKE (128/256), SipHash, SM3, Tiger,
+                                   RIPEMD (128/160/256/320), WHIRLPOOL
 
                                    RSA, DSA, Determinsitic DSA, ElGamal,
           public-key cryptography  Nyberg-Rueppel (NR), Rabin-Williams (RW), LUC,
