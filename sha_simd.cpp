@@ -18,7 +18,7 @@
 # undef CRYPTOPP_SSE2_ASM_AVAILABLE
 #endif
 
-#if (CRYPTOPP_SHANI_AVAILABLE)
+#if (CRYPTOPP_SHANI_AVAILABLE) && defined(__AVX512VL)
 # include <nmmintrin.h>
 # include <immintrin.h>
 #endif
