@@ -37,6 +37,18 @@
 // Squash MS LNK4221 and libtool warnings
 extern const char DONNA32_FNAME[] = __FILE__;
 
+ANONYMOUS_NAMESPACE_BEGIN
+
+// Can't use GetAlignmentOf<word32>() because of C++11 and constexpr
+// Can use 'const unsigned int' because of MSVC 2013
+#if (CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
+# define ALIGN_SPEC 16
+#else
+# define ALIGN_SPEC 4
+#endif
+
+ANONYMOUS_NAMESPACE_END
+
 #if defined(CRYPTOPP_CURVE25519_32BIT)
 
 #include "donna_32.h"
@@ -431,7 +443,7 @@ curve25519_swap_conditional(bignum25519 x, bignum25519 qpx, word32 iswap) {
  */
 void
 curve25519_pow_two5mtwo0_two250mtwo0(bignum25519 b) {
-    ALIGN(16) bignum25519 t0,c;
+    ALIGN(ALIGN_SPEC) bignum25519 t0,c;
 
     /* 2^5  - 2^0 */ /* b */
     /* 2^10 - 2^5 */ curve25519_square_times(t0, b, 5);
@@ -455,7 +467,7 @@ curve25519_pow_two5mtwo0_two250mtwo0(bignum25519 b) {
  */
 void
 curve25519_recip(bignum25519 out, const bignum25519 z) {
-    ALIGN(16) bignum25519 a, t0, b;
+    ALIGN(ALIGN_SPEC) bignum25519 a, t0, b;
 
     /* 2 */ curve25519_square(a, z); /* a = 2 */
     /* 8 */ curve25519_square_times(t0, a, 2);
@@ -913,7 +925,33 @@ curve25519_contract(byte out[32], const bignum25519 in) {
 
 /* out = (flag) ? in : out */
 inline void
-curve25519_move_conditional_bytes(byte out[96], const byte in[96], word32 flag) {
+curve25519_move_conditional_bytes(byte out[96], const byte in[96], word32 flag)
+{
+    // TODO: enable this code path once we can test and benchmark it.
+    // It is about 48 insns shorter, it avoids punning which may be UB,
+    // and it is guaranteed constant time.
+#if defined(__GNUC__) && defined(__i686__) && 0
+    const word32 iter = 96/sizeof(word32);
+    word32* outl = reinterpret_cast<word32*>(out);
+    const word32* inl = reinterpret_cast<const word32*>(in);
+    word32 idx=0, val;
+
+    __asm__ __volatile__ (
+        ".att_syntax                         ;\n"
+        "cmpl     $0, %[flag]                ;\n"  // compare, set ZERO flag
+        "movl     %[iter], %%ecx             ;\n"  // load iteration count
+        "1:                                  ;\n"
+        "  movl     (%[idx],%[out]), %[val]  ;\n"  // val = out[idx]
+        "  cmovnzl  (%[idx],%[in]), %[val]   ;\n"  // copy in[idx] to val if NZ
+        "  movl     %[val], (%[idx],%[out])  ;\n"  // out[idx] = val
+        "  leal     4(%[idx]), %[idx]        ;\n"  // increment index
+        "  loopnz   1b                       ;\n"  // does not affect flags
+        : [out] "+S" (outl), [in] "+D" (inl),
+          [idx] "+b" (idx), [val] "=r" (val)
+        : [flag] "g" (flag), [iter] "I" (iter)
+        : "ecx", "memory", "cc"
+    );
+#else
     const word32 nb = flag - 1, b = ~nb;
     const word32 *inl = (const word32 *)in;
     word32 *outl = (word32 *)out;
@@ -941,6 +979,7 @@ curve25519_move_conditional_bytes(byte out[96], const byte in[96], word32 flag) 
     outl[21] = (outl[21] & nb) | (inl[21] & b);
     outl[22] = (outl[22] & nb) | (inl[22] & b);
     outl[23] = (outl[23] & nb) | (inl[23] & b);
+#endif
 }
 
 /* if (iswap) swap(a, b) */
@@ -967,7 +1006,7 @@ curve25519_swap_conditional(bignum25519 a, bignum25519 b, word32 iswap) {
  */
 void
 curve25519_pow_two5mtwo0_two250mtwo0(bignum25519 b) {
-    ALIGN(16) bignum25519 t0,c;
+    ALIGN(ALIGN_SPEC) bignum25519 t0,c;
 
     /* 2^5  - 2^0 */ /* b */
     /* 2^10 - 2^5 */ curve25519_square_times(t0, b, 5);
@@ -991,7 +1030,7 @@ curve25519_pow_two5mtwo0_two250mtwo0(bignum25519 b) {
  */
 void
 curve25519_recip(bignum25519 out, const bignum25519 z) {
-    ALIGN(16) bignum25519 a,t0,b;
+    ALIGN(ALIGN_SPEC) bignum25519 a,t0,b;
 
     /* 2 */ curve25519_square_times(a, z, 1); /* a = 2 */
     /* 8 */ curve25519_square_times(t0, a, 2);
@@ -1009,7 +1048,7 @@ curve25519_recip(bignum25519 out, const bignum25519 z) {
  */
 void
 curve25519_pow_two252m3(bignum25519 two252m3, const bignum25519 z) {
-    ALIGN(16) bignum25519 b,c,t0;
+    ALIGN(ALIGN_SPEC) bignum25519 b,c,t0;
 
     /* 2 */ curve25519_square_times(c, z, 1); /* c = 2 */
     /* 8 */ curve25519_square_times(t0, c, 2); /* t0 = 8 */
@@ -1865,7 +1904,7 @@ ed25519_publickey_CXX(byte publicKey[32], const byte secretKey[32])
     using namespace CryptoPP::Donna::Ed25519;
 
     bignum256modm a;
-    ALIGN(16) ge25519 A;
+    ALIGN(ALIGN_SPEC) ge25519 A;
     hash_512bits extsk;
 
     /* A = aB */
@@ -1889,7 +1928,7 @@ ed25519_sign_CXX(std::istream& stream, const byte sk[32], const byte pk[32], byt
     using namespace CryptoPP::Donna::Ed25519;
 
     bignum256modm r, S, a;
-    ALIGN(16) ge25519 R;
+    ALIGN(ALIGN_SPEC) ge25519 R;
     hash_512bits extsk, hashr, hram;
 
     // Unfortunately we need to read the stream twice. The fisrt time calculates
@@ -1938,7 +1977,7 @@ ed25519_sign_CXX(const byte *m, size_t mlen, const byte sk[32], const byte pk[32
     using namespace CryptoPP::Donna::Ed25519;
 
     bignum256modm r, S, a;
-    ALIGN(16) ge25519 R;
+    ALIGN(ALIGN_SPEC) ge25519 R;
     hash_512bits extsk, hashr, hram;
 
     ed25519_extsk(extsk, sk);
@@ -1990,7 +2029,7 @@ ed25519_sign_open_CXX(std::istream& stream, const byte pk[32], const byte RS[64]
 
     using namespace CryptoPP::Donna::Ed25519;
 
-    ALIGN(16) ge25519 R, A;
+    ALIGN(ALIGN_SPEC) ge25519 R, A;
     hash_512bits hash;
     bignum256modm hram, S;
     byte checkR[32];
@@ -2018,7 +2057,7 @@ ed25519_sign_open_CXX(const byte *m, size_t mlen, const byte pk[32], const byte 
 
     using namespace CryptoPP::Donna::Ed25519;
 
-    ALIGN(16) ge25519 R, A;
+    ALIGN(ALIGN_SPEC) ge25519 R, A;
     hash_512bits hash;
     bignum256modm hram, S;
     byte checkR[32];
