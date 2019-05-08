@@ -274,10 +274,14 @@ static inline bool IsIntel(const word32 output[4])
 
 static inline bool IsAMD(const word32 output[4])
 {
-	// This is the "AuthenticAMD" string. Some early K5's can return "AMDisbetter!"
-	return (output[1] /*EBX*/ == 0x68747541) &&
+	// This is the "AuthenticAMD" string.
+	return ((output[1] /*EBX*/ == 0x68747541) &&
 		(output[2] /*ECX*/ == 0x444D4163) &&
-		(output[3] /*EDX*/ == 0x69746E65);
+		(output[3] /*EDX*/ == 0x69746E65)) ||
+		// Some early K5's can return "AMDisbetter!"
+		((output[1] /*EBX*/ == 0x69444d41) &&
+		(output[2] /*ECX*/ == 0x74656273) &&
+		(output[3] /*EDX*/ == 0x21726574));
 }
 
 static inline bool IsHygon(const word32 output[4])
@@ -290,10 +294,14 @@ static inline bool IsHygon(const word32 output[4])
 
 static inline bool IsVIA(const word32 output[4])
 {
-	// This is the "CentaurHauls" string. Some non-PadLock's can return "VIA VIA VIA "
-	return (output[1] /*EBX*/ == 0x746e6543) &&
+	// This is the "CentaurHauls" string.
+	return ((output[1] /*EBX*/ == 0x746e6543) &&
 		(output[2] /*ECX*/ == 0x736c7561) &&
-		(output[3] /*EDX*/ == 0x48727561);
+		(output[3] /*EDX*/ == 0x48727561)) ||
+		// Some non-PadLock's return "VIA VIA VIA "
+		((output[1] /*EBX*/ == 0x32414956) &&
+		(output[2] /*ECX*/ == 0x32414956) &&
+		(output[3] /*EDX*/ == 0x32414956));
 }
 
 void DetectX86Features()
@@ -425,6 +433,7 @@ void DetectX86Features()
 	}
 	else if (IsVIA(cpuid0))
 	{
+		// Two bits: available and enabled
 		CRYPTOPP_CONSTANT( RNG_FLAGS = (0x3 << 2))
 		CRYPTOPP_CONSTANT( ACE_FLAGS = (0x3 << 6))
 		CRYPTOPP_CONSTANT(ACE2_FLAGS = (0x3 << 8))
@@ -432,15 +441,22 @@ void DetectX86Features()
 		CRYPTOPP_CONSTANT( PMM_FLAGS = (0x3 << 12))
 
 		CpuId(0xC0000000, 0, cpuid2);
-		if (cpuid2[0] >= 0xC0000001)
+		word32 extendedFeatures = cpuid2[0];
+
+		if (extendedFeatures >= 0xC0000001)
 		{
-			// Extended features available
 			CpuId(0xC0000001, 0, cpuid2);
 			g_hasPadlockRNG  = (cpuid2[3] /*EDX*/ & RNG_FLAGS) == RNG_FLAGS;
 			g_hasPadlockACE  = (cpuid2[3] /*EDX*/ & ACE_FLAGS) == ACE_FLAGS;
 			g_hasPadlockACE2 = (cpuid2[3] /*EDX*/ & ACE2_FLAGS) == ACE2_FLAGS;
 			g_hasPadlockPHE  = (cpuid2[3] /*EDX*/ & PHE_FLAGS) == PHE_FLAGS;
 			g_hasPadlockPMM  = (cpuid2[3] /*EDX*/ & PMM_FLAGS) == PMM_FLAGS;
+		}
+
+		if (extendedFeatures >= 0xC0000005)
+		{
+			CpuId(0xC0000005, 0, cpuid2);
+			g_cacheLineSize = GETBYTE(cpuid2[2] /*ECX*/, 0);
 		}
 	}
 
@@ -474,7 +490,7 @@ word32 CRYPTOPP_SECTION_INIT g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 //   then *Probe* the cpu executing an instruction and an observe a SIGILL if unsupported.
 // The probes are in source files where compilation options like -march=armv8-a+crc make
 //   intrinsics available. They are expensive when compared to a standard OS feature query.
-//   Always perform the feature quesry first. For Linux see
+//   Always perform the feature query first. For Linux see
 //   http://sourceware.org/ml/libc-help/2017-08/msg00012.html
 // Avoid probes on Apple platforms because Apple's signal handling for SIGILLs appears broken.
 //   We are trying to figure out a way to feature test without probes. Also see
