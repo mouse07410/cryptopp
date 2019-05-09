@@ -460,6 +460,14 @@ void DetectX86Features()
 		}
 	}
 
+#if defined(_SC_LEVEL1_DCACHE_LINESIZE)
+	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
+	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
+	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+	if (g_cacheLineSize == 0 && cacheLineSize > 0)
+		g_cacheLineSize = cacheLineSize;
+#endif
+
 	if (g_cacheLineSize == 0)
 		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
@@ -502,7 +510,7 @@ extern bool CPU_ProbeNEON();
 extern bool CPU_ProbeCRC32();
 extern bool CPU_ProbeAES();
 extern bool CPU_ProbeSHA1();
-extern bool CPU_ProbeSHA2();
+extern bool CPU_ProbeSHA256();
 extern bool CPU_ProbeSHA512();
 extern bool CPU_ProbeSHA3();
 extern bool CPU_ProbeSM3();
@@ -701,7 +709,7 @@ inline bool CPU_QuerySHA1()
 	return false;
 }
 
-inline bool CPU_QuerySHA2()
+inline bool CPU_QuerySHA256()
 {
 #if defined(__ANDROID__) && defined(__aarch64__)
 	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
@@ -835,19 +843,22 @@ void DetectArmFeatures()
 	g_hasPMULL = CPU_QueryPMULL() || CPU_ProbePMULL();
 	g_hasAES  = CPU_QueryAES() || CPU_ProbeAES();
 	g_hasSHA1 = CPU_QuerySHA1() || CPU_ProbeSHA1();
-	g_hasSHA2 = CPU_QuerySHA2() || CPU_ProbeSHA2();
+	g_hasSHA2 = CPU_QuerySHA256() || CPU_ProbeSHA256();
 	g_hasSHA512 = CPU_QuerySHA512(); // || CPU_ProbeSHA512();
 	g_hasSHA3 = CPU_QuerySHA3(); // || CPU_ProbeSHA3();
 	g_hasSM3 = CPU_QuerySM3(); // || CPU_ProbeSM3();
 	g_hasSM4 = CPU_QuerySM4(); // || CPU_ProbeSM4();
 
-#if defined(__linux__) && defined(_SC_LEVEL1_DCACHE_LINESIZE)
+#if defined(_SC_LEVEL1_DCACHE_LINESIZE)
 	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
 	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
 	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
 #endif
+
+	if (g_cacheLineSize == 0)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
 	*const_cast<volatile bool*>(&g_ArmDetectionDone) = true;
 }
@@ -1058,13 +1069,16 @@ void DetectPowerpcFeatures()
 	int cacheLineSize = getsystemcfg(SC_L1C_DLS);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
-#elif defined(__linux__) && defined(_SC_LEVEL1_DCACHE_LINESIZE)
+#elif defined(_SC_LEVEL1_DCACHE_LINESIZE)
 	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
 	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
 	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
 #endif
+
+	if (g_cacheLineSize == 0)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
 	*const_cast<volatile bool*>(&g_PowerpcDetectionDone) = true;
 }
