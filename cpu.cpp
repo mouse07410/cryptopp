@@ -274,10 +274,14 @@ static inline bool IsIntel(const word32 output[4])
 
 static inline bool IsAMD(const word32 output[4])
 {
-	// This is the "AuthenticAMD" string. Some early K5's can return "AMDisbetter!"
-	return (output[1] /*EBX*/ == 0x68747541) &&
+	// This is the "AuthenticAMD" string.
+	return ((output[1] /*EBX*/ == 0x68747541) &&
 		(output[2] /*ECX*/ == 0x444D4163) &&
-		(output[3] /*EDX*/ == 0x69746E65);
+		(output[3] /*EDX*/ == 0x69746E65)) ||
+		// Some early K5's can return "AMDisbetter!"
+		((output[1] /*EBX*/ == 0x69444d41) &&
+		(output[2] /*ECX*/ == 0x74656273) &&
+		(output[3] /*EDX*/ == 0x21726574));
 }
 
 static inline bool IsHygon(const word32 output[4])
@@ -290,10 +294,14 @@ static inline bool IsHygon(const word32 output[4])
 
 static inline bool IsVIA(const word32 output[4])
 {
-	// This is the "CentaurHauls" string. Some non-PadLock's can return "VIA VIA VIA "
-	return (output[1] /*EBX*/ == 0x746e6543) &&
+	// This is the "CentaurHauls" string.
+	return ((output[1] /*EBX*/ == 0x746e6543) &&
 		(output[2] /*ECX*/ == 0x736c7561) &&
-		(output[3] /*EDX*/ == 0x48727561);
+		(output[3] /*EDX*/ == 0x48727561)) ||
+		// Some non-PadLock's return "VIA VIA VIA "
+		((output[1] /*EBX*/ == 0x32414956) &&
+		(output[2] /*ECX*/ == 0x32414956) &&
+		(output[3] /*EDX*/ == 0x32414956));
 }
 
 void DetectX86Features()
@@ -425,6 +433,7 @@ void DetectX86Features()
 	}
 	else if (IsVIA(cpuid0))
 	{
+		// Two bits: available and enabled
 		CRYPTOPP_CONSTANT( RNG_FLAGS = (0x3 << 2))
 		CRYPTOPP_CONSTANT( ACE_FLAGS = (0x3 << 6))
 		CRYPTOPP_CONSTANT(ACE2_FLAGS = (0x3 << 8))
@@ -432,9 +441,10 @@ void DetectX86Features()
 		CRYPTOPP_CONSTANT( PMM_FLAGS = (0x3 << 12))
 
 		CpuId(0xC0000000, 0, cpuid2);
-		if (cpuid2[0] >= 0xC0000001)
+		word32 extendedFeatures = cpuid2[0];
+
+		if (extendedFeatures >= 0xC0000001)
 		{
-			// Extended features available
 			CpuId(0xC0000001, 0, cpuid2);
 			g_hasPadlockRNG  = (cpuid2[3] /*EDX*/ & RNG_FLAGS) == RNG_FLAGS;
 			g_hasPadlockACE  = (cpuid2[3] /*EDX*/ & ACE_FLAGS) == ACE_FLAGS;
@@ -442,7 +452,21 @@ void DetectX86Features()
 			g_hasPadlockPHE  = (cpuid2[3] /*EDX*/ & PHE_FLAGS) == PHE_FLAGS;
 			g_hasPadlockPMM  = (cpuid2[3] /*EDX*/ & PMM_FLAGS) == PMM_FLAGS;
 		}
+
+		if (extendedFeatures >= 0xC0000005)
+		{
+			CpuId(0xC0000005, 0, cpuid2);
+			g_cacheLineSize = GETBYTE(cpuid2[2] /*ECX*/, 0);
+		}
 	}
+
+#if defined(_SC_LEVEL1_DCACHE_LINESIZE)
+	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
+	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
+	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+	if (g_cacheLineSize == 0 && cacheLineSize > 0)
+		g_cacheLineSize = cacheLineSize;
+#endif
 
 	if (g_cacheLineSize == 0)
 		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
@@ -474,7 +498,7 @@ word32 CRYPTOPP_SECTION_INIT g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 //   then *Probe* the cpu executing an instruction and an observe a SIGILL if unsupported.
 // The probes are in source files where compilation options like -march=armv8-a+crc make
 //   intrinsics available. They are expensive when compared to a standard OS feature query.
-//   Always perform the feature quesry first. For Linux see
+//   Always perform the feature query first. For Linux see
 //   http://sourceware.org/ml/libc-help/2017-08/msg00012.html
 // Avoid probes on Apple platforms because Apple's signal handling for SIGILLs appears broken.
 //   We are trying to figure out a way to feature test without probes. Also see
@@ -486,7 +510,7 @@ extern bool CPU_ProbeNEON();
 extern bool CPU_ProbeCRC32();
 extern bool CPU_ProbeAES();
 extern bool CPU_ProbeSHA1();
-extern bool CPU_ProbeSHA2();
+extern bool CPU_ProbeSHA256();
 extern bool CPU_ProbeSHA512();
 extern bool CPU_ProbeSHA3();
 extern bool CPU_ProbeSM3();
@@ -685,7 +709,7 @@ inline bool CPU_QuerySHA1()
 	return false;
 }
 
-inline bool CPU_QuerySHA2()
+inline bool CPU_QuerySHA256()
 {
 #if defined(__ANDROID__) && defined(__aarch64__)
 	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
@@ -819,19 +843,22 @@ void DetectArmFeatures()
 	g_hasPMULL = CPU_QueryPMULL() || CPU_ProbePMULL();
 	g_hasAES  = CPU_QueryAES() || CPU_ProbeAES();
 	g_hasSHA1 = CPU_QuerySHA1() || CPU_ProbeSHA1();
-	g_hasSHA2 = CPU_QuerySHA2() || CPU_ProbeSHA2();
+	g_hasSHA2 = CPU_QuerySHA256() || CPU_ProbeSHA256();
 	g_hasSHA512 = CPU_QuerySHA512(); // || CPU_ProbeSHA512();
 	g_hasSHA3 = CPU_QuerySHA3(); // || CPU_ProbeSHA3();
 	g_hasSM3 = CPU_QuerySM3(); // || CPU_ProbeSM3();
 	g_hasSM4 = CPU_QuerySM4(); // || CPU_ProbeSM4();
 
-#if defined(__linux__) && defined(_SC_LEVEL1_DCACHE_LINESIZE)
+#if defined(_SC_LEVEL1_DCACHE_LINESIZE)
 	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
 	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
 	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
 #endif
+
+	if (g_cacheLineSize == 0)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
 	*const_cast<volatile bool*>(&g_ArmDetectionDone) = true;
 }
@@ -1042,13 +1069,16 @@ void DetectPowerpcFeatures()
 	int cacheLineSize = getsystemcfg(SC_L1C_DLS);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
-#elif defined(__linux__) && defined(_SC_LEVEL1_DCACHE_LINESIZE)
+#elif defined(_SC_LEVEL1_DCACHE_LINESIZE)
 	// Glibc does not implement on some platforms. The runtime returns 0 instead of error.
 	// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/posix/sysconf.c
 	int cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 	if (cacheLineSize > 0)
 		g_cacheLineSize = cacheLineSize;
 #endif
+
+	if (g_cacheLineSize == 0)
+		g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
 	*const_cast<volatile bool*>(&g_PowerpcDetectionDone) = true;
 }
