@@ -175,6 +175,11 @@ ifeq ($(PREFIX),)
 PREFIX = /opt/local
 endif
 
+# Default CRYPTOPP_DATA_DIR location
+ifeq ($(CRYPTOPP_DATA_DIR),)
+CRYPTOPP_DATA_DIR=/opt/local/share/cryptopp/
+endif
+
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
 ifeq ($(DATADIR),)
 DATADIR := $(PREFIX)/share
@@ -275,9 +280,7 @@ ifeq ($(DETECT_FEATURES),1)
     KECCAK_FLAG = $(SSSE3_FLAG)
     LEA_FLAG = $(SSSE3_FLAG)
     SIMECK_FLAG = $(SSSE3_FLAG)
-    SIMON64_FLAG = $(SSSE3_FLAG)
     SIMON128_FLAG = $(SSSE3_FLAG)
-    SPECK64_FLAG = $(SSSE3_FLAG)
     SPECK128_FLAG = $(SSSE3_FLAG)
     SUN_LDFLAGS += $(SSSE3_FLAG)
   else
@@ -999,7 +1002,7 @@ ifeq ($(findstring lean,$(MAKECMDGOALS)),lean)
 endif # Dead code stripping
 
 # For Shared Objects, Diff, Dist/Zip rules
-LIB_VER := $(shell $(GREP) "define CRYPTOPP_VERSION" config.h | cut -d" " -f 3)
+LIB_VER := $(shell $(GREP) "define CRYPTOPP_VERSION" config_ver.h | cut -d" " -f 3)
 LIB_MAJOR := $(shell echo $(LIB_VER) | cut -c 1)
 LIB_MINOR := $(shell echo $(LIB_VER) | cut -c 2)
 LIB_PATCH := $(shell echo $(LIB_VER) | cut -c 3)
