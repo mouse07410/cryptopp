@@ -314,6 +314,10 @@ serpentp.h
 sha.cpp
 sha_simd.cpp
 sha.h
+sha1_armv4.h
+sha1_armv4.S
+sha256_armv4.h
+sha256_armv4.S
 sha3.cpp
 sha3.h
 shacal2.cpp
@@ -572,9 +576,10 @@ TestPrograms/test_arm_asimd.cxx
 TestPrograms/test_arm_crc.cxx
 TestPrograms/test_arm_neon.cxx
 TestPrograms/test_arm_pmull.cxx
-TestPrograms/test_arm_sha.cxx
-TestPrograms/test_arm_sha3.cxx
+TestPrograms/test_arm_sha1.cxx
+TestPrograms/test_arm_sha256.cxx
 TestPrograms/test_arm_sha512.cxx
+TestPrograms/test_arm_sha3.cxx
 TestPrograms/test_arm_sm3.cxx
 TestPrograms/test_arm_sm4.cxx
 TestPrograms/test_cxx.cxx
