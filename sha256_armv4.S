@@ -103,12 +103,12 @@ K256:
 .word	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 .size	K256,.-K256
 .word	0				@ terminator
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.LCRYPTOGAMS_armcap:
+#if __ARM_MAX_ARCH__>=7
+.LCRYPTOGAMS_armcap_loc:
 # ifdef	_WIN32
-.word	CRYPTOGAMS_armcap_P
+.word	CRYPTOGAMS_armcaps
 # else
-.word	CRYPTOGAMS_armcap_P-.Lsha256_block_data_order
+.word	CRYPTOGAMS_armcaps-.Lsha256_block_data_order
 # endif
 #endif
 .align	5
@@ -122,10 +122,10 @@ sha256_block_data_order:
 #else
 	adr	r3,.Lsha256_block_data_order
 #endif
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-	ldr	r12,.LCRYPTOGAMS_armcap
+#if __ARM_MAX_ARCH__>=7
+	ldr	r12,.LCRYPTOGAMS_armcap_loc
 # if !defined(_WIN32)
-	ldr	r12,[r3,r12]		@ CRYPTOGAMS_armcap_P
+	ldr	r12,[r3,r12]		@ CRYPTOGAMS_armcaps
 # endif
 # if defined(__APPLE__) || defined(_WIN32)
 	ldr	r12,[r12]
@@ -2687,6 +2687,6 @@ sha256_block_data_order_neon:
 .size	sha256_block_data_order_neon,.-sha256_block_data_order_neon
 #endif
 
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm	CRYPTOGAMS_armcap_P,4,4
+#if __ARM_MAX_ARCH__>=7
+.comm	CRYPTOGAMS_armcaps,4,4
 #endif
