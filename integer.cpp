@@ -45,6 +45,12 @@
 //  thousands of times during the life of a program. Each load produces a
 //  memory leak and they can add up quickly. If they library is being used in
 //  Java or .Net then Singleton must be avoided at all costs.
+//
+// The code below has a path cut-in for BMI2 using mulx and adcx instructions.
+//  There was a modest speedup of approximately 0.03 ms in Integer operations.
+//  We had to disable BMI2 for the moment because some OS X machines were
+//  advertising BMI/BMI2 support but caused SIGILL's at runtime. Also see
+//  https://github.com/weidai11/cryptopp/issues/850.
 
 #include "pch.h"
 #include "config.h"
