@@ -3,14 +3,13 @@
 # (C) 2017 Mouse
 #
 # Script to be invoked by "git bisect" to automate the bisect
-# process of finding the commit that breaks the code. It requires
-# an RSA token to be installed.
+# process of finding the commit that breaks the code.
 #
 # Script Usage: ./test-error.sh 
 #
 # Intended Usage: 
 #      $ git bisect start HEAD <last_known_good_commit>
-#      $ git bisect run ./test-error.sh <file_with_PIN> ["EC"]
+#      $ git bisect run ./test-error.sh
 #
 
 
