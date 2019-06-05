@@ -49,12 +49,12 @@ public:
 	/// \brief Construct a ModularArithmetic
 	/// \param modulus congruence class modulus
 	ModularArithmetic(const Integer &modulus = Integer::One())
-		: AbstractRing<Integer>(), m_modulus(modulus), m_result(static_cast<word>(0), modulus.reg.size()) {}
+		: m_modulus(modulus), m_result(static_cast<word>(0), modulus.reg.size()) {}
 
 	/// \brief Copy construct a ModularArithmetic
 	/// \param ma other ModularArithmetic
 	ModularArithmetic(const ModularArithmetic &ma)
-		: AbstractRing<Integer>(), m_modulus(ma.m_modulus), m_result(static_cast<word>(0), ma.m_modulus.reg.size()) {}
+		: m_modulus(ma.m_modulus), m_result(static_cast<word>(0), ma.m_modulus.reg.size()) {}
 
 	/// \brief Construct a ModularArithmetic
 	/// \param bt BER encoded ModularArithmetic
@@ -269,8 +269,9 @@ public:
 	static const RandomizationParameter DefaultRandomizationParameter;
 
 private:
+	// TODO: Clang on OS X needs a real operator=.
 	// Squash warning on missing assignment operator.
-	ModularArithmetic& operator=(const ModularArithmetic &ma);
+	// ModularArithmetic& operator=(const ModularArithmetic &ma);
 
 protected:
 	Integer m_modulus;
