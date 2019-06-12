@@ -71,18 +71,6 @@ public:
 		return *this;
 	}
 
-	/// \brief Assign a ModularArithmetic
-	/// \param ma other ModularArithmetic
-	/// \returns new ModularArithmetic
-	ModularArithmetic& operator=(const ModularArithmetic &ma) {
-		if (this != &ma)
-		{
-			m_modulus = ma.m_modulus;
-			m_result = Integer(static_cast<word>(0), m_modulus.reg.size());
-		}
-		return *this;
-	}
-
 	/// \brief Construct a ModularArithmetic
 	/// \param bt BER encoded ModularArithmetic
 	ModularArithmetic(BufferedTransformation &bt);	// construct from BER encoded parameters
