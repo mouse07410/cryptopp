@@ -57,7 +57,19 @@ public:
 	/// \brief Copy construct a ModularArithmetic
 	/// \param ma other ModularArithmetic
 	ModularArithmetic(const ModularArithmetic &ma)
-		: m_modulus(ma.m_modulus), m_result(static_cast<word>(0), ma.m_modulus.reg.size()) {}
+		: m_modulus(ma.m_modulus), m_result(static_cast<word>(0), m_modulus.reg.size()) {}
+
+	/// \brief Assign a ModularArithmetic
+	/// \param ma other ModularArithmetic
+	/// \returns new ModularArithmetic
+	ModularArithmetic& operator=(const ModularArithmetic &ma) {
+		if (this != &ma)
+		{
+			m_modulus = ma.m_modulus;
+			m_result = Integer(static_cast<word>(0), m_modulus.reg.size());
+		}
+		return *this;
+	}
 
 	/// \brief Assign a ModularArithmetic
 	/// \param ma other ModularArithmetic
