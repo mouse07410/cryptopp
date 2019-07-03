@@ -704,7 +704,7 @@ public:
 
     bool ParameterSupported(const char *name) const {return strcmp(name, Name::EncodingParameters()) == 0;}
     size_t GetSymmetricKeyLength(size_t plaintextLength) const
-        {return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
+        {return plaintextLength + static_cast<size_t>(MAC::DEFAULT_KEYLENGTH);}
     size_t GetSymmetricCiphertextLength(size_t plaintextLength) const
         {return plaintextLength + static_cast<size_t>(MAC::DIGESTSIZE);}
     size_t GetMaxSymmetricPlaintextLength(size_t ciphertextLength) const
@@ -716,7 +716,7 @@ public:
         if (DHAES_MODE)
         {
             macKey = key;
-            cipherKey = key + MAC::DIGESTSIZE;
+            cipherKey = key + MAC::DEFAULT_KEYLENGTH;
         }
         else
         {
@@ -748,7 +748,7 @@ public:
         if (DHAES_MODE)
         {
             macKey = key;
-            cipherKey = key + MAC::DIGESTSIZE;
+            cipherKey = key + MAC::DEFAULT_KEYLENGTH;
         }
         else
         {
