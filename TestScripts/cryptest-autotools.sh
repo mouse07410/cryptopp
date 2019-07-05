@@ -2,7 +2,7 @@
 
 PWD_DIR=$(pwd)
 function cleanup {
-    cd "$PWD_DIR"
+	cd "$PWD_DIR"
 }
 trap cleanup EXIT
 
@@ -122,6 +122,11 @@ chmod +w config.sub
 mv config.sub.new config.sub
 chmod +x config.sub
 
+if [[ "$IS_DARWIN" -ne 0 ]] && [[ -n $(command -v xattr) ]]; then
+	echo "Removing config.sub quarantine"
+	xattr -d "com.apple.quarantine" config.sub &>/dev/null
+fi
+
 echo "Updating config.guess"
 wget -O config.guess.new -q --no-check-certificate 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess'
 
@@ -129,6 +134,11 @@ wget -O config.guess.new -q --no-check-certificate 'https://git.savannah.gnu.org
 chmod +w config.guess
 mv config.guess.new config.guess
 chmod +x config.guess
+
+if [[ "$IS_DARWIN" -ne 0 ]] && [[ -n $(command -v xattr) ]]; then
+	echo "Removing config.guess quarantine"
+	xattr -d "com.apple.quarantine" config.guess &>/dev/null
+fi
 
 #############################################################################
 
