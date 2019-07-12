@@ -35,6 +35,20 @@
 # define __has_feature(x) 0
 #endif
 
+// Define CRYPTOPP_NO_CXX11 to avoid C++11 related features shown at the
+// end of this file. Some compilers and standard C++ headers advertise C++11
+// but they are really just C++03 with some additional C++11 headers and
+// non-conforming classes. You might also consider `-std=c++03` or
+// `-std=gnu++03`, but they are required options when building the library
+// and all programs. CRYPTOPP_NO_CXX11 is probably easier to manage but it may
+// cause -Wterminate warnings under GCC. MSVC++ has a similar warning.
+// Also see https://github.com/weidai11/cryptopp/issues/529
+// #define CRYPTOPP_NO_CXX11 1
+
+// Define CRYPTOPP_NO_CXX17 to avoid C++17 related features shown at the end of
+// this file. At the moment it should only affect std::uncaught_exceptions.
+// #define CRYPTOPP_NO_CXX17 1
+
 // C++11 macro version, https://stackoverflow.com/q/7223991/608639
 #if !defined(CRYPTOPP_NO_CXX11)
 #  if ((_MSC_VER >= 1600) || (__cplusplus >= 201103L)) && !defined(_STLPORT_VERSION)
