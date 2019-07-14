@@ -103,23 +103,25 @@
 
 #if CRYPTOPP_DOXYGEN_PROCESSING
 /// \brief The maximum value of a machine word
-/// \details SIZE_MAX provides the maximum value of a machine word. The value is
-///   0xffffffff on 32-bit machines, and 0xffffffffffffffff on 64-bit machines.
-/// Internally, SIZE_MAX is defined as __SIZE_MAX__ if __SIZE_MAX__ is defined. If not
-///   defined, then SIZE_T_MAX is tried. If neither __SIZE_MAX__ nor SIZE_T_MAX is
-///   is defined, the library uses std::numeric_limits<size_t>::max(). The library
-///   prefers __SIZE_MAX__ because its a constexpr that is optimized well
-///   by all compilers. std::numeric_limits<size_t>::max() is not always a constexpr,
-///   and it is not always optimized well.
+/// \details <tt>SIZE_MAX</tt> provides the maximum value of a machine word. The value
+///  is <tt>0xffffffff</tt> on 32-bit targets, and <tt>0xffffffffffffffff</tt> on 64-bit
+///  targets.
+/// \details If <tt>SIZE_MAX</tt> is not defined, then <tt>__SIZE_MAX__</tt> is used if 
+///  defined. If not defined, then <tt>SIZE_T_MAX</tt> is used if defined. If not defined,
+///  then the library uses <tt>std::numeric_limits<size_t>::max()</tt>.
+/// \details The library prefers <tt>__SIZE_MAX__</tt> or <tt>__SIZE_T_MAX__</tt> because
+///  they are effectively <tt>constexpr</tt> that is optimized well by all compilers.
+///  <tt>std::numeric_limits<size_t>::max()</tt> is not always a <tt>constexpr</tt>, and
+///  it is not always optimized well.
 #  define SIZE_MAX ...
 #else
 // Its amazing portability problems still plague this simple concept in 2015.
 // http://stackoverflow.com/questions/30472731/which-c-standard-header-defines-size-max
 // Avoid NOMINMAX macro on Windows. http://support.microsoft.com/en-us/kb/143208
 #ifndef SIZE_MAX
-# if defined(__SIZE_MAX__) && (__SIZE_MAX__ > 0)
+# if defined(__SIZE_MAX__)
 #  define SIZE_MAX __SIZE_MAX__
-# elif defined(SIZE_T_MAX) && (SIZE_T_MAX > 0)
+# elif defined(SIZE_T_MAX)
 #  define SIZE_MAX SIZE_T_MAX
 # elif defined(__SIZE_TYPE__)
 #  define SIZE_MAX (~(__SIZE_TYPE__)0)
@@ -140,8 +142,13 @@ class Integer;
 #if CRYPTOPP_DOXYGEN_PROCESSING
 /// \brief Compile time assertion
 /// \param expr the expression to evaluate
-/// \details Asserts the expression expr though a dummy struct.
-#define CRYPTOPP_COMPILE_ASSERT(expr) { ... }
+/// \details Asserts the expression <tt>expr</tt> during compile. If C++14 and
+///  N3928 are available, then C++14 <tt>static_assert</tt> is used. Otherwise,
+///  a <tt>CompileAssert</tt> structure is used. When the structure is used
+///  a negative-sized array triggers the assert at compile time.
+# define CRYPTOPP_COMPILE_ASSERT(expr) { ... }
+#elif defined(CRYPTOPP_CXX14_STATIC_ASSERT)
+# define CRYPTOPP_COMPILE_ASSERT(expr) static_assert(expr)
 #else // CRYPTOPP_DOXYGEN_PROCESSING
 template <bool b>
 struct CompileAssert
@@ -150,21 +157,22 @@ struct CompileAssert
 };
 
 #define CRYPTOPP_COMPILE_ASSERT(assertion) CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, __LINE__)
-#if defined(CRYPTOPP_EXPORTS) || defined(CRYPTOPP_IMPORTS)
-#define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance)
-#else
-# if defined(__GNUC__)
-#  define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance) \
-		static CompileAssert<(assertion)> \
-		CRYPTOPP_ASSERT_JOIN(cryptopp_CRYPTOPP_ASSERT_, instance) __attribute__ ((unused))
-# else
-#  define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance) \
-		static CompileAssert<(assertion)> \
-		CRYPTOPP_ASSERT_JOIN(cryptopp_CRYPTOPP_ASSERT_, instance)
-# endif // __GNUC__
-#endif
 #define CRYPTOPP_ASSERT_JOIN(X, Y) CRYPTOPP_DO_ASSERT_JOIN(X, Y)
 #define CRYPTOPP_DO_ASSERT_JOIN(X, Y) X##Y
+
+#if defined(CRYPTOPP_EXPORTS) || defined(CRYPTOPP_IMPORTS)
+# define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance)
+#else
+# if defined(__GNUC__) || defined(__clang__)
+#  define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance) \
+       static CompileAssert<(assertion)> \
+       CRYPTOPP_ASSERT_JOIN(cryptopp_CRYPTOPP_ASSERT_, instance) __attribute__ ((unused))
+# else
+#  define CRYPTOPP_COMPILE_ASSERT_INSTANCE(assertion, instance) \
+       static CompileAssert<(assertion)> \
+       CRYPTOPP_ASSERT_JOIN(cryptopp_CRYPTOPP_ASSERT_, instance)
+# endif // GCC or Clang
+#endif
 
 #endif // CRYPTOPP_DOXYGEN_PROCESSING
 
