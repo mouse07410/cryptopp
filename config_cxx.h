@@ -174,6 +174,13 @@
 
 #endif // CRYPTOPP_CXX11
 
+// ***************** C++14 and above ********************
+
+// Extended static_assert with one argument
+#if (__cpp_static_assert >= 201411)
+# define CRYPTOPP_CXX14_STATIC_ASSERT 1
+#endif // static_assert
+
 // ***************** C++17 and above ********************
 
 // C++17 is available
