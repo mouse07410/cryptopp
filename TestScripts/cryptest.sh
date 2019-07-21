@@ -257,7 +257,7 @@ if [[ (-z "$TMPDIR") ]]; then
 		TMPDIR="$HOME/tmp"
 	else
 		echo "Please set TMPDIR to a valid directory"
-		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+		exit 1
 	fi
 fi
 
@@ -1949,19 +1949,19 @@ if true; then
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
 		# Stop now if things are broke
-		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+		exit 1
 	else
 		./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
 			# Stop now if things are broke
-			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+			exit 1
 		fi
 		./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
 			# Stop now if things are broke
-			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+			exit 1
 		fi
 	fi
 
@@ -1983,19 +1983,19 @@ if true; then
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
 		# Stop now if things are broke
-		[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+		exit 1
 	else
 		./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
 			# Stop now if things are broke
-			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+			exit 1
 		fi
 		./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
 		if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 			echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
 			# Stop now if things are broke
-			[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+			exit 1
 		fi
 		echo
 	fi
@@ -2016,12 +2016,8 @@ if [[ "$HAVE_LD_LIBRARY_PATH" -ne "0" ]]; then
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
-	# Create a new makefile based on the old one
-	"$SED" -e 's|\./libcryptopp.a|\./libcryptopp.so|g' -e 's|cryptest.exe: libcryptopp.a|cryptest.exe: libcryptopp.so|g' GNUmakefile > GNUmakefile.shared
-
-	CXXFLAGS="$DEBUG_CXXFLAGS"
-	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
-	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+	CXX="$CXX" CXXFLAGS="$DEBUG_CXXFLAGS" LINK_LIBRARY=libcryptopp.so \
+		"$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2048,9 +2044,8 @@ if [[ "$HAVE_LD_LIBRARY_PATH" -ne "0" ]]; then
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
-	CXXFLAGS="$RELEASE_CXXFLAGS"
-	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
-	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+	CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" LINK_LIBRARY=libcryptopp.so \
+		"$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2065,8 +2060,6 @@ if [[ "$HAVE_LD_LIBRARY_PATH" -ne "0" ]]; then
 		fi
 		echo
 	fi
-
-	rm -f GNUmakefile.shared > /dev/null 2>&1
 fi
 
 ############################################
@@ -2084,12 +2077,8 @@ if [[ "$HAVE_DYLD_LIBRARY_PATH" -ne "0" ]]; then
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
-	# Create a new makefile based on the old one
-	"$SED" -e 's|\./libcryptopp.a|\./libcryptopp.dylib|g' -e 's|cryptest.exe: libcryptopp.a|cryptest.exe: libcryptopp.dylib|g' GNUmakefile > GNUmakefile.shared
-
-	CXXFLAGS="$DEBUG_CXXFLAGS"
-	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
-	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+	CXX="$CXX" CXXFLAGS="$DEBUG_CXXFLAGS" LINK_LIBRARY=libcryptopp.dylib \
+		"$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2116,9 +2105,8 @@ if [[ "$HAVE_DYLD_LIBRARY_PATH" -ne "0" ]]; then
 	"$MAKE" clean > /dev/null 2>&1
 	rm -f adhoc.cpp > /dev/null 2>&1
 
-	CXXFLAGS="$RELEASE_CXXFLAGS"
-	DYN_MAKEARGS=("-f" "GNUmakefile.shared" "HAS_SOLIB_VERSION=0" "${MAKEARGS[@]}")
-	CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${DYN_MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+	CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" LINK_LIBRARY=libcryptopp.dylib \
+		"$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
 
 	if [[ ("${PIPESTATUS[0]}" -ne "0") ]]; then
 		echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
@@ -2133,8 +2121,6 @@ if [[ "$HAVE_DYLD_LIBRARY_PATH" -ne "0" ]]; then
 		fi
 		echo
 	fi
-
-	rm -f GNUmakefile.shared > /dev/null 2>&1
 fi
 
 ############################################
@@ -7182,7 +7168,7 @@ echo
 ############################################
 # http://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
 if (( "$ECOUNT" == "0" )); then
-	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 0 || return 0
+	exit 0
 else
-	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+	exit 1
 fi

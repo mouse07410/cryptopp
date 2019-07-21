@@ -14,6 +14,11 @@ TMPDIR ?= /tmp
 TOUT ?= /dev/null
 TOUT := $(strip $(TOUT))
 
+# Allow override for the cryptest.exe recipe. Change to
+# ./libcryptopp.so or ./libcryptopp.dylib to suit your
+# taste. https://github.com/weidai11/cryptopp/issues/866
+LINK_LIBRARY ?= ./libcryptopp.a
+
 # Command and arguments
 AR ?= ar
 ARFLAGS ?= -cr # ar needs the dash on OpenBSD
@@ -119,9 +124,10 @@ else ifeq ($(findstring distclean,$(MAKECMDGOALS)),trim)
   DETECT_FEATURES := 0
 endif
 
-# Strip out -Wall, -Wextra and friends for feature testing
+# Strip out -Wall, -Wextra and friends for feature testing. FORTIFY_SOURCE is removed
+# because it requires -O1 or higher, but we use -O0 to tame the optimizer.
 ifeq ($(DETECT_FEATURES),1)
-  TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=1 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CXXFLAGS))
+  TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=% -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CXXFLAGS))
   ifneq ($(strip $(TCXXFLAGS)),)
     $(info Using testing flags: $(TCXXFLAGS))
   endif
@@ -1332,8 +1338,8 @@ endif
 libcryptopp.dylib: $(LIBOBJS)
 	$(CXX) -dynamiclib -o $@ $(strip $(CXXFLAGS)) -install_name "$@" -current_version "$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)" -compatibility_version "$(LIB_MAJOR).$(LIB_MINOR)" -headerpad_max_install_names $(LDFLAGS) $(LIBOBJS)
 
-cryptest.exe:	libcryptopp.a $(TESTOBJS)
-	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(TESTOBJS) ./libcryptopp.a $(LDFLAGS) $(LDLIBS)
+cryptest.exe: $(LINK_LIBRARY) $(TESTOBJS)
+	$(CXX) -o $@ $(strip $(CXXFLAGS)) $(TESTOBJS) $(LINK_LIBRARY) $(LDFLAGS) $(LDLIBS)
 
 # Makes it faster to test changes
 nolib: $(OBJS)
