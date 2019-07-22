@@ -188,13 +188,13 @@ script:
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
-        sudo make install PREFIX=/opt/local
+        CXXFLAGS="-DDEBUG -g2 -O1" sudo -EH make install PREFIX=/opt/local
         chmod +x *.exe
         ./cryptest.exe v
         ./cryptest.exe tv all
     else
         CXXFLAGS="-DDEBUG -g2 -O1" make -j "$BUILD_JOBS"
-        make "$BUILD_MODE" -j "$BUILD_JOBS"
+        #make "$BUILD_MODE" -j "$BUILD_JOBS"
         sudo mkdir -p /opt/local/share
         sudo mkdir -p /opt/local/lib
         sudo mkdir -p /opt/local/bin
