@@ -1604,10 +1604,10 @@ public:
 		if (rng.CanIncorporateEntropy())
 			rng.IncorporateEntropy(representative, representative.size());
 
-		Integer k;
+		Integer k, ks;
+		const Integer& q = params.GetSubgroupOrder();
 		if (alg.IsDeterministic())
 		{
-			const Integer& q = params.GetSubgroupOrder();
 			const Integer& x = key.GetPrivateExponent();
 			const DeterministicSignatureAlgorithm& det = dynamic_cast<const DeterministicSignatureAlgorithm&>(alg);
 			k = det.GenerateRandom(x, q, e);
@@ -1617,8 +1617,15 @@ public:
 			k.Randomize(rng, 1, params.GetSubgroupOrder()-1);
 		}
 
+		// Due to timing attack on nonce length by Jancar
+		// https://github.com/weidai11/cryptopp/issues/869
+		ks = k + q;
+		if (ks.BitCount() == q.BitCount()) {
+			ks += q;
+		}
+
 		Integer r, s;
-		r = params.ConvertElementToInteger(params.ExponentiateBase(k));
+		r = params.ConvertElementToInteger(params.ExponentiateBase(ks));
 		alg.Sign(params, key.GetPrivateExponent(), k, e, r, s);
 
 		/*
@@ -1630,7 +1637,7 @@ public:
 		alg.Sign(params, key.GetPrivateExponent(), ma.m_k, e, r, s);
 		*/
 
-		size_t rLen = alg.RLen(params);
+		const size_t rLen = alg.RLen(params);
 		r.Encode(signature, rLen);
 		s.Encode(signature+rLen, alg.SLen(params));
 
