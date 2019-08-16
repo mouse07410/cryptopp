@@ -1477,11 +1477,11 @@ public:
 
 	/// \brief Determine minimum number of bytes
 	/// \returns Minimum number of bytes which can be derived
-	virtual size_t MinDerivedLength() const;
+	virtual size_t MinDerivedKeyLength() const;
 
 	/// \brief Determine maximum number of bytes
 	/// \returns Maximum number of bytes which can be derived
-	virtual size_t MaxDerivedLength() const;
+	virtual size_t MaxDerivedKeyLength() const;
 
 	/// \brief Returns a valid key length for the derivation function
 	/// \param keylength the size of the derived key, in bytes
@@ -1503,7 +1503,7 @@ public:
 	/// \param secretLen the size of the secret buffer, in bytes
 	/// \param params additional initialization parameters to configure this object
 	/// \returns the number of iterations performed
-	/// \throws InvalidDerivedLength if <tt>derivedLen</tt> is invalid for the scheme
+	/// \throws InvalidDerivedKeyLength if <tt>derivedLen</tt> is invalid for the scheme
 	/// \details DeriveKey() provides a standard interface to derive a key from
 	///   a secret seed and other parameters. Each class that derives from KeyDerivationFunction
 	///   provides an overload that accepts most parameters used by the derivation function.
@@ -1525,7 +1525,7 @@ protected:
 	/// \brief Validates the derived key length
 	/// \param length the size of the derived key material, in bytes
 	/// \throws InvalidKeyLength if the key length is invalid
-	void ThrowIfInvalidDerivedLength(size_t length) const;
+	void ThrowIfInvalidDerivedKeyLength(size_t length) const;
 };
 
 /// \brief Interface for password based key derivation functions
