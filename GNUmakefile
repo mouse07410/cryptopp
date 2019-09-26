@@ -109,7 +109,7 @@ endif
 #   http://github.com/weidai11/cryptopp/issues/190
 ifeq ($(GCC_COMPILER)$(OSXPORT_COMPILER)$(IS_PPC32)$(IS_PPC64),1100)
   ifeq ($(findstring -Wa,-q,$(CXXFLAGS)),)
-    CXXFLAGS += -Wa,-q -Wa,-march=native
+    CXXFLAGS += -Wa,-q -Wa,-march=native -isysroot `xcrun --show-sdk-path`
   endif
 endif
 
