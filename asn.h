@@ -50,7 +50,9 @@ enum ASNTag
 	GENERALIZED_TIME 	= 0x18,
 	GRAPHIC_STRING		= 0x19,
 	VISIBLE_STRING		= 0x1a,
-	GENERAL_STRING		= 0x1b
+	GENERAL_STRING		= 0x1b,
+	UNIVERSAL_STRING	= 0x1c,
+	BMP_STRING  		= 0x1e
 };
 
 /// \brief ASN.1 flags
@@ -131,17 +133,63 @@ CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodeOctetString(BufferedTransformation &bt
 /// \brief DER encode text string
 /// \param bt BufferedTransformation object for writing
 /// \param str the string to encode
+/// \param strLen the length of the string, in bytes
 /// \param asnTag the ASN.1 type
 /// \returns the number of octets used for the encoding
 /// \details DEREncodeTextString() can be used for UTF8_STRING, PRINTABLE_STRING, and IA5_STRING
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API DEREncodeTextString(BufferedTransformation &bt, const byte* str, size_t strLen, byte asnTag);
+
+/// \brief DER encode text string
+/// \param bt BufferedTransformation object for writing
+/// \param str the string to encode
+/// \param asnTag the ASN.1 type
+/// \returns the number of octets used for the encoding
+/// \details DEREncodeTextString() can be used for UTF8_STRING, PRINTABLE_STRING, and IA5_STRING
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API DEREncodeTextString(BufferedTransformation &bt, const SecByteBlock &str, byte asnTag);
+
+/// \brief DER encode text string
+/// \param bt BufferedTransformation object for writing
+/// \param str the string to encode
+/// \param asnTag the ASN.1 type
+/// \returns the number of octets used for the encoding
+/// \details DEREncodeTextString() can be used for UTF8_STRING, PRINTABLE_STRING, and IA5_STRING
+/// \since Crypto++ 6.0
 CRYPTOPP_DLL size_t CRYPTOPP_API DEREncodeTextString(BufferedTransformation &bt, const std::string &str, byte asnTag);
 
 /// \brief BER decode text string
 /// \param bt BufferedTransformation object for reading
-/// \param str the string to encode
+/// \param str the string to decode
 /// \param asnTag the ASN.1 type
 /// \details BERDecodeTextString() can be used for UTF8_STRING, PRINTABLE_STRING, and IA5_STRING
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodeTextString(BufferedTransformation &bt, SecByteBlock &str, byte asnTag);
+
+/// \brief BER decode text string
+/// \param bt BufferedTransformation object for reading
+/// \param str the string to decode
+/// \param asnTag the ASN.1 type
+/// \details BERDecodeTextString() can be used for UTF8_STRING, PRINTABLE_STRING, and IA5_STRING
+/// \since Crypto++ 6.0
 CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodeTextString(BufferedTransformation &bt, std::string &str, byte asnTag);
+
+/// \brief DER encode date
+/// \param bt BufferedTransformation object for writing
+/// \param str the date to encode
+/// \param asnTag the ASN.1 type
+/// \returns the number of octets used for the encoding
+/// \details BERDecodeDate() can be used for UTC_TIME and GENERALIZED_TIME
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API DEREncodeDate(BufferedTransformation &bt, const SecByteBlock &str, byte asnTag);
+
+/// \brief BER decode date
+/// \param bt BufferedTransformation object for reading
+/// \param str the date to decode
+/// \param asnTag the ASN.1 type
+/// \details BERDecodeDate() can be used for UTC_TIME and GENERALIZED_TIME
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodeDate(BufferedTransformation &bt, SecByteBlock &str, byte asnTag);
 
 /// \brief DER encode bit string
 /// \param bt BufferedTransformation object for writing
@@ -162,6 +210,15 @@ CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodeBitString(BufferedTransformation &bt, 
 /// \param dest BufferedTransformation object
 CRYPTOPP_DLL void CRYPTOPP_API DERReencode(BufferedTransformation &bt, BufferedTransformation &dest);
 
+/// \brief BER decode size
+/// \param bt BufferedTransformation object for reading
+/// \returns the length of the ASN.1 value, in bytes
+/// \details BERDecodePeekLength() determines the length of a value without
+///  consuming octets in the stream. The stream must use definite length encoding.
+///  If indefinite length encoding is used or an error occurs, then 0 is returned.
+/// \since Crypto++ 8.3
+CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodePeekLength(BufferedTransformation &bt);
+
 /// \brief Object Identifier
 class CRYPTOPP_DLL OID
 {
@@ -170,16 +227,22 @@ public:
 
 	/// \brief Construct an OID
 	OID() {}
+
 	/// \brief Construct an OID
 	/// \param v value to initialize the OID
 	OID(word32 v) : m_values(1, v) {}
+
 	/// \brief Construct an OID
 	/// \param bt BufferedTransformation object
-	OID(BufferedTransformation &bt) {BERDecode(bt);}
+	OID(BufferedTransformation &bt) {
+		BERDecode(bt);
+	}
 
 	/// \brief Append a value to an OID
 	/// \param rhs the value to append
-	inline OID & operator+=(word32 rhs) {m_values.push_back(rhs); return *this;}
+	inline OID & operator+=(word32 rhs) {
+		m_values.push_back(rhs); return *this;
+	}
 
 	/// \brief DER encode this OID
 	/// \param bt BufferedTransformation object
@@ -201,20 +264,35 @@ public:
 	/// </pre>
 	void BERDecodeAndCheck(BufferedTransformation &bt) const;
 
+	/// \brief Determine if OID is empty
+	/// \returns true if OID has 0 elements, false otherwise
+	/// \since Crypto++ 8.0
 	bool Empty() const {
 		return m_values.empty();
 	}
 
+	/// \brief Retrieve OID value array
+	/// \returns OID value vector
+	/// \since Crypto++ 8.0
 	const std::vector<word32>& GetValues() const {
 		return m_values;
 	}
 
+	/// \brief Print an OID
+	/// \param out ostream object
+	/// \returns ostream reference
+	/// \details Print() writes the OID in a customary format, like
+	///  1.2.840.113549.1.1.11. The caller is reposnsible to convert the
+	///  OID to a friendly name, like sha256WithRSAEncryption.
+	/// \since Crypto++ 8.3
 	std::ostream& Print(std::ostream& out) const;
 
 protected:
 	friend bool operator==(const OID &lhs, const OID &rhs);
 	friend bool operator!=(const OID &lhs, const OID &rhs);
 	friend bool operator<(const OID &lhs, const OID &rhs);
+	friend bool operator<=(const OID &lhs, const OID &rhs);
+	friend bool operator>=(const OID &lhs, const OID &rhs);
 
 	std::vector<word32> m_values;
 
@@ -796,10 +874,29 @@ inline bool operator!=(const OID &lhs, const OID &rhs);
 /// \returns true if the first OID is less than the second OID, false otherwise
 /// \details operator<() calls std::lexicographical_compare() on each element in the array of values.
 inline bool operator<(const OID &lhs, const OID &rhs);
+/// \brief Compare two OIDs for ordering
+/// \param lhs the first OID
+/// \param rhs the second OID
+/// \returns true if the first OID is less than or equal to the second OID, false otherwise
+/// \details operator<=() is implemented in terms of operator==() and operator<().
+/// \since Crypto++ 8.3
+inline bool operator<=(const OID &lhs, const OID &rhs);
+/// \brief Compare two OIDs for ordering
+/// \param lhs the first OID
+/// \param rhs the second OID
+/// \returns true if the first OID is greater than or equal to the second OID, false otherwise
+/// \details operator>=() is implemented in terms of operator<().
+/// \since Crypto++ 8.3
+inline bool operator>=(const OID &lhs, const OID &rhs);
 /// \brief Append a value to an OID
 /// \param lhs the OID
 /// \param rhs the value to append
 inline OID operator+(const OID &lhs, unsigned long rhs);
+/// \brief Print a OID value
+/// \param out the output stream
+/// \param oid the OID
+inline std::ostream& operator<<(std::ostream& out, const OID &oid)
+	{ return oid.Print(out); }
 #else
 inline bool operator==(const ::CryptoPP::OID &lhs, const ::CryptoPP::OID &rhs)
 	{return lhs.m_values == rhs.m_values;}
@@ -807,6 +904,10 @@ inline bool operator!=(const ::CryptoPP::OID &lhs, const ::CryptoPP::OID &rhs)
 	{return lhs.m_values != rhs.m_values;}
 inline bool operator<(const ::CryptoPP::OID &lhs, const ::CryptoPP::OID &rhs)
 	{return std::lexicographical_compare(lhs.m_values.begin(), lhs.m_values.end(), rhs.m_values.begin(), rhs.m_values.end());}
+inline bool operator<=(const ::CryptoPP::OID &lhs, const ::CryptoPP::OID &rhs)
+	{return lhs<rhs || lhs==rhs;}
+inline bool operator>=(const ::CryptoPP::OID &lhs, const ::CryptoPP::OID &rhs)
+	{return ! (lhs<rhs);}
 inline ::CryptoPP::OID operator+(const ::CryptoPP::OID &lhs, unsigned long rhs)
 	{return ::CryptoPP::OID(lhs)+=rhs;}
 inline std::ostream& operator<<(std::ostream& out, const OID &oid)
