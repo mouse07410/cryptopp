@@ -8,7 +8,9 @@
 
 #include "asn.h"
 
+#include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <time.h>
 
 NAMESPACE_BEGIN(CryptoPP)
@@ -148,12 +150,41 @@ size_t BERDecodeOctetString(BufferedTransformation &bt, BufferedTransformation &
 	return bc;
 }
 
-size_t DEREncodeTextString(BufferedTransformation &bt, const std::string &str, byte asnTag)
+size_t DEREncodeTextString(BufferedTransformation &bt, const byte* str, size_t strLen, byte asnTag)
 {
 	bt.Put(asnTag);
-	size_t lengthBytes = DERLengthEncode(bt, str.size());
-	bt.Put((const byte *)str.data(), str.size());
-	return 1+lengthBytes+str.size();
+	size_t lengthBytes = DERLengthEncode(bt, strLen);
+	bt.Put(str, strLen);
+	return 1+lengthBytes+strLen;
+}
+
+size_t DEREncodeTextString(BufferedTransformation &bt, const SecByteBlock &str, byte asnTag)
+{
+	return DEREncodeTextString(bt, str, str.size(), asnTag);
+}
+
+size_t DEREncodeTextString(BufferedTransformation &bt, const std::string &str, byte asnTag)
+{
+	return DEREncodeTextString(bt, ConstBytePtr(str), BytePtrSize(str), asnTag);
+}
+
+size_t BERDecodeTextString(BufferedTransformation &bt, SecByteBlock &str, byte asnTag)
+{
+	byte b;
+	if (!bt.Get(b) || b != asnTag)
+		BERDecodeError();
+
+	size_t bc;
+	if (!BERLengthDecode(bt, bc))
+		BERDecodeError();
+	if (bc > bt.MaxRetrievable()) // Issue 346
+		BERDecodeError();
+
+	str.resize(bc);
+	if (bc != bt.Get(str, str.size()))
+		BERDecodeError();
+
+	return bc;
 }
 
 size_t BERDecodeTextString(BufferedTransformation &bt, std::string &str, byte asnTag)
@@ -168,13 +199,37 @@ size_t BERDecodeTextString(BufferedTransformation &bt, std::string &str, byte as
 	if (bc > bt.MaxRetrievable()) // Issue 346
 		BERDecodeError();
 
-	SecByteBlock temp(bc);
-	if (bc != bt.Get(temp, bc))
+	str.resize(bc);
+	if (bc != bt.Get(BytePtr(str), BytePtrSize(str)))
 		BERDecodeError();
-	if (bc)
-		str.assign((char *)temp.begin(), bc);
-	else
-		str.clear();
+
+	return bc;
+}
+
+size_t DEREncodeDate(BufferedTransformation &bt, const SecByteBlock &str, byte asnTag)
+{
+	bt.Put(asnTag);
+	size_t lengthBytes = DERLengthEncode(bt, str.size());
+	bt.Put(str, str.size());
+	return 1+lengthBytes+str.size();
+}
+
+size_t BERDecodeDate(BufferedTransformation &bt, SecByteBlock &str, byte asnTag)
+{
+	byte b;
+	if (!bt.Get(b) || b != asnTag)
+		BERDecodeError();
+
+	size_t bc;
+	if (!BERLengthDecode(bt, bc))
+		BERDecodeError();
+	if (bc > bt.MaxRetrievable()) // Issue 346
+		BERDecodeError();
+
+	str.resize(bc);
+	if (bc != bt.Get(str, str.size()))
+		BERDecodeError();
+
 	return bc;
 }
 
@@ -228,6 +283,25 @@ void DERReencode(BufferedTransformation &source, BufferedTransformation &dest)
 	}
 	decoder.MessageEnd();
 	encoder.MessageEnd();
+}
+
+size_t BERDecodePeekLength(BufferedTransformation &bt)
+{
+	lword count = (std::min)(bt.MaxRetrievable(), static_cast<lword>(16));
+	if (count == 0) return 0;
+
+	ByteQueue tagAndLength;
+	bt.CopyTo(tagAndLength, count);
+
+	// Skip tag
+	tagAndLength.Skip(1);
+
+	// BERLengthDecode fails for indefinite length.
+	size_t length;
+	if (!BERLengthDecode(tagAndLength, length))
+		return 0;
+
+	return length;
 }
 
 void OID::EncodeValue(BufferedTransformation &bt, word32 v)
@@ -302,6 +376,18 @@ void OID::BERDecodeAndCheck(BufferedTransformation &bt) const
 	OID oid(bt);
 	if (*this != oid)
 		BERDecodeError();
+}
+
+std::ostream& OID::Print(std::ostream& out) const
+{
+	std::ostringstream oss;
+	for (size_t i = 0; i < m_values.size(); ++i)
+	{
+		oss << m_values[i];
+		if (i+1 < m_values.size())
+			oss << ".";
+	}
+	return out << oss.str();
 }
 
 inline BufferedTransformation & EncodedObjectFilter::CurrentTarget()
