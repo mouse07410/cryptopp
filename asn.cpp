@@ -6,7 +6,9 @@
 
 #ifndef CRYPTOPP_IMPORTS
 
+#include "cryptlib.h"
 #include "asn.h"
+#include "misc.h"
 
 #include <iostream>
 #include <iomanip>
@@ -15,7 +17,6 @@
 
 NAMESPACE_BEGIN(CryptoPP)
 
-/// DER Length
 size_t DERLengthEncode(BufferedTransformation &bt, lword length)
 {
 	size_t i=0;
@@ -113,7 +114,7 @@ size_t DEREncodeOctetString(BufferedTransformation &bt, const byte *str, size_t 
 
 size_t DEREncodeOctetString(BufferedTransformation &bt, const SecByteBlock &str)
 {
-	return DEREncodeOctetString(bt, str.begin(), str.size());
+	return DEREncodeOctetString(bt, ConstBytePtr(str), BytePtrSize(str));
 }
 
 size_t BERDecodeOctetString(BufferedTransformation &bt, SecByteBlock &str)
@@ -129,7 +130,7 @@ size_t BERDecodeOctetString(BufferedTransformation &bt, SecByteBlock &str)
 		BERDecodeError();
 
 	str.New(bc);
-	if (bc != bt.Get(str, bc))
+	if (bc != bt.Get(BytePtr(str), bc))
 		BERDecodeError();
 	return bc;
 }
@@ -160,7 +161,7 @@ size_t DEREncodeTextString(BufferedTransformation &bt, const byte* str, size_t s
 
 size_t DEREncodeTextString(BufferedTransformation &bt, const SecByteBlock &str, byte asnTag)
 {
-	return DEREncodeTextString(bt, str, str.size(), asnTag);
+	return DEREncodeTextString(bt, ConstBytePtr(str), BytePtrSize(str), asnTag);
 }
 
 size_t DEREncodeTextString(BufferedTransformation &bt, const std::string &str, byte asnTag)
@@ -181,7 +182,7 @@ size_t BERDecodeTextString(BufferedTransformation &bt, SecByteBlock &str, byte a
 		BERDecodeError();
 
 	str.resize(bc);
-	if (bc != bt.Get(str, str.size()))
+	if (bc != bt.Get(BytePtr(str), BytePtrSize(str)))
 		BERDecodeError();
 
 	return bc;
@@ -210,7 +211,7 @@ size_t DEREncodeDate(BufferedTransformation &bt, const SecByteBlock &str, byte a
 {
 	bt.Put(asnTag);
 	size_t lengthBytes = DERLengthEncode(bt, str.size());
-	bt.Put(str, str.size());
+	bt.Put(ConstBytePtr(str), BytePtrSize(str));
 	return 1+lengthBytes+str.size();
 }
 
@@ -227,7 +228,7 @@ size_t BERDecodeDate(BufferedTransformation &bt, SecByteBlock &str, byte asnTag)
 		BERDecodeError();
 
 	str.resize(bc);
-	if (bc != bt.Get(str, str.size()))
+	if (bc != bt.Get(BytePtr(str), BytePtrSize(str)))
 		BERDecodeError();
 
 	return bc;
@@ -263,7 +264,7 @@ size_t BERDecodeBitString(BufferedTransformation &bt, SecByteBlock &str, unsigne
 		BERDecodeError();
 	unusedBits = unused;
 	str.resize(bc-1);
-	if ((bc-1) != bt.Get(str, bc-1))
+	if ((bc-1) != bt.Get(BytePtr(str), bc-1))
 		BERDecodeError();
 	return bc-1;
 }
