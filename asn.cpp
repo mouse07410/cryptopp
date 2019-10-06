@@ -234,7 +234,6 @@ size_t BERDecodeDate(BufferedTransformation &bt, SecByteBlock &str, byte asnTag)
 	return bc;
 }
 
-/// ASN BitString
 size_t DEREncodeBitString(BufferedTransformation &bt, const byte *str, size_t strLen, unsigned int unusedBits)
 {
 	bt.Put(BIT_STRING);
@@ -455,7 +454,7 @@ void EncodedObjectFilter::Put(const byte *inString, size_t length)
 		// fall through
 		case TAIL:
 		case ALL_DONE:
-		default: ;;
+		default: ;
 		}
 
 		if (m_state == IDENTIFIER && m_level == 0)
