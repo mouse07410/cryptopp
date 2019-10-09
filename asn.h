@@ -25,7 +25,7 @@
 NAMESPACE_BEGIN(CryptoPP)
 
 /// \brief ASN.1 types
-/// \note These tags and flags are not complete
+/// \note These tags are not complete
 enum ASNTag
 {
 	BOOLEAN 			= 0x01,
@@ -56,7 +56,7 @@ enum ASNTag
 };
 
 /// \brief ASN.1 flags
-/// \note These tags and flags are not complete
+/// \note These flags are not complete
 enum ASNIdFlag
 {
 	UNIVERSAL           = 0x00,
@@ -227,7 +227,7 @@ CRYPTOPP_DLL void CRYPTOPP_API DERReencode(BufferedTransformation &bt, BufferedT
 ///  consuming octets in the stream. The stream must use definite length encoding.
 ///  If indefinite length encoding is used or an error occurs, then 0 is returned.
 /// \since Crypto++ 8.3
-CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodePeekLength(BufferedTransformation &bt);
+CRYPTOPP_DLL size_t CRYPTOPP_API BERDecodePeekLength(const BufferedTransformation &bt);
 
 /// \brief Object Identifier
 class CRYPTOPP_DLL OID
