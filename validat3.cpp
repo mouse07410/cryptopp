@@ -135,7 +135,6 @@ bool ValidateAll(bool thorough)
 	pass=ValidateARC4() && pass;
 	pass=ValidateRC5() && pass;
 	pass=ValidateBlowfish() && pass;
-	pass=ValidateBlowfishCompat() && pass;
 	pass=ValidateThreeWay() && pass;
 	pass=ValidateGOST() && pass;
 	pass=ValidateSHARK() && pass;
@@ -171,6 +170,7 @@ bool ValidateAll(bool thorough)
 	pass=ValidateVMAC() && pass;
 	pass=ValidateCCM() && pass;
 	pass=ValidateGCM() && pass;
+	pass=ValidateXTS() && pass;
 	pass=ValidateCMAC() && pass;
 	pass=RunTestDataFile("TestVectors/eax.txt") && pass;
 
