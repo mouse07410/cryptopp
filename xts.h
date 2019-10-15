@@ -49,6 +49,15 @@ NAMESPACE_BEGIN(CryptoPP)
 class CRYPTOPP_NO_VTABLE XTS_ModeBase : public BlockOrientedCipherModeBase
 {
 public:
+    /// \brief The algorithm name
+    /// \returns the algorithm name
+    /// \details StaticAlgorithmName returns the algorithm's name as a static
+    ///   member function.
+    CRYPTOPP_STATIC_CONSTEXPR const char* StaticAlgorithmName()
+        {return "XTS";}
+
+    virtual ~XTS_ModeBase() {}
+
     std::string AlgorithmName() const
         {return GetBlockCipher().AlgorithmName() + "/XTS";}
     std::string AlgorithmProvider() const
@@ -64,16 +73,38 @@ public:
         {return 2*GetBlockCipher().GetValidKeyLength((n+1)/2);}
     bool IsValidKeyLength(size_t keylength) const
         {return keylength == GetValidKeyLength(keylength);}
+
+    /// \brief Validates the key length
+    /// \param length the size of the keying material, in bytes
+    /// \throws InvalidKeyLength if the key length is invalid
     void ThrowIfInvalidKeyLength(size_t length);
 
     /// Provides the block size of the cipher
     /// \return the block size of the cipher, in bytes
     unsigned int BlockSize() const
         {return GetBlockCipher().BlockSize();}
+
+    /// \brief Provides the input block size most efficient for this cipher
+    /// \return The input block size that is most efficient for the cipher
+    /// \details The base class implementation returns MandatoryBlockSize().
+    /// \note Optimal input length is
+    ///  <tt>n * OptimalBlockSize() - GetOptimalBlockSizeUsed()</tt> for
+    ///  any <tt>n \> 0</tt>.
+    unsigned int GetOptimalBlockSize() const
+        {return GetBlockCipher().BlockSize()*ParallelBlocks;}
     unsigned int MinLastBlockSize() const
         {return GetBlockCipher().BlockSize()+1;}
     unsigned int OptimalDataAlignment() const
         {return GetBlockCipher().OptimalDataAlignment();}
+
+    /// \brief Validates the block size
+    /// \param length the block size of the cipher, in bytes
+    /// \throws InvalidArgument if the block size is invalid
+    /// \details If <tt>CRYPTOPP_XTS_WIDE_BLOCK_CIPHERS</tt> is 0,
+    ///  then CIPHER must be a 16-byte block cipher. If
+    ///  <tt>CRYPTOPP_XTS_WIDE_BLOCK_CIPHERS</tt> is non-zero then
+    ///  CIPHER can be 16, 32, 64, or 128-byte block cipher.
+    void ThrowIfInvalidBlockSize(size_t length);
 
     void SetKey(const byte *key, size_t length, const NameValuePairs &params = g_nullNameValuePairs);
     IV_Requirement IVRequirement() const {return UNIQUE_IV;}
@@ -102,19 +133,41 @@ protected:
     const BlockCipher& GetTweakCipher() const
         {return const_cast<XTS_ModeBase*>(this)->AccessTweakCipher();}
 
-    SecByteBlock m_workspace;
+    // Buffers are sized based on ParallelBlocks
+    SecByteBlock m_xregister;
+    SecByteBlock m_xworkspace;
+
+    enum {ParallelBlocks = 4};
 };
 
-/// \brief XTS block cipher mode of operation implementation details
+/// \brief XTS block cipher mode of operation implementation
 /// \tparam CIPHER BlockCipher derived class or type
+/// \details XTS_Final() provides access to CIPHER in base class XTS_ModeBase()
+///  through an interface. AccessBlockCipher() and AccessTweakCipher() allow
+///  the XTS_ModeBase() base class to access the user's block cipher without
+///  recompiling the library.
+/// \details If <tt>CRYPTOPP_XTS_WIDE_BLOCK_CIPHERS</tt> is 0, then CIPHER must
+///  be a 16-byte block cipher. If <tt>CRYPTOPP_XTS_WIDE_BLOCK_CIPHERS</tt> is
+///  non-zero then CIPHER can be 16, 32, 64, or 128-byte block cipher.
+///  There is risk involved with using XTS with wider block ciphers.
+///  According to Phillip Rogaway, "The narrow width of the underlying PRP and
+///  the poor treatment of fractional final blocks are problems." To enable
+///  wide block cipher support define <tt>CRYPTOPP_XTS_WIDE_BLOCK_CIPHERS</tt> to
+///  non-zero.
+/// \sa <A HREF="http://www.cryptopp.com/wiki/Modes_of_Operation">Modes of
+///  Operation</A> on the Crypto++ wiki, <A
+///  HREF="https://web.cs.ucdavis.edu/~rogaway/papers/modes.pdf"> Evaluation of Some
+///  Blockcipher Modes of Operation</A>, <A
+///  HREF="https://csrc.nist.gov/publications/detail/sp/800-38e/final">Recommendation
+///  for Block Cipher Modes of Operation: The XTS-AES Mode for Confidentiality on
+///  Storage Devices</A>, <A
+///  HREF="http://libeccio.di.unisa.it/Crypto14/Lab/p1619.pdf">IEEE P1619-2007</A>
+///  and <A HREF="https://crypto.stackexchange.com/q/74925/10496">IEEE P1619/XTS,
+///  inconsistent reference implementation and test vectors</A>.
 /// \since Crypto++ 8.3
 template <class CIPHER>
 class CRYPTOPP_NO_VTABLE XTS_Final : public XTS_ModeBase
 {
-public:
-    static const char* CRYPTOPP_API StaticAlgorithmName()
-        {return "XTS";}
-
 protected:
     BlockCipher& AccessBlockCipher()
         {return *m_cipher;}
