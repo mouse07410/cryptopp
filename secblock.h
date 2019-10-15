@@ -148,22 +148,29 @@ typedef typename AllocatorBase<T>::const_reference const_reference;
 template <class T, class A>
 typename A::pointer StandardReallocate(A& alloc, T *oldPtr, typename A::size_type oldSize, typename A::size_type newSize, bool preserve)
 {
-	CRYPTOPP_ASSERT((oldPtr && oldSize) || !(oldPtr || oldSize));
+	// Avoid assert on pointer in reallocate. SecBlock regularly uses NULL
+	// pointers rather returning non-NULL 0-sized pointers.
 	if (oldSize == newSize)
 		return oldPtr;
 
 	if (preserve)
 	{
 		typename A::pointer newPointer = alloc.allocate(newSize, NULLPTR);
-		const size_t copySize = STDMIN(oldSize, newSize) * sizeof(T);
+		const typename A::size_type copySize = STDMIN(oldSize, newSize) * sizeof(T);
 
-		if (oldPtr && newPointer) {memcpy_s(newPointer, copySize, oldPtr, copySize);}
-		alloc.deallocate(oldPtr, oldSize);
+		if (oldPtr && newPointer)
+			memcpy_s(newPointer, copySize, oldPtr, copySize);
+
+		if (oldPtr)
+			alloc.deallocate(oldPtr, oldSize);
+
 		return newPointer;
 	}
 	else
 	{
-		alloc.deallocate(oldPtr, oldSize);
+		if (oldPtr)
+			alloc.deallocate(oldPtr, oldSize);
+
 		return alloc.allocate(newSize, NULLPTR);
 	}
 }
@@ -204,7 +211,6 @@ public:
 			return NULLPTR;
 
 #if CRYPTOPP_BOOL_ALIGN16
-		// TODO: Does this need to test 'size*sizeof(T) >= 16'?
 		if (T_Align16)
 			return reinterpret_cast<pointer>(AlignedAllocate(size*sizeof(T)));
 #endif
@@ -222,17 +228,19 @@ public:
 	///  UnalignedDeallocate() used if T_Align16 is false.
 	void deallocate(void *ptr, size_type size)
 	{
-		// This will fire if SetMark(0) was called in the SecBlock
-		// Our self tests exercise it, disable it now.
-		// CRYPTOPP_ASSERT((ptr && size) || !(ptr || size));
-		SecureWipeArray(reinterpret_cast<pointer>(ptr), size);
+		// Avoid assert on pointer in deallocate. SecBlock regularly uses NULL
+		// pointers rather returning non-NULL 0-sized pointers.
+		if (ptr)
+		{
+			SecureWipeArray(reinterpret_cast<pointer>(ptr), size);
 
 #if CRYPTOPP_BOOL_ALIGN16
-		if (T_Align16)
-			return AlignedDeallocate(ptr);
+			if (T_Align16)
+				return AlignedDeallocate(ptr);
 #endif
 
-		UnalignedDeallocate(ptr);
+			UnalignedDeallocate(ptr);
+		}
 	}
 
 	/// \brief Reallocates a block of memory
@@ -412,6 +420,8 @@ public:
 	///  size are passed to the allocator for deallocation.
 	void deallocate(void *ptr, size_type size)
 	{
+		// Avoid assert on pointer in deallocate. SecBlock regularly uses NULL
+		// pointers rather returning non-NULL 0-sized pointers.
 		if (ptr == GetAlignedArray())
 		{
 			// If the m_allocated assert fires then the bit twiddling for
@@ -424,7 +434,10 @@ public:
 			SecureWipeArray(reinterpret_cast<pointer>(ptr), size);
 		}
 		else
-			m_fallbackAllocator.deallocate(ptr, size);
+		{
+			if (ptr)
+				m_fallbackAllocator.deallocate(ptr, size);
+		}
 	}
 
 	/// \brief Reallocates a block of memory
@@ -458,7 +471,7 @@ public:
 		pointer newPointer = allocate(newSize, NULLPTR);
 		if (preserve && newSize)
 		{
-			const size_t copySize = STDMIN(oldSize, newSize);
+			const size_type copySize = STDMIN(oldSize, newSize);
 			memcpy_s(newPointer, sizeof(T)*newSize, oldPtr, sizeof(T)*copySize);
 		}
 		deallocate(oldPtr, oldSize);
@@ -611,6 +624,8 @@ public:
 	///   size are passed to the allocator for deallocation.
 	void deallocate(void *ptr, size_type size)
 	{
+		// Avoid assert on pointer in deallocate. SecBlock regularly uses NULL
+		// pointers rather returning non-NULL 0-sized pointers.
 		if (ptr == GetAlignedArray())
 		{
 			// If the m_allocated assert fires then
@@ -621,7 +636,11 @@ public:
 			SecureWipeArray((pointer)ptr, size);
 		}
 		else
-			m_fallbackAllocator.deallocate(ptr, size);
+		{
+			if (ptr)
+				m_fallbackAllocator.deallocate(ptr, size);
+			m_allocated = false;
+		}
 	}
 
 	/// \brief Reallocates a block of memory
@@ -655,7 +674,7 @@ public:
 		pointer newPointer = allocate(newSize, NULLPTR);
 		if (preserve && newSize)
 		{
-			const size_t copySize = STDMIN(oldSize, newSize);
+			const size_type copySize = STDMIN(oldSize, newSize);
 			memcpy_s(newPointer, sizeof(T)*newSize, oldPtr, sizeof(T)*copySize);
 		}
 		deallocate(oldPtr, oldSize);
