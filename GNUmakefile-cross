@@ -5,7 +5,7 @@ SHELL = /bin/sh
 
 # If needed
 TMPDIR ?= /tmp
-# Used for ARMv7 and NEON.
+# Used for ARMv7a and NEON. Android hard codes softfp
 FP_ABI ?= hard
 # Used for feature tests
 TOUT ?= a.out
@@ -36,7 +36,6 @@ LDCONF ?= /sbin/ldconfig -n
 IS_IOS ?= 0
 IS_ANDROID ?= 0
 IS_ARM_EMBEDDED ?= 0
-IS_NEON ?= 0
 
 # Yet another Clang hack. I think the LLVM devs are making the shit up
 # as they go. Also see https://github.com/weidai11/cryptopp/issues/831.
@@ -121,17 +120,9 @@ endif
 #   See http://www.cryptopp.com/wiki/Android_(Command_Line).
 ifeq ($(IS_ANDROID),1)
   # CPP, CXX, AR, RANLIB, LD, etc are set in 'setenv-android.sh'
-  CXXFLAGS += $(AOSP_FLAGS) -DANDROID --sysroot=$(AOSP_SYSROOT)
-  CXXFLAGS += -Wa,--noexecstack -I$(AOSP_STL_INC) -I$(AOSP_SYS_ARCH_INC)
-  LDFLAGS += --sysroot=$(AOSP_LD_SYSROOT)
-
-  # c++config.h shows up in odd places at times.
-  ifneq ($(AOSP_BITS_INC),)
-    CXXFLAGS += -I$(AOSP_BITS_INC)
-  endif
-
-  # STL headers
-  LDLIBS += $(AOSP_STL_LIB)
+  CXXFLAGS += $(AOSP_FLAGS) -stdlib=$(AOSP_RUNTIME) -DANDROID
+  CXXFLAGS += -D__ANDROID_API__=$(AOSP_API) --sysroot=$(AOSP_SYSROOT)
+  CXXFLAGS += -Wa,--noexecstack
 
   # Source files copied into PWD for Android cpu-features
   # setenv-android.sh does the copying. Its a dirty compile.
@@ -178,6 +169,10 @@ else
   IS_X64 := $(shell echo $(HOSTX) | $(GREP) -i -c -E 'x86_64|amd64')
   IS_ARM32 := $(shell echo $(HOSTX) | $(GREP) -v 64 | $(GREP) -i -c -E 'arm|armhf|arm7l|eabihf')
   IS_ARMV8 := $(shell echo $(HOSTX) | $(GREP) -i -c -E 'aarch32|aarch64|arm64|armv8')
+endif
+
+ifeq ($(IS_ARMV8),1)
+  IS_ARM32 = 0
 endif
 
 $(info Here's what we found... IS_X86: $(IS_X86), IS_X64: $(IS_X64), IS_ARM32: $(IS_ARM32), IS_ARMV8: $(IS_ARMV8))
@@ -360,6 +355,15 @@ ifeq ($(DETECT_FEATURES),1)
     endif
   endif
 
+  # Most Clang cannot handle mixed asm with positional arguments, where the
+  # body is Intel style with no prefix and the templates are AT&T style.
+  # Also see https://bugs.llvm.org/show_bug.cgi?id=39895 .
+  TPROG = TestPrograms/test_mixed_asm.cxx
+  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifneq ($(strip $(HAVE_OPT)),0)
+    CXXFLAGS += -DCRYPTOPP_DISABLE_MIXED_ASM
+  endif
+
 # DETECT_FEATURES
 endif
 
@@ -375,8 +379,9 @@ ifeq ($(DETECT_FEATURES),1)
 
 ifeq ($(IS_ARM32),1)
 
-  ifneq ($(IS_IOS)$(IS_ANDROID),00)
-    NEON_FLAG =
+  # Android needs -c compile flag for NEON. Otherwise there's an odd linker message.
+  ifeq ($(IS_ANDROID),1)
+    NEON_FLAG = -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -mfpu=neon
   else
     NEON_FLAG = -march=armv7-a -mfloat-abi=$(FP_ABI) -mfpu=neon
   endif
@@ -510,7 +515,7 @@ endif
 # DETECT_FEATURES
 endif
 
-# IS_ARM32, IS_ARMV8, IS_NEON
+# IS_ARM32, IS_ARMV8
 endif
 
 ###########################################################
@@ -828,7 +833,7 @@ aes_armv4.o : aes_armv4.S
 	$(CXX) $(strip $(CXXFLAGS) $(CRYPTOGAMS_ARMV7_THUMB_FLAG) -c) $<
 
 cpu-features.o: cpu-features.h cpu-features.c
-	$(CXX) $(strip $(CXXFLAGS) -fpermissive -c) cpu-features.c
+	$(CXX) -x c $(strip $(CXXFLAGS) -c) cpu-features.c
 
 # SSSE3 or NEON available
 aria_simd.o : aria_simd.cpp

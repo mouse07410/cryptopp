@@ -11,12 +11,11 @@
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
 # ====================================================================
 
-# set -eu
+# set -x
 
-# Sanity check
+# cryptest-ios.sh may run this script without sourcing.
 if [ "$0" = "${BASH_SOURCE[0]}" ]; then
-    echo "Please source this setenv script"
-    exit 0
+    echo "setenv-ios.sh is usually sourced, but not this time."
 fi
 
 #########################################
@@ -52,7 +51,7 @@ BACK_ARCH=
 
 for ARG in "$@"
 do
-  CL=$(echo $ARG | tr '[A-Z]' '[a-z]')
+  CL=$(echo "$ARG" | tr '[:upper:]' '[:lower:]')
 
   # i386 (simulator)
   if [ "$CL" == "i386" ]; then
@@ -265,7 +264,7 @@ export IOS_SYSROOT="$XCODE_DEVELOPER_TOP/SDKs/$XCODE_SDK"
 
 if [ "$SETENV_VERBOSE" == "1" ]; then
 
-  echo "XCODE_SDK:" $XCODE_SDK
+  echo "XCODE_SDK: $XCODE_SDK"
   echo "XCODE_DEVELOPER: $XCODE_DEVELOPER"
   echo "XCODE_TOOLCHAIN: $XCODE_TOOLCHAIN"
   echo "XCODE_DEVELOPER_TOP: $XCODE_DEVELOPER_TOP"
@@ -304,7 +303,7 @@ FOUND_ALL=1
 
 # Apple's embedded g++ cannot compile integer.cpp
 TOOLS=(clang clang++ libtool ld)
-for tool in ${TOOLS[@]}
+for tool in "${TOOLS[@]}"
 do
     if [ ! -e "$IOS_TOOLCHAIN/$tool" ] && [ ! -e "$XCODE_TOOLCHAIN/$tool" ]; then
         echo "ERROR: unable to find $tool at IOS_TOOLCHAIN or XCODE_TOOLCHAIN"
