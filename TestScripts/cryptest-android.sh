@@ -12,33 +12,40 @@
 
 # set -x
 
-if [ -z $(command -v ./setenv-android.sh) ]; then
+if [ -z "$(command -v ./setenv-android.sh)" ]; then
 	echo "Failed to locate setenv-android.sh"
-	ls -Al *.sh
 	[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
 
-if [ -n "${PLATFORM-}" ]; then
-	PLATFORMS=(${PLATFORM})
-else
-	PLATFORMS=(armeabi-v7a arm64-v8a x86 x86_64)
-fi
-
-# Thank god... one runtime and one compiler
-RUNTIMES=(libc++)
-MAKE_JOBS=2
-
+# Temp directory
 if [[ -z "$TMPDIR" ]]; then
 	TMPDIR="$HOME/tmp"
 	mkdir "$TMPDIR"
 fi
 
+MAKE_JOBS=2
+
+# Cleanup old artifacts
 rm -rf "$TMPDIR/build.failed" 2>/dev/null
 rm -rf "$TMPDIR/build.log" 2>/dev/null
 
-for platform in ${PLATFORMS[@]}
+if [ "$#" -gt 0 ]; then
+	# Accept platforms on the command line
+	PLATFORMS=("$@")
+elif [ -n "$PLATFORM" ]; then
+	# Accept platforms in the environment
+	PLATFORMS=("$PLATFORM")
+else
+	# Use all platforms
+	PLATFORMS=(armeabi-v7a arm64-v8a x86 x86_64)
+fi
+
+# Thank god... one runtime and one compiler
+RUNTIMES=(libc++)
+
+for platform in "${PLATFORMS[@]}"
 do
-	for runtime in ${RUNTIMES[@]}
+	for runtime in "${RUNTIMES[@]}"
 	do
 		make -f GNUmakefile-cross distclean > /dev/null 2>&1
 
@@ -61,10 +68,10 @@ do
 		echo "Building for $platform using $runtime..."
 		echo
 
-		# run in subshell to not keep any env vars
+		# run in subshell to not keep any envars
 		(
 			source ./setenv-android.sh "$platform" "$runtime" # > /dev/null 2>&1
-			if make -j "$MAKE_JOBS" -f GNUmakefile-cross static dynamic cryptest.exe;
+			if make -k -j "$MAKE_JOBS" -f GNUmakefile-cross static dynamic cryptest.exe;
 			then
 				echo "$platform:$runtime ==> SUCCESS" >> "$TMPDIR/build.log"
 			else

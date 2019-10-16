@@ -16,13 +16,10 @@
 # See http://www.cryptopp.com/wiki/Android_(Command_Line) for more details
 # ====================================================================
 
-# set -eu
-
 # cryptest-android.sh may run this script without sourcing.
-#if [ "$0" = "${BASH_SOURCE[0]}" ]; then
-#    echo "Please source this setenv script"
-#    exit 0
-#fi
+if [ "$0" = "${BASH_SOURCE[0]}" ]; then
+    echo "setenv-android.sh is usually sourced, but not this time."
+fi
 
 unset IS_CROSS_COMPILE
 
@@ -33,8 +30,7 @@ unset IS_ARM_EMBEDDED
 # Variables used in GNUmakefile-cross
 unset AOSP_FLAGS
 unset AOSP_SYSROOT
-unset AOSP_SYSROOT_LD
-unset AOSP_SYSROOT_INC
+unset AOSP_RUNTIME
 
 # Tools set by this script
 unset CPP CC CXX LD AS AR RANLIB STRIP
@@ -47,6 +43,7 @@ fi
 
 # Set AOSP_API to the API you want to use. Most are listed for
 # historical reference. Use API 23 or above.
+# https://source.android.com/setup/start/build-numbers
 # AOSP_API="3"     # Android 1.5 and above
 # AOSP_API="4"     # Android 1.6 and above
 # AOSP_API="5"     # Android 2.0 and above
@@ -57,11 +54,12 @@ fi
 # AOSP_API="19"    # Android 4.4 and above
 # AOSP_API="21"    # Android 5.0 and above
 # AOSP_API="23"    # Android 6.0 and above
-# AOSP_API="25"    # Android N.N and above
-# AOSP_API="26"    # Android N.N and above
-# AOSP_API="27"    # Android N.N and above
-# AOSP_API="28"    # Android N.N and above
-# AOSP_API="29"    # Android N.N and above
+# AOSP_API="24"    # Android 7.0 and above
+# AOSP_API="25"    # Android 7.1 and above
+# AOSP_API="26"    # Android 8.0 and above
+# AOSP_API="27"    # Android 8.1 and above
+# AOSP_API="28"    # Android 9.0 and above
+# AOSP_API="29"    # Android 10.0 and above
 if [ -z "${AOSP_API-}" ]; then
     AOSP_API="23"
 fi
@@ -116,6 +114,7 @@ fi
 
 AOSP_TOOLCHAIN_ROOT="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/$HOST_TAG/"
 AOSP_TOOLCHAIN_PATH="$AOSP_TOOLCHAIN_ROOT/bin/"
+AOSP_SYSROOT="$AOSP_TOOLCHAIN_ROOT/sysroot"
 
 # Error checking
 if [ ! -d "$AOSP_TOOLCHAIN_ROOT" ]; then
@@ -128,6 +127,13 @@ fi
 if [ ! -d "$AOSP_TOOLCHAIN_PATH" ]; then
     echo "ERROR: AOSP_TOOLCHAIN_PATH is not a valid path. Please set it."
     echo "Path is $AOSP_TOOLCHAIN_PATH"
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
+fi
+
+# Error checking
+if [ ! -d "$AOSP_SYSROOT" ]; then
+    echo "ERROR: AOSP_SYSROOT is not a valid path. Please set it."
+    echo "Path is $AOSP_SYSROOT"
     [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
@@ -150,7 +156,7 @@ case "$THE_ARCH" in
     RANLIB="arm-linux-androideabi-ranlib"
     STRIP="arm-linux-androideabi-strip"
 
-    AOSP_FLAGS="-march=armv7-a -mthumb -mfpu=vfpv3-d16 -mfloat-abi=softfp -DCRYPTOPP_DISABLE_ASM -funwind-tables -fexceptions -frtti"
+    AOSP_FLAGS="-march=armv7-a -mthumb -mfloat-abi=softfp -funwind-tables -fexceptions -frtti"
     ;;
   armv8|armv8a|aarch64|arm64|arm64-v8a)
     CC="aarch64-linux-android$AOSP_API-clang"
@@ -211,28 +217,12 @@ export AOSP_FLAGS AOSP_API
 
 export CPP CC CXX LD AS AR RANLIB STRIP
 
-export AOSP_RUNTIME
-
-export AOSP_SYSROOT="$AOSP_TOOLCHAIN_ROOT/sysroot"
+export AOSP_RUNTIME AOSP_SYSROOT
 
 # Do NOT use AOSP_SYSROOT_INC or AOSP_SYSROOT_LD
 # https://github.com/android/ndk/issues/894#issuecomment-470837964
-#export AOSP_SYSROOT_INC="$AOSP_SYSROOT/usr/include"
-#export AOSP_SYSROOT_LD=
 
 #####################################################################
-
-# Error checking
-if [ -z "$AOSP_TOOLCHAIN_PATH" ] || [ ! -d "$AOSP_TOOLCHAIN_PATH" ]; then
-    echo "ERROR: AOSP_TOOLCHAIN_PATH is not valid. Please edit this script."
-    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
-fi
-
-# Error checking
-if [ -z "$AOSP_SYSROOT" ] || [ ! -d "$AOSP_SYSROOT" ]; then
-    echo "ERROR: AOSP_SYSROOT is not valid. Please edit this script."
-    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
-fi
 
 # Error checking
 if [ ! -e "$AOSP_TOOLCHAIN_PATH/$CC" ]; then
