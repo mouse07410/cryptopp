@@ -38,6 +38,12 @@
 // Also see https://bugs.llvm.org/show_bug.cgi?id=39895 .
 // #define CRYPTOPP_DISABLE_MIXED_ASM 1
 
+#ifndef CRYPTOPP_DISABLE_MIXED_ASM
+# if defined(__clang__)
+#  define CRYPTOPP_DISABLE_MIXED_ASM 1
+# endif
+#endif
+
 // CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS is no longer honored. It
 // was removed at https://github.com/weidai11/cryptopp/issues/682
 // #define CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS 1
@@ -48,7 +54,7 @@
 // Some relevant bug reports can be found at:
 // * Clang: http://github.com/weidai11/cryptopp/issues/147
 // * Native Client: https://github.com/weidai11/cryptopp/issues/719
-#if (defined(_MSC_VER) && defined(__clang__))
+#if (defined(_MSC_VER) && defined(__clang__) && !(defined( __clang_analyzer__)))
 # error: "Unsupported configuration"
 #endif
 
@@ -208,11 +214,15 @@
 #  undef CRYPTOPP_CLMUL_AVAILABLE
 #  undef CRYPTOPP_AESNI_AVAILABLE
 #  undef CRYPTOPP_SHANI_AVAILABLE
+#  undef CRYPTOPP_AVX_AVAILABLE
+#  undef CRYPTOPP_AVX2_AVAILABLE
 # endif
 # if (CRYPTOPP_BOOL_X64)
 #  undef CRYPTOPP_CLMUL_AVAILABLE
 #  undef CRYPTOPP_AESNI_AVAILABLE
 #  undef CRYPTOPP_SHANI_AVAILABLE
+#  undef CRYPTOPP_AVX_AVAILABLE
+#  undef CRYPTOPP_AVX2_AVAILABLE
 # endif
 #endif
 
@@ -338,11 +348,20 @@
 # endif  // Platforms
 #endif
 
+// Limit the <arm_neon.h> include.
+#if !defined(CRYPTOPP_ARM_NEON_HEADER)
+# if defined(CRYPTOPP_ARM_NEON_AVAILABLE) || defined (CRYPTOPP_ARM_ASIMD_AVAILABLE)
+#  if !defined(_M_ARM64)
+#   define CRYPTOPP_ARM_NEON_HEADER 1
+#  endif
+# endif
+#endif
+
 // Limit the <arm_acle.h> include.
-#if !defined(CRYPTOPP_ARM_ACLE_AVAILABLE)
+#if !defined(CRYPTOPP_ARM_ACLE_HEADER)
 # if defined(__aarch32__) || defined(__aarch64__) || (__ARM_ARCH >= 8) || defined(__ARM_ACLE)
 #  if !defined(__ANDROID__) && !defined(ANDROID) && !defined(__APPLE__)
-#   define CRYPTOPP_ARM_ACLE_AVAILABLE 1
+#   define CRYPTOPP_ARM_ACLE_HEADER 1
 #  endif
 # endif
 #endif
