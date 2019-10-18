@@ -682,6 +682,8 @@ class TF_VerifierImpl : public TF_ObjectImpl<TF_VerifierBase, SCHEME_OPTIONS, ty
 // ********************************************************
 
 /// \brief Mask generation function interface
+/// \sa P1363_KDF2, P1363_MGF1
+/// \since Crypto++ 2.0
 class CRYPTOPP_NO_VTABLE MaskGeneratingFunction
 {
 public:
@@ -711,10 +713,24 @@ public:
 CRYPTOPP_DLL void CRYPTOPP_API P1363_MGF1KDF2_Common(HashTransformation &hash, byte *output, size_t outputLength, const byte *input, size_t inputLength, const byte *derivationParams, size_t derivationParamsLength, bool mask, unsigned int counterStart);
 
 /// \brief P1363 mask generation function
+/// \sa P1363_KDF2, MaskGeneratingFunction
+/// \since Crypto++ 2.0
 class P1363_MGF1 : public MaskGeneratingFunction
 {
 public:
+	/// \brief The algorithm name
+	/// \returns the algorithm name
+	/// \details StaticAlgorithmName returns the algorithm's name as a static
+	///   member function.
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "MGF1";}
+
+	/// \brief P1363 mask generation function
+	/// \param hash HashTransformation derived class
+	/// \param output the destination byte array
+	/// \param outputLength the size fo the the destination byte array
+	/// \param input the message to hash
+	/// \param inputLength the size of the message
+	/// \param mask flag indicating whether to apply the mask
 	void GenerateAndMask(HashTransformation &hash, byte *output, size_t outputLength, const byte *input, size_t inputLength, bool mask = true) const
 	{
 		P1363_MGF1KDF2_Common(hash, output, outputLength, input, inputLength, NULLPTR, 0, mask, 0);
@@ -725,10 +741,22 @@ public:
 
 /// \brief P1363 key derivation function
 /// \tparam H hash function used in the derivation
+/// \sa P1363_MGF1, KeyDerivationFunction, <A
+///  HREF="https://www.cryptopp.com/wiki/P1363_KDF2">P1363_KDF2</A>
+///  on the Crypto++ wiki
+/// \since Crypto++ 2.0
 template <class H>
 class P1363_KDF2
 {
 public:
+	/// \brief P1363 key derivation function
+	/// \param output the destination byte array
+	/// \param outputLength the size fo the the destination byte array
+	/// \param input the message to hash
+	/// \param inputLength the size of the message
+	/// \param derivationParams additional derivation parameters
+	/// \param derivationParamsLength the size of the additional derivation parameters
+	/// \details DeriveKey calls P1363_MGF1KDF2_Common
 	static void CRYPTOPP_API DeriveKey(byte *output, size_t outputLength, const byte *input, size_t inputLength, const byte *derivationParams, size_t derivationParamsLength)
 	{
 		H h;
