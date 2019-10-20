@@ -1088,6 +1088,16 @@ ifeq ($(IS_ARM32)$(IS_LINUX),11)
   SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
 endif
 
+ifeq ($(IS_PPC32)$(IS_PPC64),00)
+  SRCS := $(filter-out ppc_%,$(SRCS))
+endif
+ifeq ($(IS_ARM32)$(IS_ARMV8),00)
+  SRCS := $(filter-out arm_%,$(SRCS))
+endif
+ifeq ($(IS_X86)$(IS_X32)$(IS_X64),000)
+  SRCS := $(filter-out sse_%,$(SRCS))
+endif
+
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
 OBJS := $(SRCS:.cpp=.o)
 OBJS := $(OBJS:.S=.o)
@@ -1240,8 +1250,13 @@ cmake-clean:
 	@-$(RM) -f cryptopp-config.cmake CMakeLists.txt
 	@-$(RM) -rf cmake_build/
 
+.PHONY: android-clean
+android-clean:
+	@-$(RM) -f $(patsubst %_simd.cpp,%_simd.cpp.neon,$(wildcard *_simd.cpp))
+	@-$(RM) -rf obj/
+
 .PHONY: distclean
-distclean: clean autotools-clean cmake-clean
+distclean: clean autotools-clean cmake-clean android-clean
 	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt
 	@-$(RM) cryptest-*.txt cryptopp.tgz libcryptopp.pc *.o *.bc *.ii *~
 	@-$(RM) -r cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
