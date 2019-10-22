@@ -413,11 +413,14 @@ ifeq ($(DETECT_FEATURES),1)
   # Most Clang cannot handle mixed asm with positional arguments, where the
   # body is Intel style with no prefix and the templates are AT&T style.
   # Also see https://bugs.llvm.org/show_bug.cgi?id=39895 .
-  TPROG = TestPrograms/test_mixed_asm.cxx
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
-  ifneq ($(strip $(HAVE_OPT)),0)
-    CXXFLAGS += -DCRYPTOPP_DISABLE_MIXED_ASM
-  endif
+
+  # CRYPTOPP_DISABLE_MIXED_ASM is now being added in config_asm.h for all
+  # Clang compilers. This test will need to be re-enabled if Clang fixes it.
+  #TPROG = TestPrograms/test_asm_mixed.cxx
+  #HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  #ifneq ($(strip $(HAVE_OPT)),0)
+  #  CXXFLAGS += -DCRYPTOPP_DISABLE_MIXED_ASM
+  #endif
 
 # DETECT_FEATURES
 endif
@@ -1088,11 +1091,13 @@ ifeq ($(IS_ARM32)$(IS_LINUX),11)
   SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
 endif
 
+# Remove unneeded arch specific files to speed build time.
 ifeq ($(IS_PPC32)$(IS_PPC64),00)
   SRCS := $(filter-out ppc_%,$(SRCS))
 endif
 ifeq ($(IS_ARM32)$(IS_ARMV8),00)
   SRCS := $(filter-out arm_%,$(SRCS))
+  SRCS := $(filter-out neon_%,$(SRCS))
 endif
 ifeq ($(IS_X86)$(IS_X32)$(IS_X64),000)
   SRCS := $(filter-out sse_%,$(SRCS))
@@ -1398,7 +1403,7 @@ libcryptopp.pc:
 	@echo 'Libs: -L$${libdir} -lcryptopp' >> libcryptopp.pc
 
 # This recipe prepares the distro files
-TEXT_FILES := *.h *.cpp adhoc.cpp License.txt Readme.txt Install.txt Filelist.txt Doxyfile cryptest* cryptlib* dlltest* cryptdll* *.sln *.s *.S *.vcxproj *.filters cryptopp.rc TestVectors/*.txt TestData/*.dat TestPrograms/*.cxx TestScripts/*.sh TestScripts/*.cmd
+TEXT_FILES := *.h *.cpp License.txt Readme.txt Install.txt Filelist.txt Doxyfile cryptest* cryptlib* dlltest* cryptdll* *.sln *.vcxproj *.filters cryptopp.rc TestVectors/*.txt TestData/*.dat TestPrograms/*.cxx TestScripts/*.sh TestScripts/*.cmd
 EXEC_FILES := GNUmakefile GNUmakefile-cross TestData/ TestVectors/ TestScripts/ TestPrograms/
 
 ifeq ($(wildcard Filelist.txt),Filelist.txt)
@@ -1408,12 +1413,12 @@ endif
 .PHONY: trim
 trim:
 ifneq ($(IS_DARWIN),0)
-	$(SED) -i '' -e's/[[:space:]]*$$//' *.supp *.txt *.sh .*.yml *.h *.cpp *.asm *.s *.S
+	$(SED) -i '' -e's/[[:space:]]*$$//' *.supp *.txt .*.yml *.h *.cpp *.asm *.S
 	$(SED) -i '' -e's/[[:space:]]*$$//' *.sln *.vcxproj *.filters GNUmakefile GNUmakefile-cross
 	$(SED) -i '' -e's/[[:space:]]*$$//' TestData/*.dat TestVectors/*.txt TestPrograms/*.cxx TestScripts/*.*
 	make convert
 else
-	$(SED) -i -e's/[[:space:]]*$$//' *.supp *.txt *.sh .*.yml *.h *.cpp *.asm *.s *.S
+	$(SED) -i -e's/[[:space:]]*$$//' *.supp *.txt .*.yml *.h *.cpp *.asm *.S
 	$(SED) -i -e's/[[:space:]]*$$//' *.sln *.vcxproj *.filters GNUmakefile GNUmakefile-cross
 	$(SED) -i -e's/[[:space:]]*$$//' TestData/*.dat TestVectors/*.txt TestPrograms/*.cxx TestScripts/*.*
 	make convert
@@ -1422,11 +1427,11 @@ endif
 .PHONY: convert
 convert:
 	@-$(CHMOD) 0700 TestVectors/ TestData/ TestPrograms/ TestScripts/
-	@-$(CHMOD) 0600 $(TEXT_FILES) *.supp .*.yml *.asm *.s *.zip TestVectors/*.txt TestData/*.dat TestPrograms/*.cxx TestScripts/*.*
-	@-$(CHMOD) 0700 $(EXEC_FILES) *.sh *.cmd TestScripts/*.sh TestScripts/*.cmd
-	@-$(CHMOD) 0700 *.cmd *.sh GNUmakefile GNUmakefile-cross TestScripts/*.sh
-	-unix2dos --keepdate --quiet $(TEXT_FILES) .*.yml *.asm *.cmd TestScripts/*.*
-	-dos2unix --keepdate --quiet GNUmakefile* *.supp *.s *.S *.sh *.mapfile TestScripts/*.sh
+	@-$(CHMOD) 0600 $(TEXT_FILES) *.supp .*.yml *.asm *.zip TestVectors/*.txt TestData/*.dat TestPrograms/*.cxx TestScripts/*.*
+	@-$(CHMOD) 0700 $(EXEC_FILES) TestScripts/*.sh TestScripts/*.cmd
+	@-$(CHMOD) 0700 GNUmakefile GNUmakefile-cross TestScripts/*.sh
+	-unix2dos --keepdate --quiet $(TEXT_FILES) .*.yml *.asm TestScripts/*.*
+	-dos2unix --keepdate --quiet GNUmakefile* *.supp *.mapfile TestScripts/*.sh
 ifneq ($(IS_DARWIN),0)
 	@-xattr -c *
 endif
