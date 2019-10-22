@@ -679,7 +679,7 @@ int Baseline_Add(size_t N, word *C, const word *A, const word *B)
 	ASL(1)
 	AS2(	mov		%0, 0)
 	AS2(	adc		%0, %0)
-	ATT_NOPREFIX
+	INTEL_NOPREFIX
 	: "=&r" (result), "+c" (N)
 	: "r" (C+N), "r" (A+N), "r" (B+N)
 	: "memory", "cc"
