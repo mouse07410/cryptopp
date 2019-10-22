@@ -207,3 +207,19 @@ notifications:
       - uri@mit.edu
     on_success: always # default: change
     on_failure: always # default: always
+# In the YML below each job gets an environment that includes
+# BUILD_OS and BUILD_MODE. The variables are used in the driver
+# scripts and is used to select a test. For example, BUILD_OS=linux
+# and BUILD_MODE=all means run 'make all' on Linux. Travis supplies
+# Linux based on 'os: linux' key so BUILD_OS is effectively ignored.
+# The Android and iOS tests specify a BUILD_ARCH. BUILD_ARCH is passed
+# to the underlying setenv-*.sh scripts. For example, testing on iOS,
+# BUILD_ARCH=arm64 means 'setenv-ios.sh arm64' is called before
+# 'make GNUmakefile-cross' is called.
+
+# DO NOT create top level (global) keys like env, arch, os, compiler.
+# The top level/global keys invoke [unwanted] matrix expansion. Also
+# see https://stackoverflow.com/q/58473000/608639 and
+# https://docs.travis-ci.com/user/reference/overview/ and
+# https://docs.travis-ci.com/user/multi-cpu-architectures and
+# https://github.com/travis-ci/travis-yml/blob/master/schema.json.
