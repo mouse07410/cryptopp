@@ -116,6 +116,15 @@
 # pragma GCC diagnostic ignored "-Wdeprecated"
 #endif
 
+// For Clang, which can't seem to match a signature
+#if defined(__clang__)
+# define CONST_VECTOR_CAST(x) ((const __vector unsigned int*)(x))
+# define VECTOR_CAST(x) ((__vector unsigned int*)(x))
+#else
+# define CONST_VECTOR_CAST(x) ((const __vector unsigned char*)(x))
+# define VECTOR_CAST(x) ((__vector unsigned char*)(x))
+#endif
+
 NAMESPACE_BEGIN(CryptoPP)
 
 #if defined(__ALTIVEC__) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
@@ -262,14 +271,16 @@ inline uint32x4_p VecLoad(const byte src[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    return (uint32x4_p)vec_xlw4(0, (byte*)src);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    return (uint32x4_p)vec_xl(0, (byte*)src);
-#  else
-    return (uint32x4_p)vec_vsx_ld(0, (byte*)src);
+    return (uint32x4_p)vec_xlw4(0, CONST_VECTOR_CAST(src));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+    return (uint32x4_p)vec_xl(0, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
+    return (uint32x4_p)vec_vsx_ld(0, CONST_VECTOR_CAST(src));
+#  else  // Early Clang that claims to support Power8
+    return (uint32x4_p)VecLoad_ALTIVEC(src);
 #  endif
 #else
-    return VecLoad_ALTIVEC(src);
+    return (uint32x4_p)VecLoad_ALTIVEC(src);
 #endif
 }
 
@@ -290,14 +301,16 @@ inline uint32x4_p VecLoad(int off, const byte src[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    return (uint32x4_p)vec_xlw4(off, (byte*)src);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    return (uint32x4_p)vec_xl(off, (byte*)src);
-#  else
-    return (uint32x4_p)vec_vsx_ld(off, (byte*)src);
+    return (uint32x4_p)vec_xlw4(off, CONST_VECTOR_CAST(src));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+    return (uint32x4_p)vec_xl(off, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
+    return (uint32x4_p)vec_vsx_ld(off, CONST_VECTOR_CAST(src));
+#  else  // Early Clang that claims to support Power8
+    return (uint32x4_p)VecLoad_ALTIVEC(off, src);
 #  endif
 #else
-    return VecLoad_ALTIVEC(off, src);
+    return (uint32x4_p)VecLoad_ALTIVEC(off, src);
 #endif
 }
 
@@ -315,7 +328,7 @@ inline uint32x4_p VecLoad(int off, const byte src[16])
 /// \since Crypto++ 8.0
 inline uint32x4_p VecLoad(const word32 src[4])
 {
-    return VecLoad((const byte*)src);
+    return (uint32x4_p)VecLoad((const byte*)src);
 }
 
 /// \brief Loads a vector from a word array
@@ -333,7 +346,7 @@ inline uint32x4_p VecLoad(const word32 src[4])
 /// \since Crypto++ 8.0
 inline uint32x4_p VecLoad(int off, const word32 src[4])
 {
-    return VecLoad(off, (const byte*)src);
+    return (uint32x4_p)VecLoad(off, (const byte*)src);
 }
 
 #if defined(_ARCH_PWR8) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
@@ -392,11 +405,14 @@ inline uint32x4_p VecLoadAligned(const byte src[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    return (uint32x4_p)vec_xlw4(0, (byte*)src);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    return (uint32x4_p)vec_xl(0, (byte*)src);
-#  else
-    return (uint32x4_p)vec_vsx_ld(0, (byte*)src);
+    return (uint32x4_p)vec_xlw4(0, CONST_VECTOR_CAST(src));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+    return (uint32x4_p)vec_xl(0, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
+    return (uint32x4_p)vec_vsx_ld(0, CONST_VECTOR_CAST(src));
+#  else  // Early Clang that claims to support Power8
+    CRYPTOPP_ASSERT(((uintptr_t)src) % 16 == 0);
+    return (uint32x4_p)vec_ld(0, (byte*)src);
 #  endif
 #else  // _ARCH_PWR8
     CRYPTOPP_ASSERT(((uintptr_t)src) % 16 == 0);
@@ -420,11 +436,14 @@ inline uint32x4_p VecLoadAligned(int off, const byte src[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    return (uint32x4_p)vec_xlw4(off, (byte*)src);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    return (uint32x4_p)vec_xl(off, (byte*)src);
-#  else
-    return (uint32x4_p)vec_vsx_ld(off, (byte*)src);
+    return (uint32x4_p)vec_xlw4(off, CONST_VECTOR_CAST(src));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clangs)
+    return (uint32x4_p)vec_xl(off, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
+    return (uint32x4_p)vec_vsx_ld(off, CONST_VECTOR_CAST(src));
+#  else  // Early Clang that claims to support Power8
+    CRYPTOPP_ASSERT((((uintptr_t)src)+off) % 16 == 0);
+    return (uint32x4_p)vec_ld(off, (byte*)src);
 #  endif
 #else  // _ARCH_PWR8
     CRYPTOPP_ASSERT((((uintptr_t)src)+off) % 16 == 0);
@@ -450,17 +469,23 @@ inline uint32x4_p VecLoadBE(const byte src[16])
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       return (uint32x4_p)vec_xlw4(0, (byte*)src);
+       return (uint32x4_p)vec_xlw4(0, CONST_VECTOR_CAST(src));
 #    else
-       return (uint32x4_p)VecReverse(vec_xlw4(0, (byte*)src));
+       return (uint32x4_p)VecReverse(vec_xlw4(0, CONST_VECTOR_CAST(src));
 #    endif
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-       return (uint32x4_p)vec_xl_be(0, (byte*)src);
-#  else
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+       return (uint32x4_p)vec_xl_be(0, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       return (uint32x4_p)vec_vsx_ld(0, (byte*)src);
+       return (uint32x4_p)vec_vsx_ld(0, CONST_VECTOR_CAST(src));
 #    else
-       return (uint32x4_p)VecReverse(vec_vsx_ld(0, (byte*)src));
+       return (uint32x4_p)VecReverse(vec_vsx_ld(0, CONST_VECTOR_CAST(src)));
+#    endif
+#  else  // Early Clang that claims to support Power8
+#    if (CRYPTOPP_BIG_ENDIAN)
+       return (uint32x4_p)VecLoad((const byte*)src);
+#    else
+       return (uint32x4_p)VecReverse(VecLoad((const byte*)src));
 #    endif
 #  endif
 #else  // _ARCH_PWR8
@@ -491,17 +516,23 @@ inline uint32x4_p VecLoadBE(int off, const byte src[16])
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       return (uint32x4_p)vec_xlw4(off, (byte*)src);
+       return (uint32x4_p)vec_xlw4(off, CONST_VECTOR_CAST(src));
 #    else
-       return (uint32x4_p)VecReverse(vec_xlw4(off, (byte*)src));
+       return (uint32x4_p)VecReverse(vec_xlw4(off, CONST_VECTOR_CAST(src));
 #    endif
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-       return (uint32x4_p)vec_xl_be(off, (byte*)src);
-#  else
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clangs)
+       return (uint32x4_p)vec_xl_be(off, CONST_VECTOR_CAST(src));
+#  elif defined(__VSX__)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       return (uint32x4_p)vec_vsx_ld(off, (byte*)src);
+       return (uint32x4_p)vec_vsx_ld(off, CONST_VECTOR_CAST(src));
 #    else
-       return (uint32x4_p)VecReverse(vec_vsx_ld(off, (byte*)src));
+       return (uint32x4_p)VecReverse(vec_vsx_ld(off, CONST_VECTOR_CAST(src)));
+#    endif
+#  else  // Early Clang that claims to support Power8
+#    if (CRYPTOPP_BIG_ENDIAN)
+       return (uint32x4_p)VecLoad(off, (const byte*)src);
+#    else
+       return (uint32x4_p)VecReverse(VecLoad(off, (const byte*)src));
 #    endif
 #  endif
 #else  // _ARCH_PWR8
@@ -614,11 +645,13 @@ inline void VecStore(const T data, byte dest[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    vec_xstw4((uint8x16_p)data, 0, (byte*)dest);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    vec_xst((uint8x16_p)data, 0, (byte*)dest);
-#  else
-    vec_vsx_st((uint8x16_p)data, 0, (byte*)dest);
+    vec_xstw4((uint8x16_p)data, 0, VECTOR_CAST(dest));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+    vec_xst((uint8x16_p)data, 0, VECTOR_CAST(dest));
+#  elif defined(__VSX__)
+    vec_vsx_st((uint8x16_p)data, 0, VECTOR_CAST(dest));
+#  else  // Early Clang that claims to support Power8
+    VecStore_ALTIVEC((uint8x16_p)data, 0, (byte*)dest);
 #  endif
 #else
     VecStore_ALTIVEC((uint8x16_p)data, 0, (byte*)dest);
@@ -645,11 +678,13 @@ inline void VecStore(const T data, int off, byte dest[16])
 {
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
-    vec_xstw4((uint8x16_p)data, off, (byte*)dest);
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-    vec_xst((uint8x16_p)data, off, (byte*)dest);
-#  else
-    vec_vsx_st((uint8x16_p)data, off, (byte*)dest);
+    vec_xstw4((uint8x16_p)data, off, VECTOR_CAST(dest));
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+    vec_xst((uint8x16_p)data, off, VECTOR_CAST(dest));
+#  elif defined(__VSX__)
+    vec_vsx_st((uint8x16_p)data, off, VECTOR_CAST(dest));
+#  else  // Early Clang that claims to support Power8
+    VecStore_ALTIVEC((uint8x16_p)data, off, (byte*)dest);
 #  endif
 #else
     VecStore_ALTIVEC((uint8x16_p)data, off, (byte*)dest);
@@ -761,17 +796,23 @@ inline void VecStoreBE(const T data, byte dest[16])
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_xstw4((uint8x16_p)data, 0, (byte*)dest);
+       vec_xstw4((uint8x16_p)data, 0, VECTOR_CAST(dest));
 #    else
-       vec_xstw4((uint8x16_p)VecReverse(data), 0, (byte*)dest);
+       vec_xstw4((uint8x16_p)VecReverse(data), 0, VECTOR_CAST(dest));
 #    endif
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-       vec_xst_be((uint8x16_p)data, 0, (byte*)dest);
-#  else
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+       vec_xst_be((uint8x16_p)data, 0, VECTOR_CAST(dest));
+#  elif defined(__VSX__)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_vsx_st((uint8x16_p)data, 0, (byte*)dest);
+       vec_vsx_st((uint8x16_p)data, 0, VECTOR_CAST(dest));
 #    else
-       vec_vsx_st((uint8x16_p)VecReverse(data), 0, (byte*)dest);
+       vec_vsx_st((uint8x16_p)VecReverse(data), 0, VECTOR_CAST(dest));
+#    endif
+#  else  // Early Clang that claims to support Power8
+#    if (CRYPTOPP_BIG_ENDIAN)
+       VecStore_ALTIVEC((uint8x16_p)data, 0, (byte*)dest);
+#    else
+       VecStore_ALTIVEC((uint8x16_p)VecReverse(data), 0, (byte*)dest);
 #    endif
 #  endif
 #else  // _ARCH_PWR8
@@ -805,17 +846,23 @@ inline void VecStoreBE(const T data, int off, byte dest[16])
 #if defined(_ARCH_PWR8)
 #  if defined(early_xlc) || defined(early_xlC)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_xstw4((uint8x16_p)data, off, (byte*)dest);
+       vec_xstw4((uint8x16_p)data, off, VECTOR_CAST(dest));
 #    else
-       vec_xstw4((uint8x16_p)VecReverse(data), off, (byte*)dest);
+       vec_xstw4((uint8x16_p)VecReverse(data), off, VECTOR_CAST(dest));
 #    endif
-#  elif defined(__xlc__) || defined(__xlC__) || defined(__clang__)
-     vec_xst_be((uint8x16_p)data, off, (byte*)dest);
-#  else
+#  elif defined(__xlc__) || defined(__xlC__) || defined(later_clang)
+     vec_xst_be((uint8x16_p)data, off, VECTOR_CAST(dest));
+#  elif defined(__VSX__)
 #    if (CRYPTOPP_BIG_ENDIAN)
-       vec_vsx_st((uint8x16_p)data, off, (byte*)dest);
+       vec_vsx_st((uint8x16_p)data, off, VECTOR_CAST(dest));
 #    else
-       vec_vsx_st((uint8x16_p)VecReverse(data), off, (byte*)dest);
+       vec_vsx_st((uint8x16_p)VecReverse(data), off, VECTOR_CAST(dest));
+#    endif
+#  else  // Early Clang that claims to support Power8
+#    if (CRYPTOPP_BIG_ENDIAN)
+       VecStore_ALTIVEC((uint8x16_p)data, off, (byte*)dest);
+#    else
+       VecStore_ALTIVEC((uint8x16_p)VecReverse(data), off, (byte*)dest);
 #    endif
 #  endif
 #else  // _ARCH_PWR8
@@ -1438,7 +1485,9 @@ inline bool VecNotEqual(const T1 vec1, const T2 vec2)
 
 //////////////////////// Power8 Crypto ////////////////////////
 
-#if defined(__CRYPTO__) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
+// __CRYPTO__ alone is not enough. Clang will define __CRYPTO__
+// when it is not available, like with Power7. Sigh...
+#if (defined(_ARCH_PWR8) && defined(__CRYPTO__)) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 /// \name POLYNOMIAL MULTIPLICATION
 //@{
