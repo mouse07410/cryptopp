@@ -90,7 +90,7 @@ ANONYMOUS_NAMESPACE_END
 
 // *************************** ARM NEON ************************** //
 
-#if (CRYPTOPP_ARM_NEON_AVAILABLE)
+#if (CRYPTOPP_ARM_NEON_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 NAMESPACE_BEGIN(CryptoPP)
 
@@ -99,9 +99,9 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \tparam F6 function to process 6 64-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks64_6x2_NEON processes 6 and 2 NEON SIMD words
-///   at a time. For a single block the template uses F2 with a zero block.
+///  at a time. For a single block the template uses F2 with a zero block.
 /// \details The subkey type is usually word32 or word64. F2 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F2, typename F6, typename W>
 inline size_t AdvancedProcessBlocks64_6x2_NEON(F2 func2, F6 func6,
         const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -340,9 +340,9 @@ inline size_t AdvancedProcessBlocks64_6x2_NEON(F2 func2, F6 func6,
 /// \tparam F6 function to process 6 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_6x1_NEON processes 6 and 2 NEON SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F6, typename W>
 inline size_t AdvancedProcessBlocks128_6x1_NEON(F1 func1, F6 func6,
             const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -493,10 +493,10 @@ inline size_t AdvancedProcessBlocks128_6x1_NEON(F1 func1, F6 func6,
 /// \tparam F4 function to process 4 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_4x1_NEON processes 4 and 1 NEON SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. V is the vector type and it is
-///   usually uint32x4_t or uint32x4_t. F1, F4, and W must use the same word and
-///   vector type.
+///  usually uint32x4_t or uint32x4_t. F1, F4, and W must use the same word and
+///  vector type.
 template <typename F1, typename F4, typename W>
 inline size_t AdvancedProcessBlocks128_4x1_NEON(F1 func1, F4 func4,
             const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -628,9 +628,9 @@ inline size_t AdvancedProcessBlocks128_4x1_NEON(F1 func1, F4 func4,
 /// \tparam F6 function to process 6 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_6x2_NEON processes 6 and 2 NEON SIMD words
-///   at a time. For a single block the template uses F2 with a zero block.
+///  at a time. For a single block the template uses F2 with a zero block.
 /// \details The subkey type is usually word32 or word64. F2 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F2, typename F6, typename W>
 inline size_t AdvancedProcessBlocks128_6x2_NEON(F2 func2, F6 func6,
             const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -827,10 +827,20 @@ NAMESPACE_END  // CryptoPP
 
 // *************************** Intel SSE ************************** //
 
-#if defined(CRYPTOPP_SSSE3_AVAILABLE)
+#if defined(CRYPTOPP_SSSE3_AVAILABLE) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
-// Hack for SunCC, http://github.com/weidai11/cryptopp/issues/224
-#if (__SUNPRO_CC >= 0x5130)
+#if defined(CRYPTOPP_DOXYGEN_PROCESSING)
+/// \brief SunCC workaround
+/// \details SunCC loses the const on AES_Enc_Block and AES_Dec_Block
+/// \sa <A HREF="http://github.com/weidai11/cryptopp/issues/224">Issue
+///  224, SunCC and failed compile for rijndael.cpp</A>
+# define MAYBE_CONST const
+/// \brief SunCC workaround
+/// \details SunCC loses the const on AES_Enc_Block and AES_Dec_Block
+/// \sa <A HREF="http://github.com/weidai11/cryptopp/issues/224">Issue
+///  224, SunCC and failed compile for rijndael.cpp</A>
+# define MAYBE_UNCONST_CAST(T, x) (x)
+#elif (__SUNPRO_CC >= 0x5130)
 # define MAYBE_CONST
 # define MAYBE_UNCONST_CAST(T, x) const_cast<MAYBE_CONST T>(x)
 #else
@@ -838,12 +848,24 @@ NAMESPACE_END  // CryptoPP
 # define MAYBE_UNCONST_CAST(T, x) (x)
 #endif
 
-// Clang __m128i casts, http://bugs.llvm.org/show_bug.cgi?id=20670
-#ifndef M128_CAST
+#if defined(CRYPTOPP_DOXYGEN_PROCESSING)
+/// \brief Clang workaround
+/// \details Clang issues spurious alignment warnings
+/// \sa <A HREF="http://bugs.llvm.org/show_bug.cgi?id=20670">Issue
+///  20670, _mm_loadu_si128 parameter has wrong type</A>
 # define M128_CAST(x) ((__m128i *)(void *)(x))
-#endif
-#ifndef CONST_M128_CAST
+/// \brief Clang workaround
+/// \details Clang issues spurious alignment warnings
+/// \sa <A HREF="http://bugs.llvm.org/show_bug.cgi?id=20670">Issue
+///  20670, _mm_loadu_si128 parameter has wrong type</A>
 # define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
+#else
+# ifndef M128_CAST
+#  define M128_CAST(x) ((__m128i *)(void *)(x))
+# endif
+# ifndef CONST_M128_CAST
+#  define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
+# endif
 #endif
 
 NAMESPACE_BEGIN(CryptoPP)
@@ -853,9 +875,9 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \tparam F2 function to process 2 64-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks64_2x1_SSE processes 2 and 1 SSE SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F2 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F2, typename W>
 inline size_t AdvancedProcessBlocks64_2x1_SSE(F1 func1, F2 func2,
         MAYBE_CONST W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1008,9 +1030,9 @@ inline size_t AdvancedProcessBlocks64_2x1_SSE(F1 func1, F2 func2,
 /// \tparam F6 function to process 6 64-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks64_6x2_SSE processes 6 and 2 SSE SIMD words
-///   at a time. For a single block the template uses F2 with a zero block.
+///  at a time. For a single block the template uses F2 with a zero block.
 /// \details The subkey type is usually word32 or word64. F2 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F2, typename F6, typename W>
 inline size_t AdvancedProcessBlocks64_6x2_SSE(F2 func2, F6 func6,
         MAYBE_CONST W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1259,9 +1281,9 @@ inline size_t AdvancedProcessBlocks64_6x2_SSE(F2 func2, F6 func6,
 /// \tparam F6 function to process 6 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_6x2_SSE processes 6 and 2 SSE SIMD words
-///   at a time. For a single block the template uses F2 with a zero block.
+///  at a time. For a single block the template uses F2 with a zero block.
 /// \details The subkey type is usually word32 or word64. F2 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F2, typename F6, typename W>
 inline size_t AdvancedProcessBlocks128_6x2_SSE(F2 func2, F6 func6,
         MAYBE_CONST W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1454,9 +1476,9 @@ inline size_t AdvancedProcessBlocks128_6x2_SSE(F2 func2, F6 func6,
 /// \tparam F4 function to process 4 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_4x1_SSE processes 4 and 1 SSE SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F4 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F4, typename W>
 inline size_t AdvancedProcessBlocks128_4x1_SSE(F1 func1, F4 func4,
         MAYBE_CONST W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1585,9 +1607,9 @@ inline size_t AdvancedProcessBlocks128_4x1_SSE(F1 func1, F4 func4,
 /// \tparam F4 function to process 6 64-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks64_4x1_SSE processes 4 and 1 SSE SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F4 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F4, typename W>
 inline size_t AdvancedProcessBlocks64_4x1_SSE(F1 func1, F4 func4,
     MAYBE_CONST W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1757,9 +1779,9 @@ NAMESPACE_END  // CryptoPP
 
 #endif  // CRYPTOPP_SSSE3_AVAILABLE
 
-// *********************** Altivec/Power 4 ********************** //
+// ************************** Altivec/Power 4 ************************** //
 
-#if defined(__ALTIVEC__)
+#if defined(__ALTIVEC__) || defined(CRYPTOPP_DOXYGEN_PROCESSING)
 
 NAMESPACE_BEGIN(CryptoPP)
 
@@ -1768,9 +1790,9 @@ NAMESPACE_BEGIN(CryptoPP)
 /// \tparam F6 function to process 6 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks64_6x2_Altivec processes 6 and 2 Altivec SIMD words
-///   at a time. For a single block the template uses F2 with a zero block.
+///  at a time. For a single block the template uses F2 with a zero block.
 /// \details The subkey type is usually word32 or word64. F2 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F2, typename F6, typename W>
 inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
         const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -1792,12 +1814,12 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
 #endif
 
     const size_t blockSize = 8;
-    const size_t vsxBlockSize = 16;
+    const size_t simdBlockSize = 16;
     CRYPTOPP_ALIGN_DATA(16) uint8_t temp[16];
 
-    size_t inIncrement = (flags & (BT_InBlockIsCounter|BT_DontIncrementInOutPointers)) ? 0 : vsxBlockSize;
-    size_t xorIncrement = (xorBlocks != NULLPTR) ? vsxBlockSize : 0;
-    size_t outIncrement = (flags & BT_DontIncrementInOutPointers) ? 0 : vsxBlockSize;
+    size_t inIncrement = (flags & (BT_InBlockIsCounter|BT_DontIncrementInOutPointers)) ? 0 : simdBlockSize;
+    size_t xorIncrement = (xorBlocks != NULLPTR) ? simdBlockSize : 0;
+    size_t outIncrement = (flags & BT_DontIncrementInOutPointers) ? 0 : simdBlockSize;
 
     // Clang and Coverity are generating findings using xorBlocks as a flag.
     const bool xorInput = (xorBlocks != NULLPTR) && (flags & BT_XorInput);
@@ -1805,9 +1827,9 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
 
     if (flags & BT_ReverseDirection)
     {
-        inBlocks = PtrAdd(inBlocks, length - vsxBlockSize);
-        xorBlocks = PtrAdd(xorBlocks, length - vsxBlockSize);
-        outBlocks = PtrAdd(outBlocks, length - vsxBlockSize);
+        inBlocks = PtrAdd(inBlocks, length - simdBlockSize);
+        xorBlocks = PtrAdd(xorBlocks, length - simdBlockSize);
+        outBlocks = PtrAdd(outBlocks, length - simdBlockSize);
         inIncrement = 0-inIncrement;
         xorIncrement = 0-xorIncrement;
         outIncrement = 0-outIncrement;
@@ -1815,7 +1837,7 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
 
     if (flags & BT_AllowParallel)
     {
-        while (length >= 6*vsxBlockSize)
+        while (length >= 6*simdBlockSize)
         {
             uint32x4_p block0, block1, block2, block3, block4, block5;
             if (flags & BT_InBlockIsCounter)
@@ -1906,10 +1928,10 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
             VecStoreBE(block5, outBlocks);
             outBlocks = PtrAdd(outBlocks, outIncrement);
 
-            length -= 6*vsxBlockSize;
+            length -= 6*simdBlockSize;
         }
 
-        while (length >= 2*vsxBlockSize)
+        while (length >= 2*simdBlockSize)
         {
             uint32x4_p block0, block1;
             if (flags & BT_InBlockIsCounter)
@@ -1964,7 +1986,7 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
             VecStoreBE(block1, outBlocks);
             outBlocks = PtrAdd(outBlocks, outIncrement);
 
-            length -= 2*vsxBlockSize;
+            length -= 2*simdBlockSize;
         }
     }
 
@@ -2039,9 +2061,9 @@ inline size_t AdvancedProcessBlocks64_6x2_ALTIVEC(F2 func2, F6 func6,
 /// \tparam F4 function to process 4 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_4x1_ALTIVEC processes 4 and 1 Altivec SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F4 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F4, typename W>
 inline size_t AdvancedProcessBlocks128_4x1_ALTIVEC(F1 func1, F4 func4,
         const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -2059,7 +2081,7 @@ inline size_t AdvancedProcessBlocks128_4x1_ALTIVEC(F1 func1, F4 func4,
 #endif
 
     const size_t blockSize = 16;
-    // const size_t vsxBlockSize = 16;
+    // const size_t simdBlockSize = 16;
 
     size_t inIncrement = (flags & (BT_InBlockIsCounter|BT_DontIncrementInOutPointers)) ? 0 : blockSize;
     size_t xorIncrement = (xorBlocks != NULLPTR) ? blockSize : 0;
@@ -2184,9 +2206,9 @@ inline size_t AdvancedProcessBlocks128_4x1_ALTIVEC(F1 func1, F4 func4,
 /// \tparam F6 function to process 6 128-bit blocks
 /// \tparam W word type of the subkey table
 /// \details AdvancedProcessBlocks128_6x1_ALTIVEC processes 6 and 1 Altivec SIMD words
-///   at a time.
+///  at a time.
 /// \details The subkey type is usually word32 or word64. F1 and F6 must use the
-///   same word type.
+///  same word type.
 template <typename F1, typename F6, typename W>
 inline size_t AdvancedProcessBlocks128_6x1_ALTIVEC(F1 func1, F6 func6,
         const W *subKeys, size_t rounds, const byte *inBlocks,
@@ -2204,7 +2226,7 @@ inline size_t AdvancedProcessBlocks128_6x1_ALTIVEC(F1 func1, F6 func6,
 #endif
 
     const size_t blockSize = 16;
-    // const size_t vsxBlockSize = 16;
+    // const size_t simdBlockSize = 16;
 
     size_t inIncrement = (flags & (BT_InBlockIsCounter|BT_DontIncrementInOutPointers)) ? 0 : blockSize;
     size_t xorIncrement = (xorBlocks != NULLPTR) ? blockSize : 0;

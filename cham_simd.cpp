@@ -29,11 +29,6 @@
 # endif
 #endif
 
-#if defined(__AVX512F__)
-# define CRYPTOPP_AVX512_ROTATE 1
-# include <immintrin.h>
-#endif
-
 // Clang intrinsic casts, http://bugs.llvm.org/show_bug.cgi?id=20670
 #define DOUBLE_CAST(x) ((double*)(void*)(x))
 #define CONST_DOUBLE_CAST(x) ((const double*)(const void*)(x))
