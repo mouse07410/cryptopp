@@ -16,6 +16,15 @@
 # https://github.com/travis-ci/travis-yml/blob/master/schema.json.
 
 language: cpp
+
+# DO NOT create top level (global) keys like env, arch, os, compiler.
+# The top level/global keys invoke [unwanted] matrix expansion. Also
+# see https://stackoverflow.com/q/58473000/608639 and
+# https://docs.travis-ci.com/user/reference/overview/ and
+# https://docs.travis-ci.com/user/multi-cpu-architectures and
+# https://github.com/travis-ci/travis-yml/blob/master/schema.json.
+
+language: cpp
 dist: bionic
 sudo: required
 
