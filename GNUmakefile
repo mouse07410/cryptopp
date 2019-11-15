@@ -598,7 +598,9 @@ ifeq ($(DETECT_FEATURES),1)
   ifeq ($(XLC_COMPILER),1)
     POWER9_FLAG = -qarch=pwr9 -qaltivec
     POWER8_FLAG = -qarch=pwr8 -qaltivec
-    POWER7_FLAG = -qarch=pwr7 -qaltivec
+    POWER7_VSX_FLAG = -qarch=pwr7 -qvsx -qaltivec
+    POWER7_PWR_FLAG = -qarch=pwr7 -qaltivec
+    POWER7_ALT_FLAG = -qaltivec
     POWER6_FLAG = -qarch=pwr6 -qaltivec
     POWER5_FLAG = -qarch=pwr5 -qaltivec
     POWER4_FLAG = -qarch=pwr4 -qaltivec
@@ -606,7 +608,9 @@ ifeq ($(DETECT_FEATURES),1)
   else
     POWER9_FLAG = -mcpu=power9 -maltivec
     POWER8_FLAG = -mcpu=power8 -maltivec
-    POWER7_FLAG = -mcpu=power7 -maltivec
+    POWER7_VSX_FLAG = -mcpu=power7 -mvsx -maltivec
+    POWER7_PWR_FLAG = -mcpu=power7 -maltivec
+    POWER7_ALT_FLAG = -maltivec
     ALTIVEC_FLAG = -maltivec
   endif
 
@@ -621,7 +625,7 @@ ifeq ($(DETECT_FEATURES),1)
   #endif
 
   #####################################################################
-  # Looking for a POWER8 option
+  # Looking for a POWER9 option
 
   TPROG = TestPrograms/test_ppc_power9.cxx
   TOPT = $(POWER9_FLAG)
@@ -632,16 +636,15 @@ ifeq ($(DETECT_FEATURES),1)
     POWER9_FLAG =
   endif
 
+  #####################################################################
+  # Looking for a POWER8 option
+
   TPROG = TestPrograms/test_ppc_power8.cxx
   TOPT = $(POWER8_FLAG)
   HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
   ifeq ($(strip $(HAVE_OPT)),0)
     AES_FLAG = $(POWER8_FLAG)
-    ARIA_FLAG = $(POWER8_FLAG)
     BLAKE2B_FLAG = $(POWER8_FLAG)
-    BLAKE2S_FLAG = $(POWER8_FLAG)
-    CHACHA_FLAG = $(POWER8_FLAG)
-    CHAM_FLAG = $(POWER8_FLAG)
     CRC_FLAG = $(POWER8_FLAG)
     GCM_FLAG = $(POWER8_FLAG)
     GF2N_FLAG = $(POWER8_FLAG)
@@ -649,8 +652,6 @@ ifeq ($(DETECT_FEATURES),1)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
     SIMECK_FLAG = $(POWER8_FLAG)
-    SIMON64_FLAG = $(POWER8_FLAG)
-    SPECK64_FLAG = $(POWER8_FLAG)
     SIMON128_FLAG = $(POWER8_FLAG)
     SPECK128_FLAG = $(POWER8_FLAG)
   else
@@ -660,11 +661,37 @@ ifeq ($(DETECT_FEATURES),1)
   #####################################################################
   # Looking for a POWER7 option
 
+  # GCC needs -mvsx for Power7 to enable 64-bit vector elements.
+  # XLC provides 64-bit vector elements without an option.
+
   TPROG = TestPrograms/test_ppc_power7.cxx
-  TOPT = $(POWER7_FLAG)
+  TOPT = $(POWER7_VSX_FLAG)
   HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
-  ifneq ($(strip $(HAVE_OPT)),0)
-    POWER7_FLAG =
+  ifeq ($(strip $(HAVE_OPT)),0)
+    POWER7_FLAG = $(POWER7_VSX_FLAG)
+  else
+    TPROG = TestPrograms/test_ppc_power7.cxx
+    TOPT = $(POWER7_PWR_FLAG)
+    HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+    ifeq ($(strip $(HAVE_OPT)),0)
+      POWER7_FLAG = $(POWER7_PWR_FLAG)
+	else
+      TPROG = TestPrograms/test_ppc_power7.cxx
+      TOPT = $(POWER7_ALT_FLAG)
+      HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+      ifeq ($(strip $(HAVE_OPT)),0)
+        POWER7_FLAG = $(POWER7_ALT_FLAG)
+      else
+        POWER7_FLAG =
+      endif
+    endif
+  endif
+
+  ifneq ($(POWER7_FLAG),)
+    BLAKE2S_FLAG = $(POWER7_FLAG)
+    CHACHA_FLAG = $(POWER7_FLAG)
+    SIMON64_FLAG = $(POWER7_FLAG)
+    SPECK64_FLAG = $(POWER7_FLAG)
   endif
 
   #####################################################################
@@ -706,13 +733,21 @@ ifeq ($(DETECT_FEATURES),1)
   #####################################################################
   # Fixups for algorithms that can drop to a lower ISA, if needed
 
-  # Drop to Power4 if Power8 not available
-  ifeq ($(POWER8_FLAG),)
-    ifneq ($(ALTIVEC_FLAG),)
+  # Drop to Altivec if higher Power is not available
+  ifneq ($(ALTIVEC_FLAG),)
+    ifeq ($(BLAKE2S_FLAG),)
       BLAKE2S_FLAG = $(ALTIVEC_FLAG)
+    endif
+    ifeq ($(CHACHA_FLAG),)
       CHACHA_FLAG = $(ALTIVEC_FLAG)
+    endif
+    ifeq ($(GCM_FLAG),)
       GCM_FLAG = $(ALTIVEC_FLAG)
+    endif
+    ifeq ($(SIMON64_FLAG),)
       SIMON64_FLAG = $(ALTIVEC_FLAG)
+    endif
+    ifeq ($(SPECK64_FLAG),)
       SPECK64_FLAG = $(ALTIVEC_FLAG)
     endif
   endif
@@ -722,7 +757,7 @@ ifeq ($(DETECT_FEATURES),1)
 
   ifeq ($(ALTIVEC_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_ALTIVEC
-  else ifeq ($(POWER8_FLAG)$(POWER7_FLAG),)
+  else ifeq ($(POWER7_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER7
   else ifeq ($(POWER8_FLAG),)
     CXXFLAGS += -DCRYPTOPP_DISABLE_POWER8
@@ -1069,7 +1104,7 @@ endif
 ###########################################################
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
-SRCS := cryptlib.cpp cpu.cpp integer.cpp $(filter-out cryptlib.cpp cpu.cpp integer.cpp pch.cpp simple.cpp winpipes.cpp cryptlib_bds.cpp,$(sort $(wildcard *.cpp)))
+SRCS := cryptlib.cpp cpu.cpp integer.cpp $(filter-out cryptlib.cpp cpu.cpp integer.cpp pch.cpp simple.cpp,$(sort $(wildcard *.cpp)))
 # For Makefile.am; resource.h is Windows
 INCL := $(filter-out resource.h,$(sort $(wildcard *.h)))
 
