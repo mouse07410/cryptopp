@@ -2,6 +2,12 @@
 
 /// \file tiger.h
 /// \brief Classes for the Tiger message digest
+/// \details Crypto++ provides the original Tiger hash that was
+///  submitted to the NESSIE project. The implementation is different
+///  from the revised Tiger2 hash.
+/// \sa <a href="https://www.cryptopp.com/wiki/Tiger">Tiger</a> and
+///  <a href="http://www.cs.technion.ac.il/~biham/Reports/Tiger/">Tiger:
+///  A Fast New Cryptographic Hash Function</a>
 /// \since Crypto++ 2.1
 
 #ifndef CRYPTOPP_TIGER_H
@@ -19,7 +25,12 @@
 NAMESPACE_BEGIN(CryptoPP)
 
 /// \brief Tiger message digest
-/// \sa <a href="http://www.cryptolounge.org/wiki/Tiger">Tiger</a>
+/// \details Crypto++ provides the original Tiger hash that was
+///  submitted to the NESSIE project. The implementation is different
+///  from the revised Tiger2 hash.
+/// \sa <a href="https://www.cryptopp.com/wiki/Tiger">Tiger</a> and
+///  <a href="http://www.cs.technion.ac.il/~biham/Reports/Tiger/">Tiger:
+///  A Fast New Cryptographic Hash Function</a>
 /// \since Crypto++ 2.1
 class Tiger : public IteratedHashWithStaticTransform<word64, LittleEndian, 64, 24, Tiger>
 {
