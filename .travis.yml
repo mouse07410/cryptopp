@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # In the YML below each job gets an environment that includes
 # BUILD_OS and BUILD_MODE. The variables are used in the driver
 # scripts and is used to select a test. For example, BUILD_OS=linux
