@@ -6,7 +6,7 @@
 # https://www.gnu.org/software/make/manual/make.html#Makefile-Conventions
 # and https://www.gnu.org/prep/standards/standards.html
 
-SHELL = /bin/sh
+SHELL = /bin/bash
 
 # If needed
 TMPDIR ?= /tmp
@@ -1339,10 +1339,10 @@ install: cryptest.exe install-lib
 # is present. If you want one, then issue 'make libcryptopp.pc'.
 .PHONY: install-lib
 install-lib:
-	@-$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
+ifneq ($(wildcard libcryptopp.a),)
+	$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
 	$(CP) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
 	$(CHMOD) 0644 $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
-ifneq ($(wildcard libcryptopp.a),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
 	$(CP) libcryptopp.a $(DESTDIR)$(LIBDIR)
 	$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/libcryptopp.a
