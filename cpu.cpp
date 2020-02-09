@@ -1,4 +1,5 @@
 // cpu.cpp - originally written and placed in the public domain by Wei Dai
+//           modified by Jeffrey Walton and the community over the years.
 
 #include "pch.h"
 #include "config.h"
@@ -56,70 +57,14 @@ unsigned long int getauxval(unsigned long int) { return 0; }
 # include <setjmp.h>
 #endif
 
-// Visual Studio 2008 and below is missing _xgetbv. See x64dll.asm for the body.
-#if defined(_MSC_VER) && _MSC_VER <= 1500 && defined(_M_X64)
+// Visual Studio 2008 and below are missing _xgetbv and _cpuidex.
+// See x64dll.asm for the function bodies.
+#if defined(_MSC_VER) && defined(_M_X64)
 extern "C" unsigned long long __fastcall XGETBV64(unsigned int);
+extern "C" unsigned long long __fastcall CPUID64(unsigned int, unsigned int, unsigned int*);
 #endif
 
-ANONYMOUS_NAMESPACE_BEGIN
-
-#if defined(__APPLE__)
-enum {PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch};
-void GetAppleMachineInfo(unsigned int& device, unsigned int& version)
-{
-	device = version = 0;
-
-	struct utsname systemInfo;
-	systemInfo.machine[0] = '\0';
-	uname(&systemInfo);
-
-	std::string machine(systemInfo.machine);
-	if (machine.find("PowerMac") != std::string::npos ||
-	    machine.find("Power Macintosh") != std::string::npos)
-		device = PowerMac;
-	else if (machine.find("Mac") != std::string::npos ||
-	         machine.find("Macintosh") != std::string::npos)
-		device = Mac;
-	else if (machine.find("iPhone") != std::string::npos)
-		device = iPhone;
-	else if (machine.find("iPod") != std::string::npos)
-		device = iPod;
-	else if (machine.find("iPad") != std::string::npos)
-		device = iPad;
-	else if (machine.find("AppleTV") != std::string::npos)
-		device = AppleTV;
-	else if (machine.find("AppleWatch") != std::string::npos)
-		device = AppleWatch;
-
-	std::string::size_type pos = machine.find_first_of("0123456789");
-	if (pos != std::string::npos)
-		version = std::atoi(machine.substr(pos).c_str());
-}
-
-// http://stackoverflow.com/questions/45637888/how-to-determine-armv8-features-at-runtime-on-ios
-bool IsAppleMachineARMv8(unsigned int device, unsigned int version)
-{
-	if ((device == iPhone && version >= 6) ||
-	    (device == iPad && version >= 4))
-	{
-		return true;
-	}
-	return false;
-}
-
-bool IsAppleMachineARMv84(unsigned int device, unsigned int version)
-{
-    CRYPTOPP_UNUSED(device);
-    CRYPTOPP_UNUSED(version);
-	return false;
-}
-#endif  // __APPLE__
-
-ANONYMOUS_NAMESPACE_END
-
-NAMESPACE_BEGIN(CryptoPP)
-
-#ifndef CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
+#ifdef CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
 extern "C" {
     typedef void (*SigHandler)(int);
 }
@@ -133,117 +78,119 @@ extern "C"
 		longjmp(s_jmpNoCPUID, 1);
 	}
 }
-#endif  // Not CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
+#endif  // CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
+
+ANONYMOUS_NAMESPACE_BEGIN
+
+#if (CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
+
+using CryptoPP::word32;
+
+inline bool IsIntel(const word32 output[4])
+{
+	// This is the "GenuineIntel" string
+	return (output[1] /*EBX*/ == 0x756e6547) &&
+		(output[2] /*ECX*/ == 0x6c65746e) &&
+		(output[3] /*EDX*/ == 0x49656e69);
+}
+
+inline bool IsAMD(const word32 output[4])
+{
+	// This is the "AuthenticAMD" string.
+	return ((output[1] /*EBX*/ == 0x68747541) &&
+		(output[2] /*ECX*/ == 0x444D4163) &&
+		(output[3] /*EDX*/ == 0x69746E65)) ||
+		// Early K5's can return "AMDisbetter!"
+		((output[1] /*EBX*/ == 0x69444d41) &&
+		(output[2] /*ECX*/ == 0x74656273) &&
+		(output[3] /*EDX*/ == 0x21726574));
+}
+
+inline bool IsHygon(const word32 output[4])
+{
+	// This is the "HygonGenuine" string.
+	return (output[1] /*EBX*/ == 0x6f677948) &&
+		(output[2] /*ECX*/ == 0x656e6975) &&
+		(output[3] /*EDX*/ == 0x6e65476e);
+}
+
+inline bool IsVIA(const word32 output[4])
+{
+	// This is the "CentaurHauls" string.
+	return ((output[1] /*EBX*/ == 0x746e6543) &&
+		(output[2] /*ECX*/ == 0x736c7561) &&
+		(output[3] /*EDX*/ == 0x48727561)) ||
+		// Some non-PadLock's return "VIA VIA VIA "
+		((output[1] /*EBX*/ == 0x32414956) &&
+		(output[2] /*ECX*/ == 0x32414956) &&
+		(output[3] /*EDX*/ == 0x32414956));
+}
+
+#endif  // X86, X32 and X64
+
+#if defined(__APPLE__)
+
+enum {PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch};
+void GetAppleMachineInfo(unsigned int& device, unsigned int& version)
+{
+	device = version = 0;
+
+	struct utsname systemInfo;
+	systemInfo.machine[0] = '\0';
+	uname(&systemInfo);
+
+	std::string machine(systemInfo.machine);
+	if (machine.find("iPhone") != std::string::npos)
+		device = iPhone;
+	else if (machine.find("iPod") != std::string::npos)
+		device = iPod;
+	else if (machine.find("iPad") != std::string::npos)
+		device = iPad;
+	else if (machine.find("PowerMac") != std::string::npos ||
+	         machine.find("Power Macintosh") != std::string::npos)
+		device = PowerMac;
+	else if (machine.find("Mac") != std::string::npos ||
+	         machine.find("Macintosh") != std::string::npos)
+		device = Mac;
+	else if (machine.find("AppleTV") != std::string::npos)
+		device = AppleTV;
+	else if (machine.find("AppleWatch") != std::string::npos)
+		device = AppleWatch;
+
+	std::string::size_type pos = machine.find_first_of("0123456789");
+	if (pos != std::string::npos)
+		version = std::atoi(machine.substr(pos).c_str());
+}
+
+// http://stackoverflow.com/questions/45637888/how-to-determine-armv8-features-at-runtime-on-ios
+bool IsAppleMachineARMv8(unsigned int device, unsigned int version)
+{
+	if ((device == iPhone && version >= 6) ||    // iPhone 6, A8 processor
+	    (device == iPad && version >= 5) ||      // iPad 5, A8 processor
+	    (device == iPod && version >= 6) ||      // iPod 6, A8 processor
+	    (device == AppleTV && version >= 4) ||   // AppleTV 4th gen, A8 processor
+	    (device == AppleWatch && version >= 4))  // AppleWatch 4th gen, S4 processor
+	{
+		return true;
+	}
+	return false;
+}
+
+bool IsAppleMachineARMv84(unsigned int device, unsigned int version)
+{
+	CRYPTOPP_UNUSED(device);
+	CRYPTOPP_UNUSED(version);
+	return false;
+}
+#endif  // __APPLE__
+
+ANONYMOUS_NAMESPACE_END
+
+NAMESPACE_BEGIN(CryptoPP)
 
 // *************************** IA-32 CPUs ***************************
 
 #if (CRYPTOPP_BOOL_X86 || CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
-
-extern bool CPU_ProbeSSE2();
-
-#if _MSC_VER >= 1600
-
-inline bool CpuId(word32 func, word32 subfunc, word32 output[4])
-{
-	__cpuidex((int *)output, func, subfunc);
-	return true;
-}
-
-#elif _MSC_VER >= 1400 && CRYPTOPP_BOOL_X64
-
-inline bool CpuId(word32 func, word32 subfunc, word32 output[4])
-{
-	if (subfunc != 0)
-		return false;
-
-	__cpuid((int *)output, func);
-	return true;
-}
-
-#else
-
-// Borland/Embarcadero and Issue 498
-// cpu.cpp (131): E2211 Inline assembly not allowed in inline and template functions
-bool CpuId(word32 func, word32 subfunc, word32 output[4])
-{
-#if defined(CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY) || defined(__BORLANDC__)
-    __try
-	{
-		// Borland/Embarcadero and Issue 500
-		// Local variables for cpuid output
-		word32 a, b, c, d;
-		__asm
-		{
-			mov eax, func
-			mov ecx, subfunc
-			cpuid
-			mov [a], eax
-			mov [b], ebx
-			mov [c], ecx
-			mov [d], edx
-		}
-		output[0] = a;
-		output[1] = b;
-		output[2] = c;
-		output[3] = d;
-	}
-	// GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
-		return false;
-	}
-
-	// func = 0 returns the highest basic function understood in EAX. If the CPU does
-	// not return non-0, then it is mostly useless. The code below converts basic
-	// function value to a true/false return value.
-	if(func == 0)
-		return output[0] != 0;
-
-	return true;
-#else
-	// longjmp and clobber warnings. Volatile is required.
-	// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
-	volatile bool result = true;
-
-	volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCPUID);
-	if (oldHandler == SIG_ERR)
-		return false;
-
-# ifndef __MINGW32__
-	volatile sigset_t oldMask;
-	if (sigprocmask(0, NULLPTR, (sigset_t*)&oldMask) != 0)
-		return false;
-# endif
-
-	if (setjmp(s_jmpNoCPUID))
-		result = false;
-	else
-	{
-		asm volatile
-		(
-			// save ebx in case -fPIC is being used
-			// TODO: this might need an early clobber on EDI.
-# if CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64
-			"pushq %%rbx; cpuid; mov %%ebx, %%edi; popq %%rbx"
-# else
-			"push %%ebx; cpuid; mov %%ebx, %%edi; pop %%ebx"
-# endif
-			: "=a" (output[0]), "=D" (output[1]), "=c" (output[2]), "=d" (output[3])
-			: "a" (func), "c" (subfunc)
-			: "cc"
-		);
-	}
-
-# ifndef __MINGW32__
-	sigprocmask(SIG_SETMASK, (sigset_t*)&oldMask, NULLPTR);
-# endif
-
-	signal(SIGILL, oldHandler);
-	return result;
-#endif
-}
-
-#endif
 
 bool CRYPTOPP_SECTION_INIT g_x86DetectionDone = false;
 bool CRYPTOPP_SECTION_INIT g_hasSSE2 = false;
@@ -266,44 +213,98 @@ bool CRYPTOPP_SECTION_INIT g_hasPadlockPHE = false;
 bool CRYPTOPP_SECTION_INIT g_hasPadlockPMM = false;
 word32 CRYPTOPP_SECTION_INIT g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
-static inline bool IsIntel(const word32 output[4])
-{
-	// This is the "GenuineIntel" string
-	return (output[1] /*EBX*/ == 0x756e6547) &&
-		(output[2] /*ECX*/ == 0x6c65746e) &&
-		(output[3] /*EDX*/ == 0x49656e69);
-}
+extern bool CPU_ProbeSSE2();
 
-static inline bool IsAMD(const word32 output[4])
+// No inline due to Borland/Embarcadero and Issue 498
+// cpu.cpp (131): E2211 Inline assembly not allowed in inline and template functions
+bool CpuId(word32 func, word32 subfunc, word32 output[4])
 {
-	// This is the "AuthenticAMD" string.
-	return ((output[1] /*EBX*/ == 0x68747541) &&
-		(output[2] /*ECX*/ == 0x444D4163) &&
-		(output[3] /*EDX*/ == 0x69746E65)) ||
-		// Some early K5's can return "AMDisbetter!"
-		((output[1] /*EBX*/ == 0x69444d41) &&
-		(output[2] /*ECX*/ == 0x74656273) &&
-		(output[3] /*EDX*/ == 0x21726574));
-}
+// Visual Studio 2010 and above, all Intels
+#if defined(_MSC_VER) && (_MSC_VER >= 1600)
 
-static inline bool IsHygon(const word32 output[4])
-{
-	// This is the "HygonGenuine" string.
-	return (output[1] /*EBX*/ == 0x6f677948) &&
-		(output[2] /*ECX*/ == 0x656e6975) &&
-		(output[3] /*EDX*/ == 0x6e65476e);
-}
+	__cpuidex((int *)output, func, subfunc);
+	return true;
 
-static inline bool IsVIA(const word32 output[4])
-{
-	// This is the "CentaurHauls" string.
-	return ((output[1] /*EBX*/ == 0x746e6543) &&
-		(output[2] /*ECX*/ == 0x736c7561) &&
-		(output[3] /*EDX*/ == 0x48727561)) ||
-		// Some non-PadLock's return "VIA VIA VIA "
-		((output[1] /*EBX*/ == 0x32414956) &&
-		(output[2] /*ECX*/ == 0x32414956) &&
-		(output[3] /*EDX*/ == 0x32414956));
+// Visual Studio 2008 and below, 64-bit
+#elif defined(_MSC_VER) && defined(_M_X64)
+
+	CPUID64(func, subfunc, output);
+	return true;
+
+// Visual Studio 2008 and below, 32-bit
+#elif (defined(_MSC_VER) && defined(_M_IX86)) || defined(__BORLANDC__)
+
+	__try
+	{
+		// Borland/Embarcadero and Issue 500
+		// Local variables for cpuid output
+		word32 a, b, c, d;
+		__asm
+		{
+			push ebx
+			mov eax, func
+			mov ecx, subfunc
+			cpuid
+			mov [a], eax
+			mov [b], ebx
+			mov [c], ecx
+			mov [d], edx
+			pop ebx
+		}
+		output[0] = a;
+		output[1] = b;
+		output[2] = c;
+		output[3] = d;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+
+	return true;
+
+// Linux, Unix, OS X, Solaris, Cygwin, MinGW
+#else
+
+	// longjmp and clobber warnings. Volatile is required.
+	// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
+	volatile bool result = true;
+
+	volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCPUID);
+	if (oldHandler == SIG_ERR)
+		return false;
+
+# ifndef __MINGW32__
+	volatile sigset_t oldMask;
+	if (sigprocmask(0, NULLPTR, (sigset_t*)&oldMask) != 0)
+		return false;
+# endif
+
+	if (setjmp(s_jmpNoCPUID))
+		result = false;
+	else
+	{
+		asm volatile
+		(
+			// save ebx in case -fPIC is being used
+# if CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64
+			"pushq %%rbx; cpuid; mov %%ebx, %%edi; popq %%rbx"
+# else
+			"push %%ebx; cpuid; mov %%ebx, %%edi; pop %%ebx"
+# endif
+			: "=a" (output[0]), "=D" (output[1]), "=c" (output[2]), "=d" (output[3])
+			: "a" (func), "c" (subfunc)
+			: "cc"
+		);
+	}
+
+# ifndef __MINGW32__
+	sigprocmask(SIG_SETMASK, (sigset_t*)&oldMask, NULLPTR);
+# endif
+
+	signal(SIGILL, oldHandler);
+	return result;
+#endif
 }
 
 void DetectX86Features()
@@ -336,14 +337,15 @@ void DetectX86Features()
 	g_hasAESNI = (cpuid1[2] & (1<<25)) != 0;
 	g_hasCLMUL = (cpuid1[2] & (1<< 1)) != 0;
 
-	// AVX is similar to SSE, but check both bits 27 (SSE) and 28 (AVX).
+	// AVX is similar to SSE. Check if AVX is available on the cpu, then
+	// check if the OS enabled XSAVE/XRESTORE for the extended registers.
 	// https://software.intel.com/en-us/blogs/2011/04/14/is-avx-enabled
-	CRYPTOPP_CONSTANT(YMM_FLAG = (3 <<  1));
 	CRYPTOPP_CONSTANT(AVX_FLAG = (3 << 27));
+	CRYPTOPP_CONSTANT(YMM_FLAG = (3 <<  1));
 	if ((cpuid1[2] & AVX_FLAG) == AVX_FLAG)
 	{
 
-// GCC 4.1/Binutils 2.17 cannot consume xgetbv
+// GCC 4.1/Binutils 2.17 and below cannot consume xgetbv
 #if defined(__GNUC__) || (__SUNPRO_CC >= 0x5100) || defined(__BORLANDC__)
 		// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71659 and
 		// http://www.agner.org/optimize/vectorclass/read.php?i=65
@@ -382,7 +384,7 @@ void DetectX86Features()
 		word64 xcr0 = XGETBV64(0);
 		g_hasAVX = (xcr0 & YMM_FLAG) == YMM_FLAG;
 
-// Downlevel SunCC
+// Downlevel SunCC. SunCC v12.1 was checked earlier.
 #elif defined(__SUNPRO_CC)
 		g_hasAVX = false;
 
@@ -410,9 +412,9 @@ void DetectX86Features()
 			if (CpuId(7, 0, cpuid2))
 			{
 				g_hasRDSEED = (cpuid2[1] /*EBX*/ & RDSEED_FLAG) != 0;
-				g_hasADX = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
-				g_hasSHA = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
-				g_hasAVX2 = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
+				g_hasADX    = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
+				g_hasSHA    = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
+				g_hasAVX2   = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
 			}
 		}
 	}
@@ -433,9 +435,9 @@ void DetectX86Features()
 			if (CpuId(7, 0, cpuid2))
 			{
 				g_hasRDSEED = (cpuid2[1] /*EBX*/ & RDSEED_FLAG) != 0;
-				g_hasADX = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
-				g_hasSHA = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
-				g_hasAVX2 = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
+				g_hasADX    = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
+				g_hasSHA    = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
+				g_hasAVX2   = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
 			}
 		}
 
