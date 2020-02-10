@@ -130,57 +130,141 @@ inline bool IsVIA(const word32 output[4])
 
 #if defined(__APPLE__)
 
-enum {PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch};
-void GetAppleMachineInfo(unsigned int& device, unsigned int& version)
-{
-	device = version = 0;
-
-	struct utsname systemInfo;
-	systemInfo.machine[0] = '\0';
-	uname(&systemInfo);
-
-	std::string machine(systemInfo.machine);
-	if (machine.find("iPhone") != std::string::npos)
-		device = iPhone;
-	else if (machine.find("iPod") != std::string::npos)
-		device = iPod;
-	else if (machine.find("iPad") != std::string::npos)
-		device = iPad;
-	else if (machine.find("PowerMac") != std::string::npos ||
-	         machine.find("Power Macintosh") != std::string::npos)
-		device = PowerMac;
-	else if (machine.find("Mac") != std::string::npos ||
-	         machine.find("Macintosh") != std::string::npos)
-		device = Mac;
-	else if (machine.find("AppleTV") != std::string::npos)
-		device = AppleTV;
-	else if (machine.find("AppleWatch") != std::string::npos)
-		device = AppleWatch;
-
-	std::string::size_type pos = machine.find_first_of("0123456789");
-	if (pos != std::string::npos)
-		version = std::atoi(machine.substr(pos).c_str());
-}
-
 // http://stackoverflow.com/questions/45637888/how-to-determine-armv8-features-at-runtime-on-ios
-bool IsAppleMachineARMv8(unsigned int device, unsigned int version)
+class AppleMachineInfo
 {
-	if ((device == iPhone && version >= 6) ||    // iPhone 6, A8 processor
-	    (device == iPad && version >= 5) ||      // iPad 5, A8 processor
-	    (device == iPod && version >= 6) ||      // iPod 6, A8 processor
-	    (device == AppleTV && version >= 4) ||   // AppleTV 4th gen, A8 processor
-	    (device == AppleWatch && version >= 4))  // AppleWatch 4th gen, S4 processor
+public:
+	enum { PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch };
+	enum { PowerPC=1, i386, i686, x86_64, ARM32, ARMv8, ARMv84 };
+
+	AppleMachineInfo() : m_device(0), m_version(0), m_arch(0)
 	{
-		return true;
+		struct utsname systemInfo;
+		systemInfo.machine[0] = '\0';
+		uname(&systemInfo);
+
+		std::string machine(systemInfo.machine);
+
+		std::string::size_type pos = machine.find_first_of("0123456789");
+		if (pos != std::string::npos)
+			m_version = std::atoi(machine.substr(pos).c_str());
+
+		if (machine.find("iPhone") != std::string::npos)
+		{
+			m_device = iPhone;
+			if (m_version >= 6) { m_arch = ARMv8; }
+			else { m_arch = ARM32; }
+		}
+		else if (machine.find("iPod") != std::string::npos)
+		{
+			m_device = iPod;
+			if (m_version >= 6) { m_arch = ARMv8; }
+			else { m_arch = ARM32; }
+		}
+		else if (machine.find("iPad") != std::string::npos)
+		{
+			m_device = iPad;
+			if (m_version >= 5) { m_arch = ARMv8; }
+			else { m_arch = ARM32; }
+		}
+		else if (machine.find("PowerMac") != std::string::npos ||
+			 machine.find("Power Macintosh") != std::string::npos)
+		{
+			m_device = PowerMac;
+			m_arch = PowerPC;
+		}
+		else if (machine.find("Mac") != std::string::npos ||
+			 machine.find("Macintosh") != std::string::npos)
+		{
+#if defined(__x86_64) || defined(__amd64)
+			m_device = Mac;
+			m_arch = x86_64;
+#elif defined(__i386)
+			m_device = Mac;
+			m_arch = i386;
+#elif defined(__i686)
+			m_device = Mac;
+			m_arch = i686;
+#else
+			// Should never get here
+			m_device = Mac;
+			m_arch = 0;
+#endif
+		}
+		else if (machine.find("AppleTV") != std::string::npos)
+		{
+			m_device = AppleTV;
+			if (m_version >= 4) { m_arch = ARMv8; }
+			else { m_arch = ARM32; }
+		}
+		else if (machine.find("AppleWatch") != std::string::npos)
+		{
+			m_device = AppleWatch;
+			if (m_version >= 4) { m_arch = ARMv8; }
+			else { m_arch = ARM32; }
+		}
 	}
-	return false;
+
+	unsigned int Device() const {
+		return m_device;
+	}
+
+	unsigned int Version() const {
+		return m_version;
+	}
+
+	unsigned int Arch() const {
+		return m_arch;
+	}
+
+	bool IsARM32() const {
+		return m_arch == ARM32;
+	}
+
+	bool IsARMv8() const {
+		return m_arch == ARMv8;
+	}
+
+	bool IsARMv84() const {
+		return m_arch == ARMv84;
+	}
+
+private:
+	unsigned int m_device, m_version, m_arch;
+};
+
+void GetAppleMachineInfo(unsigned int& device, unsigned int& version, unsigned int& arch)
+{
+#if CRYPTOPP_CXX11_DYNAMIC_INIT
+	static const AppleMachineInfo info;
+#else
+	const AppleMachineInfo& info = Singleton<AppleMachineInfo>().Ref();
+#endif
+
+	device = info.Device();
+	version = info.Version();
+	arch = info.Arch();
 }
 
-bool IsAppleMachineARMv84(unsigned int device, unsigned int version)
+inline bool IsAppleMachineARM32()
 {
-	CRYPTOPP_UNUSED(device);
-	CRYPTOPP_UNUSED(version);
-	return false;
+	unsigned int unused, arch;
+	GetAppleMachineInfo(unused, unused, arch);
+	return arch == AppleMachineInfo::ARM32;
+}
+
+inline bool IsAppleMachineARMv8()
+{
+	unsigned int unused, arch;
+	GetAppleMachineInfo(unused, unused, arch);
+	return arch == AppleMachineInfo::ARMv8;
+}
+
+inline bool IsAppleMachineARMv84()
+{
+	unsigned int unused, arch;
+	GetAppleMachineInfo(unused, unused, arch);
+	return arch == AppleMachineInfo::ARMv84;
 }
 #endif  // __APPLE__
 
@@ -201,6 +285,7 @@ bool CRYPTOPP_SECTION_INIT g_hasAVX = false;
 bool CRYPTOPP_SECTION_INIT g_hasAVX2 = false;
 bool CRYPTOPP_SECTION_INIT g_hasAESNI = false;
 bool CRYPTOPP_SECTION_INIT g_hasCLMUL = false;
+bool CRYPTOPP_SECTION_INIT g_hasMOVBE = false;
 bool CRYPTOPP_SECTION_INIT g_hasADX = false;
 bool CRYPTOPP_SECTION_INIT g_hasSHA = false;
 bool CRYPTOPP_SECTION_INIT g_hasRDRAND = false;
@@ -310,6 +395,7 @@ bool CpuId(word32 func, word32 subfunc, word32 output[4])
 void DetectX86Features()
 {
 	// Coverity finding CID 171239. Initialize arrays.
+	// Indexes: EAX=0, EBX=1, ECX=2, EDX=3
 	word32 cpuid0[4]={0}, cpuid1[4]={0}, cpuid2[4]={0};
 
 #if defined(CRYPTOPP_DISABLE_ASM)
@@ -322,27 +408,56 @@ void DetectX86Features()
 		goto done;
 #endif
 
-	// cpuid1[2] & (1 << 27) is XSAVE/XRESTORE and signals OS support for SSE;
-	// use it to avoid probes. See http://stackoverflow.com/a/22521619/608639
+	CRYPTOPP_CONSTANT(EAX_REG = 0);
+	CRYPTOPP_CONSTANT(EBX_REG = 1);
+	CRYPTOPP_CONSTANT(ECX_REG = 2);
+	CRYPTOPP_CONSTANT(EDX_REG = 3);
+
+	CRYPTOPP_CONSTANT(MMX_FLAG   = (1 << 24));   // EDX
+	CRYPTOPP_CONSTANT(SSE_FLAG   = (1 << 25));   // EDX
+	CRYPTOPP_CONSTANT(SSE2_FLAG  = (1 << 26));   // EDX
+
+	CRYPTOPP_CONSTANT(SSE3_FLAG  = (1 <<  0));   // ECX
+	CRYPTOPP_CONSTANT(SSSE3_FLAG = (1 <<  9));   // ECX
+	CRYPTOPP_CONSTANT(SSE41_FLAG = (1 << 19));   // ECX
+	CRYPTOPP_CONSTANT(SSE42_FLAG = (1 << 20));   // ECX
+	CRYPTOPP_CONSTANT(MOVBE_FLAG = (1 << 22));   // ECX
+	CRYPTOPP_CONSTANT(AESNI_FLAG = (1 << 25));   // ECX
+	CRYPTOPP_CONSTANT(CLMUL_FLAG = (1 <<  1));   // ECX
+
+	CRYPTOPP_CONSTANT(XSAVE_FLAG   = (1 << 26)); // ECX
+	CRYPTOPP_CONSTANT(OSXSAVE_FLAG = (1 << 27)); // ECX
+
+	CRYPTOPP_CONSTANT(AVX_FLAG = (3 << 27));     // ECX
+	CRYPTOPP_CONSTANT(YMM_FLAG = (3 <<  1));     // CR0
+
+#if (CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
+	// 64-bit core instruction set includes SSE2. Just check
+	// the OS enabled SSE2 support using OSXSAVE.
+	g_hasSSE2 = ((cpuid1[ECX_REG] & OSXSAVE_FLAG) != 0);
+#else
+	// Check the processor supports SSE2. Then use OSXSAVE to
+	// signal OS support for SSE2 to avoid probes.
+	// Also see http://stackoverflow.com/a/22521619/608639
 	// and http://github.com/weidai11/cryptopp/issues/511.
-	if ((cpuid1[3] & (1 << 26)) != 0)
-		g_hasSSE2 = ((cpuid1[2] & (1 << 27)) != 0) || CPU_ProbeSSE2();
+	if ((cpuid1[EDX_REG] & SSE2_FLAG) == SSE2_FLAG)
+		g_hasSSE2 = ((cpuid1[ECX_REG] & OSXSAVE_FLAG) != 0);
+#endif
 
 	if (g_hasSSE2 == false)
 		goto done;
 
-	g_hasSSSE3 = (cpuid1[2] & (1<< 9)) != 0;
-	g_hasSSE41 = (cpuid1[2] & (1<<19)) != 0;
-	g_hasSSE42 = (cpuid1[2] & (1<<20)) != 0;
-	g_hasAESNI = (cpuid1[2] & (1<<25)) != 0;
-	g_hasCLMUL = (cpuid1[2] & (1<< 1)) != 0;
+	g_hasSSSE3 = (cpuid1[ECX_REG] & SSSE3_FLAG) != 0;
+	g_hasSSE41 = (cpuid1[ECX_REG] & SSE41_FLAG) != 0;
+	g_hasSSE42 = (cpuid1[ECX_REG] & SSE42_FLAG) != 0;
+	g_hasMOVBE = (cpuid1[ECX_REG] & MOVBE_FLAG) != 0;
+	g_hasAESNI = (cpuid1[ECX_REG] & AESNI_FLAG) != 0;
+	g_hasCLMUL = (cpuid1[ECX_REG] & CLMUL_FLAG) != 0;
 
 	// AVX is similar to SSE. Check if AVX is available on the cpu, then
 	// check if the OS enabled XSAVE/XRESTORE for the extended registers.
 	// https://software.intel.com/en-us/blogs/2011/04/14/is-avx-enabled
-	CRYPTOPP_CONSTANT(AVX_FLAG = (3 << 27));
-	CRYPTOPP_CONSTANT(YMM_FLAG = (3 <<  1));
-	if ((cpuid1[2] & AVX_FLAG) == AVX_FLAG)
+	if ((cpuid1[ECX_REG] & AVX_FLAG) == AVX_FLAG)
 	{
 
 // GCC 4.1/Binutils 2.17 and below cannot consume xgetbv
@@ -405,16 +520,16 @@ void DetectX86Features()
 
 		g_isP4 = ((cpuid1[0] >> 8) & 0xf) == 0xf;
 		g_cacheLineSize = 8 * GETBYTE(cpuid1[1], 1);
-		g_hasRDRAND = (cpuid1[2] /*ECX*/ & RDRAND_FLAG) != 0;
+		g_hasRDRAND = (cpuid1[ECX_REG] & RDRAND_FLAG) != 0;
 
-		if (cpuid0[0] /*EAX*/ >= 7)
+		if (cpuid0[EAX_REG] >= 7)
 		{
 			if (CpuId(7, 0, cpuid2))
 			{
-				g_hasRDSEED = (cpuid2[1] /*EBX*/ & RDSEED_FLAG) != 0;
-				g_hasADX    = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
-				g_hasSHA    = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
-				g_hasAVX2   = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
+				g_hasRDSEED = (cpuid2[EBX_REG] & RDSEED_FLAG) != 0;
+				g_hasADX    = (cpuid2[EBX_REG] & ADX_FLAG) != 0;
+				g_hasSHA    = (cpuid2[EBX_REG] & SHA_FLAG) != 0;
+				g_hasAVX2   = (cpuid2[EBX_REG] & AVX2_FLAG) != 0;
 			}
 		}
 	}
@@ -427,17 +542,17 @@ void DetectX86Features()
 		CRYPTOPP_CONSTANT(  AVX2_FLAG = (1 <<  5));
 
 		CpuId(0x80000005, 0, cpuid2);
-		g_cacheLineSize = GETBYTE(cpuid2[2], 0);
-		g_hasRDRAND = (cpuid1[2] /*ECX*/ & RDRAND_FLAG) != 0;
+		g_cacheLineSize = GETBYTE(cpuid2[ECX_REG], 0);
+		g_hasRDRAND = (cpuid1[ECX_REG] & RDRAND_FLAG) != 0;
 
-		if (cpuid0[0] /*EAX*/ >= 7)
+		if (cpuid0[EAX_REG] >= 7)
 		{
 			if (CpuId(7, 0, cpuid2))
 			{
-				g_hasRDSEED = (cpuid2[1] /*EBX*/ & RDSEED_FLAG) != 0;
-				g_hasADX    = (cpuid2[1] /*EBX*/ & ADX_FLAG) != 0;
-				g_hasSHA    = (cpuid2[1] /*EBX*/ & SHA_FLAG) != 0;
-				g_hasAVX2   = (cpuid2[1] /*EBX*/ & AVX2_FLAG) != 0;
+				g_hasRDSEED = (cpuid2[EBX_REG] & RDSEED_FLAG) != 0;
+				g_hasADX    = (cpuid2[EBX_REG] & ADX_FLAG) != 0;
+				g_hasSHA    = (cpuid2[EBX_REG] & SHA_FLAG) != 0;
+				g_hasAVX2   = (cpuid2[EBX_REG] & AVX2_FLAG) != 0;
 			}
 		}
 
@@ -474,17 +589,17 @@ void DetectX86Features()
 		if (extendedFeatures >= 0xC0000001)
 		{
 			CpuId(0xC0000001, 0, cpuid2);
-			g_hasPadlockRNG  = (cpuid2[3] /*EDX*/ & RNG_FLAGS) == RNG_FLAGS;
-			g_hasPadlockACE  = (cpuid2[3] /*EDX*/ & ACE_FLAGS) == ACE_FLAGS;
-			g_hasPadlockACE2 = (cpuid2[3] /*EDX*/ & ACE2_FLAGS) == ACE2_FLAGS;
-			g_hasPadlockPHE  = (cpuid2[3] /*EDX*/ & PHE_FLAGS) == PHE_FLAGS;
-			g_hasPadlockPMM  = (cpuid2[3] /*EDX*/ & PMM_FLAGS) == PMM_FLAGS;
+			g_hasPadlockRNG  = (cpuid2[EDX_REG] & RNG_FLAGS) != 0;
+			g_hasPadlockACE  = (cpuid2[EDX_REG] & ACE_FLAGS) != 0;
+			g_hasPadlockACE2 = (cpuid2[EDX_REG] & ACE2_FLAGS) != 0;
+			g_hasPadlockPHE  = (cpuid2[EDX_REG] & PHE_FLAGS) != 0;
+			g_hasPadlockPMM  = (cpuid2[EDX_REG] & PMM_FLAGS) != 0;
 		}
 
 		if (extendedFeatures >= 0xC0000005)
 		{
 			CpuId(0xC0000005, 0, cpuid2);
-			g_cacheLineSize = GETBYTE(cpuid2[2] /*ECX*/, 0);
+			g_cacheLineSize = GETBYTE(cpuid2[ECX_REG], 0);
 		}
 	}
 
@@ -707,9 +822,7 @@ inline bool CPU_QueryAES()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_AES) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv8(device, version);
+	return IsAppleMachineARMv8();
 #endif
 	return false;
 }
@@ -731,9 +844,7 @@ inline bool CPU_QuerySHA1()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA1) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv8(device, version);
+	return IsAppleMachineARMv8();
 #endif
 	return false;
 }
@@ -755,9 +866,7 @@ inline bool CPU_QuerySHA256()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA2) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv8(device, version);
+	return IsAppleMachineARMv8();
 #endif
 	return false;
 }
@@ -780,9 +889,7 @@ inline bool CPU_QuerySHA512()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA512) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv84(device, version);
+	return IsAppleMachineARMv84();
 #endif
 	return false;
 }
@@ -805,9 +912,7 @@ inline bool CPU_QuerySHA3()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA3) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv84(device, version);
+	return IsAppleMachineARMv84();
 #endif
 	return false;
 }
@@ -830,9 +935,7 @@ inline bool CPU_QuerySM3()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM3) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv84(device, version);
+	return IsAppleMachineARMv84();
 #endif
 	return false;
 }
@@ -855,9 +958,7 @@ inline bool CPU_QuerySM4()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM4) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return IsAppleMachineARMv84(device, version);
+	return IsAppleMachineARMv84();
 #endif
 	return false;
 }
@@ -946,9 +1047,9 @@ inline bool CPU_QueryAltivec()
 	if (__power_6_andup() != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__POWERPC__)
-	unsigned int device, version;
-	GetAppleMachineInfo(device, version);
-	return device == PowerMac;
+	unsigned int unused, arch;
+	GetAppleMachineInfo(unused, unused, arch);
+	return arch == AppleMachineInfo::PowerMac;
 #endif
 	return false;
 }
