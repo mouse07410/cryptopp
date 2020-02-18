@@ -58,7 +58,7 @@ unsigned long int getauxval(unsigned long int) { return 0; }
 #endif
 
 // Visual Studio 2008 and below are missing _xgetbv and _cpuidex.
-// See x64dll.asm for the function bodies.
+// The 32-bit versions use inline ASM below. The 64-bit versions are in x64dll.asm.
 #if defined(_MSC_VER) && defined(_M_X64)
 extern "C" unsigned long long __fastcall XGETBV64(unsigned int);
 extern "C" unsigned long long __fastcall CPUID64(unsigned int, unsigned int, unsigned int*);
@@ -72,9 +72,8 @@ extern "C" {
 extern "C"
 {
 	static jmp_buf s_jmpNoCPUID;
-	static void SigIllHandlerCPUID(int unused)
+	static void SigIllHandler(int)
 	{
-		CRYPTOPP_UNUSED(unused);
 		longjmp(s_jmpNoCPUID, 1);
 	}
 }
@@ -135,7 +134,7 @@ class AppleMachineInfo
 {
 public:
 	enum { PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch };
-	enum { PowerPC=1, i386, i686, x86_64, ARM32, ARMv8, ARMv84 };
+	enum { PowerPC=1, I386, I686, X86_64, ARM32, ARMV8, ARMV84 };
 
 	AppleMachineInfo() : m_device(0), m_version(0), m_arch(0)
 	{
@@ -152,19 +151,19 @@ public:
 		if (machine.find("iPhone") != std::string::npos)
 		{
 			m_device = iPhone;
-			if (m_version >= 6) { m_arch = ARMv8; }
+			if (m_version >= 6) { m_arch = ARMV8; }
 			else { m_arch = ARM32; }
 		}
 		else if (machine.find("iPod") != std::string::npos)
 		{
 			m_device = iPod;
-			if (m_version >= 6) { m_arch = ARMv8; }
+			if (m_version >= 6) { m_arch = ARMV8; }
 			else { m_arch = ARM32; }
 		}
 		else if (machine.find("iPad") != std::string::npos)
 		{
 			m_device = iPad;
-			if (m_version >= 5) { m_arch = ARMv8; }
+			if (m_version >= 5) { m_arch = ARMV8; }
 			else { m_arch = ARM32; }
 		}
 		else if (machine.find("PowerMac") != std::string::npos ||
@@ -178,13 +177,13 @@ public:
 		{
 #if defined(__x86_64) || defined(__amd64)
 			m_device = Mac;
-			m_arch = x86_64;
+			m_arch = X86_64;
 #elif defined(__i386)
 			m_device = Mac;
-			m_arch = i386;
+			m_arch = I386;
 #elif defined(__i686)
 			m_device = Mac;
-			m_arch = i686;
+			m_arch = I686;
 #else
 			// Should never get here
 			m_device = Mac;
@@ -194,13 +193,13 @@ public:
 		else if (machine.find("AppleTV") != std::string::npos)
 		{
 			m_device = AppleTV;
-			if (m_version >= 4) { m_arch = ARMv8; }
+			if (m_version >= 4) { m_arch = ARMV8; }
 			else { m_arch = ARM32; }
 		}
 		else if (machine.find("AppleWatch") != std::string::npos)
 		{
 			m_device = AppleWatch;
-			if (m_version >= 4) { m_arch = ARMv8; }
+			if (m_version >= 4) { m_arch = ARMV8; }
 			else { m_arch = ARM32; }
 		}
 	}
@@ -222,11 +221,11 @@ public:
 	}
 
 	bool IsARMv8() const {
-		return m_arch == ARMv8;
+		return m_arch == ARMV8;
 	}
 
 	bool IsARMv84() const {
-		return m_arch == ARMv84;
+		return m_arch == ARMV84;
 	}
 
 private:
@@ -249,24 +248,26 @@ void GetAppleMachineInfo(unsigned int& device, unsigned int& version, unsigned i
 
 inline bool IsAppleMachineARM32()
 {
-	unsigned int unused, arch;
-	GetAppleMachineInfo(unused, unused, arch);
+	static unsigned int arch;
+	if (arch == 0)
+	{
+		unsigned int unused;
+		GetAppleMachineInfo(unused, unused, arch);
+	}
 	return arch == AppleMachineInfo::ARM32;
 }
 
 inline bool IsAppleMachineARMv8()
 {
-	unsigned int unused, arch;
-	GetAppleMachineInfo(unused, unused, arch);
-	return arch == AppleMachineInfo::ARMv8;
+	static unsigned int arch;
+	if (arch == 0)
+	{
+		unsigned int unused;
+		GetAppleMachineInfo(unused, unused, arch);
+	}
+	return arch == AppleMachineInfo::ARMV8;
 }
 
-inline bool IsAppleMachineARMv84()
-{
-	unsigned int unused, arch;
-	GetAppleMachineInfo(unused, unused, arch);
-	return arch == AppleMachineInfo::ARMv84;
-}
 #endif  // __APPLE__
 
 ANONYMOUS_NAMESPACE_END
@@ -356,14 +357,17 @@ bool CpuId(word32 func, word32 subfunc, word32 output[4])
 	// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
 	volatile bool result = true;
 
-	volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCPUID);
+	volatile SigHandler oldHandler = signal(SIGILL, SigIllHandler);
 	if (oldHandler == SIG_ERR)
 		return false;
 
 # ifndef __MINGW32__
 	volatile sigset_t oldMask;
 	if (sigprocmask(0, NULLPTR, (sigset_t*)&oldMask) != 0)
+	{
+		signal(SIGILL, oldHandler);
 		return false;
+	}
 # endif
 
 	if (setjmp(s_jmpNoCPUID))
@@ -638,18 +642,19 @@ bool CRYPTOPP_SECTION_INIT g_hasSM3 = false;
 bool CRYPTOPP_SECTION_INIT g_hasSM4 = false;
 word32 CRYPTOPP_SECTION_INIT g_cacheLineSize = CRYPTOPP_L1_CACHE_LINE_SIZE;
 
-// ARM does not have an unprivliged equivalent to CPUID on IA-32. We have to jump through some
-//   hoops to detect features on a wide array of platforms. Our strategy is two part. First,
-//   attempt to *Query* the OS for a feature, like using getauxval on Linux. If that fails,
-//   then *Probe* the cpu executing an instruction and an observe a SIGILL if unsupported.
-// The probes are in source files where compilation options like -march=armv8-a+crc make
-//   intrinsics available. They are expensive when compared to a standard OS feature query.
-//   Always perform the feature query first. For Linux see
-//   http://sourceware.org/ml/libc-help/2017-08/msg00012.html
-// Avoid probes on Apple platforms because Apple's signal handling for SIGILLs appears broken.
-//   We are trying to figure out a way to feature test without probes. Also see
-//   http://stackoverflow.com/a/11197770/608639 and
-//   http://gist.github.com/erkanyildiz/390a480f27e86f8cd6ba
+// ARM does not have an unprivliged equivalent to CPUID on IA-32. We have to
+// jump through some hoops to detect features on a wide array of platforms.
+// Our strategy is two part. First, attempt to *Query* the OS for a feature,
+// like using getauxval on Linux. If that fails, then *Probe* the cpu
+// executing an instruction and an observe a SIGILL if unsupported. The probes
+// are in source files where compilation options like -march=armv8-a+crc make
+// intrinsics available. They are expensive when compared to a standard OS
+// feature query. Always perform the feature query first. For Linux see
+// http://sourceware.org/ml/libc-help/2017-08/msg00012.html
+// Avoid probes on Apple platforms because Apple's signal handling for SIGILLs
+// appears broken. We are trying to figure out a way to feature test without
+// probes. Also see http://stackoverflow.com/a/11197770/608639 and
+// http://gist.github.com/erkanyildiz/390a480f27e86f8cd6ba.
 
 extern bool CPU_ProbeARMv7();
 extern bool CPU_ProbeNEON();
@@ -890,7 +895,7 @@ inline bool CPU_QuerySHA512()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA512) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return IsAppleMachineARMv84();
+	return false;
 #endif
 	return false;
 }
@@ -913,7 +918,7 @@ inline bool CPU_QuerySHA3()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA3) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return IsAppleMachineARMv84();
+	return false;
 #endif
 	return false;
 }
@@ -936,7 +941,7 @@ inline bool CPU_QuerySM3()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM3) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return IsAppleMachineARMv84();
+	return false;
 #endif
 	return false;
 }
@@ -959,7 +964,7 @@ inline bool CPU_QuerySM4()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM4) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return IsAppleMachineARMv84();
+	return false;
 #endif
 	return false;
 }
@@ -967,7 +972,7 @@ inline bool CPU_QuerySM4()
 void DetectArmFeatures()
 {
 	// The CPU_ProbeXXX's return false for OSes which
-	//   can't tolerate SIGILL-based probes
+	// can't tolerate SIGILL-based probes
 	g_hasARMv7 = CPU_QueryARMv7() || CPU_ProbeARMv7();
 	g_hasNEON = CPU_QueryNEON() || CPU_ProbeNEON();
 	g_hasCRC32 = CPU_QueryCRC32() || CPU_ProbeCRC32();
@@ -1166,7 +1171,7 @@ inline bool CPU_QueryDARN()
 void DetectPowerpcFeatures()
 {
 	// The CPU_ProbeXXX's return false for OSes which
-	//   can't tolerate SIGILL-based probes, like Apple
+	// can't tolerate SIGILL-based probes, like Apple
 	g_hasAltivec  = CPU_QueryAltivec() || CPU_ProbeAltivec();
 	g_hasPower7 = CPU_QueryPower7() || CPU_ProbePower7();
 	g_hasPower8 = CPU_QueryPower8() || CPU_ProbePower8();
