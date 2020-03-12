@@ -5,7 +5,7 @@
 #
 # Based upon OpenSSL's setenv-android.sh by TH, JW, and SM.
 # Heavily modified by JWW for Crypto++.
-# Updated by Skycoder42 based on the current recommendations for Android.
+# Modified by Skycoder42 Android NDK-r19 and above.
 #
 # Also see:
 #   https://android.googlesource.com/platform/ndk.git/+/HEAD/docs/UnifiedHeaders.md
@@ -212,6 +212,9 @@ if [ ! -e "$ANDROID_TOOLCHAIN/$LD" ]; then
     [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
+#####################################################################
+
+# Add tools to head of path, if not present already
 LENGTH=${#ANDROID_TOOLCHAIN}
 SUBSTR=${PATH:0:$LENGTH}
 if [ "$SUBSTR" != "$ANDROID_TOOLCHAIN" ]; then
