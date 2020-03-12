@@ -6,10 +6,8 @@
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
 # ====================================================================
 
-#<<<<<<< HEAD
-if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
-#=======
-#if [ -z "$(command -v ./setenv-ios.sh)" ]; then
+#if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
+if [ -z "$(command -v ./setenv-ios.sh)" ]; then
     echo "Failed to locate setenv-ios.sh"
     [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
@@ -30,11 +28,13 @@ rm -rf "$TMPDIR/build.log" 2>/dev/null
 PLATFORMS=()
 PLATFORMS+=("iPhoneOS:armv7")
 PLATFORMS+=("iPhoneOS:arm64")
+PLATFORMS+=("AppleTVOS:armv7")
 PLATFORMS+=("AppleTVOS:arm64")
 PLATFORMS+=("WatchOS:armv7")
 PLATFORMS+=("WatchOS:arm64")
 PLATFORMS+=("iPhoneSimulator:i386")
 PLATFORMS+=("iPhoneSimulator:x86_64")
+PLATFORMS+=("AppleTVSimulator:i386")
 PLATFORMS+=("AppleTVSimulator:x86_64")
 PLATFORMS+=("WatchSimulator:i386")
 PLATFORMS+=("WatchSimulator:x86_64")
