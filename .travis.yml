@@ -656,3 +656,4 @@ notifications:
     recipients:
       - uri@mit.edu
     on_success: always # default: change
+    on_failure: always # default: always

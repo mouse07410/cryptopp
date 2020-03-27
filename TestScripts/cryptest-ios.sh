@@ -6,10 +6,8 @@
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
 # ====================================================================
 
-#<<<<<<< HEAD
-if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
-#=======
-#if [ -z "$(command -v ./setenv-ios.sh)" ]; then
+#if [ -z $(command -v ./TestScripts/setenv-ios.sh) ]; then
+if [ -z "$(command -v ./setenv-ios.sh)" ]; then
     echo "Failed to locate setenv-ios.sh"
     [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
 fi
