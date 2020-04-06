@@ -597,14 +597,15 @@ endif
 ifneq ($(IS_PPC32)$(IS_PPC64),00)
 ifeq ($(DETECT_FEATURES),1)
 
+  # XLC requires -qaltivec in addition to Arch or CPU option
   ifeq ($(XLC_COMPILER),1)
-    POWER9_FLAG = -qarch=pwr9
-    POWER8_FLAG = -qarch=pwr8
-    POWER7_VSX_FLAG = -qarch=pwr7 -qvsx
-    POWER7_PWR_FLAG = -qarch=pwr7
-    POWER6_FLAG = -qarch=pwr6
-    POWER5_FLAG = -qarch=pwr5
-    POWER4_FLAG = -qarch=pwr4
+    POWER9_FLAG = -qarch=pwr9 -qaltivec
+    POWER8_FLAG = -qarch=pwr8 -qaltivec
+    POWER7_VSX_FLAG = -qarch=pwr7 -qvsx -qaltivec
+    POWER7_PWR_FLAG = -qarch=pwr7 -qaltivec
+    POWER6_FLAG = -qarch=pwr6 -qaltivec
+    POWER5_FLAG = -qarch=pwr5 -qaltivec
+    POWER4_FLAG = -qarch=pwr4 -qaltivec
     ALTIVEC_FLAG = -qaltivec
   else
     POWER9_FLAG = -mcpu=power9
@@ -680,13 +681,6 @@ ifeq ($(DETECT_FEATURES),1)
     endif
   endif
 
-  ifneq ($(POWER7_FLAG),)
-    BLAKE2S_FLAG = $(POWER7_FLAG)
-    CHACHA_FLAG = $(POWER7_FLAG)
-    SIMON64_FLAG = $(POWER7_FLAG)
-    SPECK64_FLAG = $(POWER7_FLAG)
-  endif
-
   #####################################################################
   # Looking for an Altivec option
 
@@ -723,25 +717,20 @@ ifeq ($(DETECT_FEATURES),1)
     endif
   endif
 
+  ifneq ($(ALTIVEC_FLAG),)
+    BLAKE2S_FLAG = $(ALTIVEC_FLAG)
+    CHACHA_FLAG = $(ALTIVEC_FLAG)
+    SIMON64_FLAG = $(ALTIVEC_FLAG)
+    SPECK64_FLAG = $(ALTIVEC_FLAG)
+  endif
+
   #####################################################################
   # Fixups for algorithms that can drop to a lower ISA, if needed
 
   # Drop to Altivec if higher Power is not available
   ifneq ($(ALTIVEC_FLAG),)
-    ifeq ($(BLAKE2S_FLAG),)
-      BLAKE2S_FLAG = $(ALTIVEC_FLAG)
-    endif
-    ifeq ($(CHACHA_FLAG),)
-      CHACHA_FLAG = $(ALTIVEC_FLAG)
-    endif
     ifeq ($(GCM_FLAG),)
       GCM_FLAG = $(ALTIVEC_FLAG)
-    endif
-    ifeq ($(SIMON64_FLAG),)
-      SIMON64_FLAG = $(ALTIVEC_FLAG)
-    endif
-    ifeq ($(SPECK64_FLAG),)
-      SPECK64_FLAG = $(ALTIVEC_FLAG)
     endif
   endif
 

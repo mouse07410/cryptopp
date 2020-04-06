@@ -525,7 +525,7 @@ using CryptoPP::uint32x4_p;
 using CryptoPP::VecAnd;
 using CryptoPP::VecXor;
 using CryptoPP::VecLoad;
-using CryptoPP::VecLoadBE;
+using CryptoPP::VecLoadAligned;
 using CryptoPP::VecPermute;
 
 // Rotate left by bit count
@@ -568,8 +568,8 @@ inline void SIMON64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
     for (int i = 0; i < static_cast<int>(rounds & ~1)-1; i += 2)
     {
         // Round keys are pre-splated in forward direction
-        const uint32x4_p rk1 = VecLoad(subkeys+i*4);
-        const uint32x4_p rk2 = VecLoad(subkeys+i*4+4);
+        const uint32x4_p rk1 = VecLoadAligned(subkeys+i*4);
+        const uint32x4_p rk2 = VecLoadAligned(subkeys+i*4+4);
 
         y1 = VecXor(VecXor(y1, SIMON64_f(x1)), rk1);
         x1 = VecXor(VecXor(x1, SIMON64_f(y1)), rk2);
@@ -578,7 +578,7 @@ inline void SIMON64_Enc_Block(uint32x4_p &block0, uint32x4_p &block1,
     if (rounds & 1)
     {
         // Round keys are pre-splated in forward direction
-        const uint32x4_p rk = VecLoad(subkeys+rounds*4-4);
+        const uint32x4_p rk = VecLoadAligned(subkeys+rounds*4-4);
 
         y1 = VecXor(VecXor(y1, SIMON64_f(x1)), rk);
         std::swap(x1, y1);
@@ -615,7 +615,7 @@ inline void SIMON64_Dec_Block(uint32x4_p &block0, uint32x4_p &block1,
     if (rounds & 1)
     {
         std::swap(x1, y1);
-#if (CRYPTOPP_POWER7_AVAILABLE)
+#if defined(_ARCH_PWR7)
         const uint32x4_p rk = vec_splats(subkeys[rounds-1]);
 #else
         const uint8x16_p m = {0,1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3};
@@ -628,7 +628,7 @@ inline void SIMON64_Dec_Block(uint32x4_p &block0, uint32x4_p &block1,
 
     for (int i = static_cast<int>(rounds-2); i >= 0; i -= 2)
     {
-#if (CRYPTOPP_POWER7_AVAILABLE)
+#if defined(_ARCH_PWR7)
         const uint32x4_p rk1 = vec_splats(subkeys[i+1]);
         const uint32x4_p rk2 = vec_splats(subkeys[i]);
 #else
@@ -678,8 +678,8 @@ inline void SIMON64_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     for (int i = 0; i < static_cast<int>(rounds & ~1)-1; i += 2)
     {
         // Round keys are pre-splated in forward direction
-        const uint32x4_p rk1 = VecLoad(subkeys+i*4);
-        const uint32x4_p rk2 = VecLoad(subkeys+i*4+4);
+        const uint32x4_p rk1 = VecLoadAligned(subkeys+i*4);
+        const uint32x4_p rk2 = VecLoadAligned(subkeys+i*4+4);
 
         y1 = VecXor(VecXor(y1, SIMON64_f(x1)), rk1);
         y2 = VecXor(VecXor(y2, SIMON64_f(x2)), rk1);
@@ -693,7 +693,7 @@ inline void SIMON64_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     if (rounds & 1)
     {
         // Round keys are pre-splated in forward direction
-        const uint32x4_p rk = VecLoad(subkeys+rounds*4-4);
+        const uint32x4_p rk = VecLoadAligned(subkeys+rounds*4-4);
 
         y1 = VecXor(VecXor(y1, SIMON64_f(x1)), rk);
         y2 = VecXor(VecXor(y2, SIMON64_f(x2)), rk);
@@ -741,7 +741,7 @@ inline void SIMON64_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     if (rounds & 1)
     {
         std::swap(x1, y1); std::swap(x2, y2); std::swap(x3, y3);
-#if (CRYPTOPP_POWER7_AVAILABLE)
+#if defined(_ARCH_PWR7)
         const uint32x4_p rk = vec_splats(subkeys[rounds-1]);
 #else
         const uint8x16_p m = {0,1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3};
@@ -756,7 +756,7 @@ inline void SIMON64_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
 
     for (int i = static_cast<int>(rounds-2); i >= 0; i -= 2)
     {
-#if (CRYPTOPP_POWER7_AVAILABLE)
+#if defined(_ARCH_PWR7)
         const uint32x4_p rk1 = vec_splats(subkeys[i+1]);
         const uint32x4_p rk2 = vec_splats(subkeys[i]);
 #else
@@ -838,21 +838,7 @@ size_t SIMON64_Dec_AdvancedProcessBlocks_SSE41(const word32* subKeys, size_t rou
 
 // ***************************** Altivec ***************************** //
 
-#if (CRYPTOPP_POWER7_AVAILABLE)
-size_t SIMON64_Enc_AdvancedProcessBlocks_POWER7(const word32* subKeys, size_t rounds,
-    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
-{
-    return AdvancedProcessBlocks64_6x2_ALTIVEC(SIMON64_Enc_Block, SIMON64_Enc_6_Blocks,
-        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
-}
-
-size_t SIMON64_Dec_AdvancedProcessBlocks_POWER7(const word32* subKeys, size_t rounds,
-    const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
-{
-    return AdvancedProcessBlocks64_6x2_ALTIVEC(SIMON64_Dec_Block, SIMON64_Dec_6_Blocks,
-        subKeys, rounds, inBlocks, xorBlocks, outBlocks, length, flags);
-}
-#elif (CRYPTOPP_ALTIVEC_AVAILABLE)
+#if (CRYPTOPP_ALTIVEC_AVAILABLE)
 size_t SIMON64_Enc_AdvancedProcessBlocks_ALTIVEC(const word32* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
