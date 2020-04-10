@@ -653,7 +653,6 @@ ifeq ($(DETECT_FEATURES),1)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
     SIMECK_FLAG = $(POWER8_FLAG)
-    SIMON128_FLAG = $(POWER8_FLAG)
   else
     POWER8_FLAG =
   endif
@@ -722,6 +721,7 @@ ifeq ($(DETECT_FEATURES),1)
     SIMON64_FLAG = $(ALTIVEC_FLAG)
     SPECK64_FLAG = $(ALTIVEC_FLAG)
     SPECK128_FLAG = $(ALTIVEC_FLAG)
+    SIMON128_FLAG = $(ALTIVEC_FLAG)
   endif
 
   #####################################################################
@@ -759,6 +759,9 @@ ifeq ($(XLC_COMPILER),1)
   ifeq ($(findstring -qrtti,$(CXXFLAGS)),)
     CRYPTOPP_CXXFLAGS += -qrtti
   endif
+  # Disable "1500-036: (I) The NOSTRICT option (default at OPT(3))
+  # has the potential to alter the semantics of a program."
+  CRYPTOPP_CXXFLAGS += -qsuppress=1500-036
 endif
 
 # IS_PPC32, IS_PPC64

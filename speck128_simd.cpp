@@ -1,7 +1,7 @@
 // speck128_simd.cpp - written and placed in the public domain by Jeffrey Walton
 //
 //    This source file uses intrinsics and built-ins to gain access to
-//    SSSE3, ARM NEON and ARMv8a, and Power7 Altivec instructions. A separate
+//    SSSE3, ARM NEON and ARMv8a, and Altivec instructions. A separate
 //    source file is needed because additional CXXFLAGS are required to enable
 //    the appropriate instructions sets in some build configurations.
 
@@ -197,7 +197,7 @@ inline void SPECK128_Dec_Block(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t x1 = UnpackHigh64(block0, block1);
     uint64x2_t y1 = UnpackLow64(block0, block1);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
         const uint64x2_t rk = vld1q_dup_u64(subkeys+i);
 
@@ -225,7 +225,7 @@ inline void SPECK128_Dec_6_Blocks(uint64x2_t &block0, uint64x2_t &block1,
     uint64x2_t x3 = UnpackHigh64(block4, block5);
     uint64x2_t y3 = UnpackLow64(block4, block5);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
         const uint64x2_t rk = vld1q_dup_u64(subkeys+i);
 
@@ -401,7 +401,7 @@ inline void SPECK128_Dec_Block(__m128i &block0, __m128i &block1,
     __m128i x1 = _mm_unpackhi_epi64(block0, block1);
     __m128i y1 = _mm_unpacklo_epi64(block0, block1);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
         const __m128i rk = _mm_castpd_si128(
             _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i)));
@@ -430,7 +430,7 @@ inline void SPECK128_Dec_6_Blocks(__m128i &block0, __m128i &block1,
     __m128i x3 = _mm_unpackhi_epi64(block4, block5);
     __m128i y3 = _mm_unpacklo_epi64(block4, block5);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
         const __m128i rk = _mm_castpd_si128(
             _mm_loaddup_pd(CONST_DOUBLE_CAST(subkeys+i)));
@@ -491,6 +491,7 @@ using CryptoPP::VecSub64;
 using CryptoPP::VecAnd64;
 using CryptoPP::VecOr64;
 using CryptoPP::VecXor64;
+using CryptoPP::VecSplatWord64;
 using CryptoPP::VecRotateLeft64;
 using CryptoPP::VecRotateRight64;
 using CryptoPP::VecLoad;
@@ -520,8 +521,8 @@ void SPECK128_Enc_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
     for (size_t i=0; i < static_cast<size_t>(rounds); ++i)
     {
         // Round keys are pre-splated in forward direction
-        const word64* temp = subkeys+i*2;  // Altivec lacks a load for 64-bit types
-        const speck128_t rk = (speck128_t)VecLoadAligned((const word32*)temp);
+        const word32* ptr = reinterpret_cast<const word32*>(subkeys+i*2);
+        const speck128_t rk = (speck128_t)VecLoadAligned(ptr);
 
         x1 = (speck128_t)VecRotateRight64<8>(x1);
         x1 = (speck128_t)VecAdd64(x1, y1);
@@ -548,25 +549,18 @@ void SPECK128_Dec_Block(uint32x4_p &block, const word64 *subkeys, unsigned int r
 #if (CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p m1 = {31,30,29,28,27,26,25,24, 15,14,13,12,11,10,9,8};
     const uint8x16_p m2 = {23,22,21,20,19,18,17,16, 7,6,5,4,3,2,1,0};
-    const uint8x16_p km = {7,6,5,4, 3,2,1,0, 7,6,5,4, 3,2,1,0};
 #else
     const uint8x16_p m1 = {7,6,5,4,3,2,1,0, 23,22,21,20,19,18,17,16};
     const uint8x16_p m2 = {15,14,13,12,11,10,9,8, 31,30,29,28,27,26,25,24};
-    const uint8x16_p km = {0,1,2,3, 4,5,6,7, 0,1,2,3, 4,5,6,7};
 #endif
 
     // [A1 A2][B1 B2] ... => [A1 B1][A2 B2] ...
     speck128_t x1 = (speck128_t)VecPermute(block, block, m1);
     speck128_t y1 = (speck128_t)VecPermute(block, block, m2);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
-#if defined(_ARCH_PWR8)
-        const speck128_t rk = (speck128_t)vec_splats((unsigned long long)subkeys[i]);
-#else
-        const word64 temp[2] = {subkeys[i], subkeys[i]};
-        const speck128_t rk = (speck128_t)VecLoad((const word32*)temp);
-#endif
+        const speck128_t rk = (speck128_t)VecSplatWord64(subkeys[i]);
 
         y1 = (speck128_t)VecXor64(y1, x1);
         y1 = (speck128_t)VecRotateRight64<3>(y1);
@@ -610,8 +604,8 @@ void SPECK128_Enc_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     for (size_t i=0; i < static_cast<size_t>(rounds); ++i)
     {
         // Round keys are pre-splated in forward direction
-        const word64* temp = subkeys+i*2;  // Altivec lacks a load for 64-bit types
-        const speck128_t rk = (speck128_t)VecLoadAligned((const word32*)temp);
+        const word32* ptr = reinterpret_cast<const word32*>(subkeys+i*2);
+        const speck128_t rk = (speck128_t)VecLoadAligned(ptr);
 
         x1 = (speck128_t)VecRotateRight64<8>(x1);
         x2 = (speck128_t)VecRotateRight64<8>(x2);
@@ -668,14 +662,9 @@ void SPECK128_Dec_6_Blocks(uint32x4_p &block0, uint32x4_p &block1,
     speck128_t x3 = (speck128_t)VecPermute(block4, block5, m1);
     speck128_t y3 = (speck128_t)VecPermute(block4, block5, m2);
 
-    for (ssize_t i = static_cast<ssize_t>(rounds-1); i >= 0; --i)
+    for (int i = static_cast<int>(rounds-1); i >= 0; --i)
     {
-#if defined(_ARCH_PWR8)
-        const speck128_t rk = (speck128_t)vec_splats((unsigned long long)subkeys[i]);
-#else
-        const word64 temp[2] = {subkeys[i], subkeys[i]};
-        const speck128_t rk = (speck128_t)VecLoad((const word32*)temp);
-#endif
+        const speck128_t rk = (speck128_t)VecSplatWord64(subkeys[i]);
 
         y1 = (speck128_t)VecXor64(y1, x1);
         y2 = (speck128_t)VecXor64(y2, x2);
@@ -740,7 +729,7 @@ size_t SPECK128_Dec_AdvancedProcessBlocks_NEON(const word64* subKeys, size_t rou
 
 // ***************************** IA-32 ***************************** //
 
-#if defined(CRYPTOPP_SSSE3_AVAILABLE)
+#if (CRYPTOPP_SSSE3_AVAILABLE)
 size_t SPECK128_Enc_AdvancedProcessBlocks_SSSE3(const word64* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
@@ -758,7 +747,7 @@ size_t SPECK128_Dec_AdvancedProcessBlocks_SSSE3(const word64* subKeys, size_t ro
 
 // ***************************** Altivec ***************************** //
 
-#if defined(CRYPTOPP_ALTIVEC_AVAILABLE)
+#if (CRYPTOPP_ALTIVEC_AVAILABLE)
 size_t SPECK128_Enc_AdvancedProcessBlocks_ALTIVEC(const word64* subKeys, size_t rounds,
     const byte *inBlocks, const byte *xorBlocks, byte *outBlocks, size_t length, word32 flags)
 {
