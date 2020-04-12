@@ -185,10 +185,8 @@ endif
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
 ifeq ($(PREFIX),)
 PREFIX = /opt/local
-PC_PREFIX = /opt/local
-else
-PC_PREFIX = $(PREFIX)
 endif
+PC_PREFIX = $(PREFIX)
 ifeq ($(LIBDIR),)
 LIBDIR := $(PREFIX)/lib
 PC_LIBDIR = $${prefix}/lib
