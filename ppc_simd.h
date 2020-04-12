@@ -704,7 +704,6 @@ inline uint32x4_p VecLoadBE(const byte src[16])
     // CRYPTOPP_ASSERT(addr % GetAlignmentOf<byte>() == 0);
     CRYPTOPP_UNUSED(addr);
 
-    // Power9/ISA 3.0 provides vec_xl_be for all datatypes.
 #if defined(_ARCH_PWR9)
     CRYPTOPP_ASSERT(addr % GetAlignmentOf<byte>() == 0);
     return (uint32x4_p)vec_xl_be(0, CONST_V8_CAST(src));
@@ -739,7 +738,6 @@ inline uint32x4_p VecLoadBE(int off, const byte src[16])
     // CRYPTOPP_ASSERT(addr % GetAlignmentOf<byte>() == 0);
     CRYPTOPP_UNUSED(addr);
 
-    // Power9/ISA 3.0 provides vec_xl_be for all datatypes.
 #if defined(_ARCH_PWR9)
     CRYPTOPP_ASSERT(addr % GetAlignmentOf<byte>() == 0);
     return (uint32x4_p)vec_xl_be(off, CONST_V8_CAST(src));
@@ -1786,14 +1784,15 @@ inline T VecMergeHigh(const T vec1, const T vec2)
 /// \since Crypto++ 8.3
 inline uint32x4_p VecSplatWord(word32 val)
 {
-    // Apple Altivec does not offer vec_splats. GCC offers
-    // vec_splats back to -mcpu=power4. We can't test
-    // further back because -mcpu=power3 is not supported.
-#if defined(_ARCH_PWR4)
+    // Apple Altivec and XL C++ do not offer vec_splats.
+    // GCC offers vec_splats back to -mcpu=power4.
+#if defined(_ARCH_PWR4) && defined(__GNUC__)
     return vec_splats(val);
 #else
-    const word32 x[4] = {val,val,val,val};
-    return VecLoad(x);
+    //const word32 x[4] = {val,val,val,val};
+    //return VecLoad(x);
+    const word32 x[4] = {val};
+    return vec_splat(VecLoad(x),0);
 #endif
 }
 
