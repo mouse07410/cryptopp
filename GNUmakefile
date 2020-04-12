@@ -188,9 +188,11 @@ endif
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
 ifeq ($(PREFIX),)
 PREFIX = /opt/local
-PC_PREFIX = /opt/local
-else
+endif
 PC_PREFIX = $(PREFIX)
+ifeq ($(CRYPTOPP_DATA_DIR),)
+# Default CRYPTOPP_DATA_DIR location
+CRYPTOPP_DATA_DIR=/opt/local/share/cryptopp/
 endif
 ifeq ($(LIBDIR),)
 LIBDIR := $(PREFIX)/lib
