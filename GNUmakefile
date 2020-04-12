@@ -185,28 +185,36 @@ else ifeq ($(CLANG_COMPILER),1)
   CC=clang
 endif
 
-# Default prefix for make install
+# http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
 ifeq ($(PREFIX),)
 PREFIX = /opt/local
+else
+PC_PREFIX = $(PREFIX)
 endif
-
-# Default CRYPTOPP_DATA_DIR location
 ifeq ($(CRYPTOPP_DATA_DIR),)
+# Default CRYPTOPP_DATA_DIR location
 CRYPTOPP_DATA_DIR=/opt/local/share/cryptopp/
-endif
-
-# http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
-ifeq ($(DATADIR),)
-DATADIR := $(PREFIX)/share
 endif
 ifeq ($(LIBDIR),)
 LIBDIR := $(PREFIX)/lib
+PC_LIBDIR = $${prefix}/lib
+else
+PC_LIBDIR = $(LIBDIR)
 endif
-ifeq ($(BINDIR),)
-BINDIR := $(PREFIX)/bin
+ifeq ($(DATADIR),)
+DATADIR := $(PREFIX)/share
+PC_DATADIR = $${prefix}/share
+else
+PC_DATADIR = $(DATADIR)
 endif
 ifeq ($(INCLUDEDIR),)
 INCLUDEDIR := $(PREFIX)/include
+PC_INCLUDEDIR = $${prefix}/include
+else
+PC_INCLUDEDIR = $(INCLUDEDIR)
+endif
+ifeq ($(BINDIR),)
+BINDIR := $(PREFIX)/bin
 endif
 
 # We honor ARFLAGS, but the "v" option used by default causes a noisy make
@@ -653,7 +661,6 @@ ifeq ($(DETECT_FEATURES),1)
     SHA_FLAG = $(POWER8_FLAG)
     SHACAL2_FLAG = $(POWER8_FLAG)
     SIMECK_FLAG = $(POWER8_FLAG)
-    SIMON128_FLAG = $(POWER8_FLAG)
   else
     POWER8_FLAG =
   endif
@@ -722,6 +729,7 @@ ifeq ($(DETECT_FEATURES),1)
     SIMON64_FLAG = $(ALTIVEC_FLAG)
     SPECK64_FLAG = $(ALTIVEC_FLAG)
     SPECK128_FLAG = $(ALTIVEC_FLAG)
+    SIMON128_FLAG = $(ALTIVEC_FLAG)
   endif
 
   #####################################################################
@@ -750,7 +758,7 @@ ifeq ($(DETECT_FEATURES),1)
 # DETECT_FEATURES
 endif
 
-# IBM XL C/C++ compiler
+# IBM XL C++ compiler
 ifeq ($(XLC_COMPILER),1)
   ifeq ($(findstring -qmaxmem,$(CXXFLAGS)),)
     CRYPTOPP_CXXFLAGS += -qmaxmem=-1
@@ -806,11 +814,22 @@ ifeq ($(SUN_COMPILER),1)
   CRYPTOPP_CXXFLAGS := $(subst -fpic,-KPIC,$(CRYPTOPP_CXXFLAGS))
 endif
 
-# Remove -fPIC if present. IBM XL C/C++ use -qpic
+# Remove -fPIC if present. IBM XL C++ uses -qpic
 ifeq ($(XLC_COMPILER),1)
   CRYPTOPP_CXXFLAGS := $(subst -fPIC,-qpic,$(CRYPTOPP_CXXFLAGS))
   CRYPTOPP_CXXFLAGS := $(subst -fpic,-qpic,$(CRYPTOPP_CXXFLAGS))
 endif
+
+# Disable IBM XL C++ "1500-036: (I) The NOSTRICT option (default at OPT(3))
+# has the potential to alter the semantics of a program."
+ifeq ($(XLC_COMPILER),1)
+  TPROG = TestPrograms/test_cxx.cxx
+  TOPT = -qsuppress=1500-036
+  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | tr ' ' '\n' | wc -l)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    CRYPTOPP_CXXFLAGS += -qsuppress=1500-036
+  endif  # -qsuppress
+endif  # IBM XL C++ compiler
 
 # Add -xregs=no%appl SPARC. SunCC should not use certain registers in library code.
 # https://docs.oracle.com/cd/E18659_01/html/821-1383/bkamt.html
@@ -822,7 +841,7 @@ ifeq ($(IS_SUN)$(SUN_COMPILER),11)
   endif  # Sparc
 endif  # SunOS
 
-# Add -pipe for everything except IBM XL C/C++, SunCC and ARM.
+# Add -pipe for everything except IBM XL C++, SunCC and ARM.
 # Allow ARM-64 because they seems to have >1 GB of memory
 ifeq ($(XLC_COMPILER)$(SUN_COMPILER)$(IS_ARM32),000)
   ifeq ($(findstring -save-temps,$(CXXFLAGS)),)
@@ -840,16 +859,6 @@ ifeq ($(IS_SUN)$(SUN_COMPILER),11)
     endif  # No CRYPTOPP_DISABLE_ASM
   endif  # X86/X32/X64
 endif  # SunOS
-
-# TODO: can we remove this since removing sockets?
-#ifneq ($(IS_MINGW),0)
-#  LDLIBS += -lws2_32
-#endif
-
-# TODO: can we remove this since removing sockets?
-#ifneq ($(IS_SUN),0)
-#  LDLIBS += -lnsl -lsocket
-#endif
 
 ifneq ($(IS_LINUX)$(IS_HURD),00)
   ifeq ($(findstring -fopenmp,$(CXXFLAGS)),-fopenmp)
@@ -1419,9 +1428,10 @@ dlltest.exe: cryptopp.dll $(DLLTESTOBJS)
 libcryptopp.pc:
 	@echo '# Crypto++ package configuration file' > libcryptopp.pc
 	@echo '' >> libcryptopp.pc
-	@echo 'prefix=$(PREFIX)' >> libcryptopp.pc
-	@echo 'libdir=$(LIBDIR)' >> libcryptopp.pc
-	@echo 'includedir=$${prefix}/include' >> libcryptopp.pc
+	@echo 'prefix=$(PC_PREFIX)' >> libcryptopp.pc
+	@echo 'libdir=$(PC_LIBDIR)' >> libcryptopp.pc
+	@echo 'includedir=$(PC_INCLUDEDIR)' >> libcryptopp.pc
+	@echo 'datadir=$(PC_DATADIR)' >> libcryptopp.pc
 	@echo '' >> libcryptopp.pc
 	@echo 'Name: Crypto++' >> libcryptopp.pc
 	@echo 'Description: Crypto++ cryptographic library' >> libcryptopp.pc

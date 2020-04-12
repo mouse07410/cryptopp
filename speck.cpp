@@ -8,7 +8,7 @@
 #include "cpu.h"
 
 // Uncomment for benchmarking C++ against SSE or NEON.
-// Do so in both speck.cpp and speck-simd.cpp.
+// Do so in both speck.cpp and speck_simd.cpp.
 // #undef CRYPTOPP_SSSE3_AVAILABLE
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
@@ -240,15 +240,15 @@ unsigned int SPECK64::Base::OptimalDataAlignment() const
 #if (CRYPTOPP_SPECK64_ADVANCED_PROCESS_BLOCKS)
 # if (CRYPTOPP_SSE41_AVAILABLE)
     if (HasSSE41())
-        return 16;
+        return 16;  // load __m128i
 # endif
 # if (CRYPTOPP_ARM_NEON_AVAILABLE)
     if (HasNEON())
-        return 4;
+        return 4;  // load uint32x4_t
 # endif
 # if (CRYPTOPP_ALTIVEC_AVAILABLE)
     if (HasAltivec())
-        return 16;
+        return 16;  // load uint32x4_p
 # endif
 #endif
     return GetAlignmentOf<word32>();
@@ -287,6 +287,14 @@ void SPECK64::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength,
     // Pre-splat the round keys for Altivec forward transformation
 #if CRYPTOPP_ALTIVEC_AVAILABLE
     if (IsForwardTransformation() && HasAltivec())
+    {
+        AlignedSecBlock presplat(m_rkeys.size()*4);
+        for (size_t i=0, j=0; i<m_rkeys.size(); i++, j+=4)
+            presplat[j+0] = presplat[j+1] = presplat[j+2] = presplat[j+3] = m_rkeys[i];
+        m_rkeys.swap(presplat);
+    }
+#elif CRYPTOPP_SSE41_AVAILABLE
+    if (IsForwardTransformation() && HasSSE41())
     {
         AlignedSecBlock presplat(m_rkeys.size()*4);
         for (size_t i=0, j=0; i<m_rkeys.size(); i++, j+=4)
@@ -368,15 +376,15 @@ unsigned int SPECK128::Base::OptimalDataAlignment() const
 #if (CRYPTOPP_SPECK128_ADVANCED_PROCESS_BLOCKS)
 # if (CRYPTOPP_SSSE3_AVAILABLE)
     if (HasSSSE3())
-        return 16;
+        return 16;  // load __m128i
 # endif
 # if (CRYPTOPP_ARM_NEON_AVAILABLE)
     if (HasNEON())
-        return 8;
+        return 8;  // load uint64x2_t
 # endif
 # if (CRYPTOPP_ALTIVEC_AVAILABLE)
     if (HasAltivec())
-        return 8;
+        return 16;  // load uint64x2_p
 # endif
 #endif
     return GetAlignmentOf<word64>();
@@ -420,6 +428,14 @@ void SPECK128::Base::UncheckedSetKey(const byte *userKey, unsigned int keyLength
     // Pre-splat the round keys for Altivec forward transformation
 #if CRYPTOPP_ALTIVEC_AVAILABLE
     if (IsForwardTransformation() && HasAltivec())
+    {
+        AlignedSecBlock presplat(m_rkeys.size()*2);
+        for (size_t i=0, j=0; i<m_rkeys.size(); i++, j+=2)
+            presplat[j+0] = presplat[j+1] = m_rkeys[i];
+        m_rkeys.swap(presplat);
+    }
+#elif CRYPTOPP_SSSE3_AVAILABLE
+    if (IsForwardTransformation() && HasSSSE3())
     {
         AlignedSecBlock presplat(m_rkeys.size()*2);
         for (size_t i=0, j=0; i<m_rkeys.size(); i++, j+=2)

@@ -1,4 +1,4 @@
-// blake2-simd.cpp - written and placed in the public domain by
+// blake2_simd.cpp - written and placed in the public domain by
 //                   Samuel Neves, Jeffrey Walton, Uri Blumenthal
 //                   and Marcel Raad.
 //
@@ -13,7 +13,7 @@
 #include "blake2.h"
 
 // Uncomment for benchmarking C++ against SSE2 or NEON.
-// Do so in both blake2.cpp and blake2-simd.cpp.
+// Do so in both blake2.cpp and blake2_simd.cpp.
 // #undef CRYPTOPP_SSE41_AVAILABLE
 // #undef CRYPTOPP_ARM_NEON_AVAILABLE
 // #undef CRYPTOPP_ALTIVEC_AVAILABLE
