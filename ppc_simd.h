@@ -232,16 +232,57 @@ inline uint32x4_p VecOne()
 /// \returns vector
 /// \details VecReverse() reverses the bytes in a vector
 /// \par Wraps
-///  vec_revb on POWER9, vec_perm on POWER8 and below
+///  vec_perm
 /// \since Crypto++ 6.0
 template <class T>
 inline T VecReverse(const T data)
 {
-#if (_ARCH_PWR9)
-    return (T)vec_revb((uint8x16_p)data);
-#else
+#if defined(CRYPTOPP_BIG_ENDIAN)
     const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
     return (T)vec_perm(data, data, mask);
+#else
+    const uint8x16_p mask = {0,1,2,3, 4,5,6,7, 8,9,10,11, 12,13,14,15};
+    return (T)vec_perm(data, data, mask);
+#endif
+}
+
+/// \brief Reverse bytes in a vector
+/// \tparam T vector type
+/// \param data the vector
+/// \returns vector
+/// \details VecReverseLE() reverses the bytes in a vector on
+///  little-endian systems.
+/// \par Wraps
+///  vec_perm
+/// \since Crypto++ 6.0
+template <class T>
+inline T VecReverseLE(const T data)
+{
+#if defined(CRYPTOPP_LITTLE_ENDIAN)
+    const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
+    return (T)vec_perm(data, data, mask);
+#else
+    return data;
+#endif
+}
+
+/// \brief Reverse bytes in a vector
+/// \tparam T vector type
+/// \param data the vector
+/// \returns vector
+/// \details VecReverseBE() reverses the bytes in a vector on
+///  big-endian systems.
+/// \par Wraps
+///  vec_perm
+/// \since Crypto++ 6.0
+template <class T>
+inline T VecReverseBE(const T data)
+{
+#if defined(CRYPTOPP_BIG_ENDIAN)
+    const uint8x16_p mask = {15,14,13,12, 11,10,9,8, 7,6,5,4, 3,2,1,0};
+    return (T)vec_perm(data, data, mask);
+#else
+    return data;
 #endif
 }
 
@@ -710,7 +751,7 @@ inline uint32x4_p VecLoadBE(const byte src[16])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     return (uint32x4_p)VecLoad_ALTIVEC(0, CONST_V8_CAST(src));
 #else
-    return (uint32x4_p)VecReverse(VecLoad_ALTIVEC(CONST_V8_CAST(src)));
+    return (uint32x4_p)VecReverseLE(VecLoad_ALTIVEC(CONST_V8_CAST(src)));
 #endif
 }
 
@@ -744,7 +785,7 @@ inline uint32x4_p VecLoadBE(int off, const byte src[16])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     return (uint32x4_p)VecLoad_ALTIVEC(CONST_V8_CAST(addr));
 #else
-    return (uint32x4_p)VecReverse(VecLoad_ALTIVEC(CONST_V8_CAST(addr)));
+    return (uint32x4_p)VecReverseLE(VecLoad_ALTIVEC(CONST_V8_CAST(addr)));
 #endif
 }
 
@@ -1198,7 +1239,7 @@ inline void VecStoreBE(const T data, byte dest[16])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     VecStore((uint8x16_p)data, NCONST_V8_CAST(addr));
 #else
-    VecStore((uint8x16_p)VecReverse(data), NCONST_V8_CAST(addr));
+    VecStore((uint8x16_p)VecReverseLE(data), NCONST_V8_CAST(addr));
 #endif
 }
 
@@ -1234,7 +1275,7 @@ inline void VecStoreBE(const T data, int off, byte dest[16])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     VecStore((uint8x16_p)data, NCONST_V8_CAST(addr));
 #else
-    VecStore((uint8x16_p)VecReverse(data), NCONST_V8_CAST(addr));
+    VecStore((uint8x16_p)VecReverseLE(data), NCONST_V8_CAST(addr));
 #endif
 }
 
@@ -1269,7 +1310,7 @@ inline void VecStoreBE(const T data, word32 dest[4])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     VecStore((uint32x4_p)data, NCONST_V32_CAST(addr));
 #else
-    VecStore((uint32x4_p)VecReverse(data), NCONST_V32_CAST(addr));
+    VecStore((uint32x4_p)VecReverseLE(data), NCONST_V32_CAST(addr));
 #endif
 }
 
@@ -1305,7 +1346,7 @@ inline void VecStoreBE(const T data, int off, word32 dest[4])
 #elif defined(CRYPTOPP_BIG_ENDIAN)
     VecStore((uint32x4_p)data, NCONST_V32_CAST(addr));
 #else
-    VecStore((uint32x4_p)VecReverse(data), NCONST_V32_CAST(addr));
+    VecStore((uint32x4_p)VecReverseLE(data), NCONST_V32_CAST(addr));
 #endif
 }
 
