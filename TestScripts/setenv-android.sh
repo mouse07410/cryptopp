@@ -7,6 +7,10 @@
 # Heavily modified by JWW for Crypto++.
 # Modified by Skycoder42 Android NDK-r19 and above.
 #
+# Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
+# licensed under the Boost Software License 1.0, while the individual files
+# in the compilation are all public domain.
+#
 # Also see:
 #   https://android.googlesource.com/platform/ndk.git/+/HEAD/docs/UnifiedHeaders.md
 #   https://android.googlesource.com/platform/ndk/+/master/docs/PlatformApis.md
@@ -18,19 +22,31 @@
 #####        Some validation        #####
 #########################################
 
+# cryptest-android.sh may run this script without sourcing.
+if [ "$0" = "${BASH_SOURCE[0]}" ]; then
+    echo "setenv-android.sh is usually sourced, but not this time."
+fi
+
+# This supports 'source setenv-android.sh 23 arm64' and friends
+if [[ -z "$ANDROID_API" && -n "$1" ]]; then
+    printf "Using positional arg, ANDROID_API=%s\n" "$1"
+    ANDROID_API="$1"
+fi
+
+# This supports 'source setenv-android.sh 23 arm64' and friends
+if [[ -z "$ANDROID_CPU" && -n "$2" ]]; then
+    printf "Using positional arg, ANDROID_CPU=%s\n" "$2"
+    ANDROID_CPU="$2"
+fi
+
 if [ -z "$ANDROID_API" ]; then
     echo "ANDROID_API is not set. Please set it"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
 if [ -z "$ANDROID_CPU" ]; then
     echo "ANDROID_CPU is not set. Please set it"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
-fi
-
-# cryptest-android.sh may run this script without sourcing.
-if [ "$0" = "${BASH_SOURCE[0]}" ]; then
-    echo "setenv-android.sh is usually sourced, but not this time."
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
 #########################################
@@ -256,8 +272,8 @@ sed -i 's/cpuinfo = malloc/cpuinfo = (char*)malloc/g' cpu-features.c
 
 #####################################################################
 
-VERBOSE=1
-if [ ! -z "$VERBOSE" ] && [ "$VERBOSE" != "0" ]; then
+VERBOSE=${VERBOSE:-1}
+if [ "$VERBOSE" -gt 0 ]; then
   echo "ANDROID_TOOLCHAIN: $ANDROID_TOOLCHAIN"
   echo "ANDROID_API: $ANDROID_API"
   echo "ANDROID_CPU: $ANDROID_CPU"
