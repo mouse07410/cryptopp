@@ -6,6 +6,10 @@
 # Based upon OpenSSL's setenv-ios.sh  by TH, JW, and SM.
 # Heavily modified by JWW for Crypto++.
 #
+# Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
+# licensed under the Boost Software License 1.0, while the individual files
+# in the compilation are all public domain.
+#
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
 # ====================================================================
 
@@ -17,19 +21,31 @@
 # vice-versa). Nowadays we need the user to set it for us because Apple
 # platforms have both 32-bit or 64-bit variations.
 
+# cryptest-ios.sh may run this script without sourcing.
+if [ "$0" = "${BASH_SOURCE[0]}" ]; then
+    echo "setenv-ios.sh is usually sourced, but not this time."
+fi
+
+# This supports 'source setenv-ios.sh iPhone arm64' and friends
+if [[ -z "$IOS_SDK" && -n "$1" ]]; then
+    printf "Using positional arg, IOS_SDK=%s\n" "$1"
+    IOS_SDK="$1"
+fi
+
+# This supports 'source setenv-ios.sh iPhone arm64' and friends
+if [[ -z "$IOS_CPU" && -n "$2" ]]; then
+    printf "Using positional arg, IOS_CPU=%s\n" "$2"
+    IOS_CPU="$2"
+fi
+
 if [ -z "$IOS_SDK" ]; then
     echo "IOS_SDK is not set. Please set it"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
 if [ -z "$IOS_CPU" ]; then
     echo "IOS_CPU is not set. Please set it"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
-fi
-
-# cryptest-ios.sh may run this script without sourcing.
-if [ "$0" = "${BASH_SOURCE[0]}" ]; then
-    echo "setenv-ios.sh is usually sourced, but not this time."
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
 #########################################
@@ -63,7 +79,7 @@ if [[ "$IOS_SDK" == "Watch" || "$IOS_SDK" == "AppleWatch" ]]; then
     IOS_SDK=WatchOS
 fi
 
-if [[ "$IOS_CPU" == "aarch64" || "$IOS_CPU" == "armv8"* ]] ; then
+if [[ "$IOS_CPU" == "aarch64" || "$IOS_CPU" == "arm64"* || "$IOS_CPU" == "armv8"* ]] ; then
     IOS_CPU=arm64
 fi
 
@@ -130,7 +146,7 @@ elif [[ "$IOS_SDK" == "WatchSimulator" && "$IOS_CPU" == "x86_64" ]]; then
 # And the final catch-all
 else
     echo "IOS_SDK and IOS_CPU are not valid. Please fix them"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+    [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
 #####################################################################
@@ -276,8 +292,8 @@ export IOS_CXXFLAGS IOS_SDK IOS_CPU IOS_SYSROOT
 
 #####################################################################
 
-VERBOSE=1
-if [ ! -z "$VERBOSE" ] && [ "$VERBOSE" != "0" ]; then
+VERBOSE=${VERBOSE:-1}
+if [ "$VERBOSE" -gt 0 ]; then
   echo "XCODE_TOOLCHAIN: $XCODE_TOOLCHAIN"
   echo "IOS_SDK: $IOS_SDK"
   echo "IOS_CPU: $IOS_CPU"
