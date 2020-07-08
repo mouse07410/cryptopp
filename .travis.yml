@@ -182,7 +182,7 @@ jobs:
         - BUILD_MODE=cmake
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (all)
       arch: amd64
       compiler: clang
@@ -191,7 +191,7 @@ jobs:
         - BUILD_MODE=all
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (native)
       arch: amd64
       compiler: clang
@@ -200,7 +200,7 @@ jobs:
         - BUILD_MODE=native
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (no-asm)
       arch: amd64
       compiler: clang
@@ -209,7 +209,7 @@ jobs:
         - BUILD_MODE=no-asm
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (debug)
       arch: amd64
       compiler: clang
@@ -218,7 +218,7 @@ jobs:
         - BUILD_MODE=debug
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (asan)
       arch: amd64
       compiler: clang
@@ -227,7 +227,7 @@ jobs:
         - BUILD_MODE=asan
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (ubsan)
       arch: amd64
       compiler: clang
@@ -236,7 +236,7 @@ jobs:
         - BUILD_MODE=ubsan
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (pem)
       arch: amd64
       compiler: clang
@@ -245,7 +245,7 @@ jobs:
         - BUILD_MODE=pem
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (autotools)
       arch: amd64
       compiler: clang
@@ -254,7 +254,7 @@ jobs:
         - BUILD_MODE=autotools
         - BUILD_JOBS=2
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: OS X with Clang (cmake)
       arch: amd64
       compiler: clang
@@ -495,7 +495,7 @@ jobs:
         - ANDROID_SDK_ROOT="$ANDROID_SDK"
         - ANDROID_NDK_ROOT="$ANDROID_NDK"
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (iPhoneOS)
       arch: amd64
       env:
@@ -504,7 +504,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=iPhoneOS
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (Arm64)
       arch: amd64
       env:
@@ -513,7 +513,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=Arm64
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (WatchOS)
       arch: amd64
       env:
@@ -522,7 +522,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=WatchOS
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (AppleTVOS)
       arch: amd64
       env:
@@ -531,7 +531,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=AppleTVOS
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (iPhoneSimulator)
       arch: amd64
       env:
@@ -540,7 +540,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=iPhoneSimulator
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (WatchSimulator)
       arch: amd64
       env:
@@ -549,7 +549,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=WatchSimulator
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (AppleTVSimulator)
       arch: amd64
       env:
@@ -560,7 +560,61 @@ jobs:
 
   allow_failures:
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
+      name: iOS on OS X (AppleTVOS)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=AppleTVOS
+    - os: osx
+      osx_image: xcode11.4
+      name: iOS on OS X (iPhoneSimulator)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=iPhoneSimulator
+    - os: osx
+      osx_image: xcode11.4
+      name: iOS on OS X (WatchSimulator)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=WatchSimulator
+    - os: osx
+      osx_image: xcode11.4
+      name: iOS on OS X (AppleTVSimulator)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=AppleTVSimulator
+    - os: osx
+      osx_image: xcode11.4
+      name: iOS on OS X (iPhoneOS)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=iPhoneOS
+    - os: osx
+      osx_image: xcode11.4
+      name: iOS on OS X (Arm64)
+      arch: amd64
+      env:
+        - BUILD_OS=osx
+        - BUILD_MODE=ios
+        - BUILD_JOBS=2
+        - BUILD_ARCH=Arm64
+    - os: osx
+      osx_image: xcode11.4
       name: iOS on OS X (WatchOS)
       env:
         - BUILD_OS=osx
@@ -568,7 +622,7 @@ jobs:
         - BUILD_JOBS=2
         - BUILD_ARCH=WatchOS
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11.4
       name: iOS on OS X (iPhoneSimulator)
       env:
         - BUILD_OS=osx

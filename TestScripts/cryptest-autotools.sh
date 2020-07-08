@@ -39,13 +39,13 @@ fi
 
 # Fixup for missing libtool
 if [[ ! -z $(command -v libtoolize) ]]; then
-	LIBTOOLIZE=$(command -v libtoolize)
+	export LIBTOOLIZE=$(command -v libtoolize)
 elif [[ ! -z $(command -v glibtoolize) ]]; then
-	LIBTOOLIZE=$(command -v glibtoolize)
+	export LIBTOOLIZE=$(command -v glibtoolize)
 elif [[ ! -z $(command -v libtool) ]]; then
-	LIBTOOLIZE=$(command -v libtool)
+	export LIBTOOLIZE=$(command -v libtool)
 elif [[ ! -z $(command -v glibtool) ]]; then
-	LIBTOOLIZE=$(command -v glibtool)
+	export LIBTOOLIZE=$(command -v glibtool)
 fi
 
 #############################################################################
@@ -92,12 +92,6 @@ if ! autoupdate &>/dev/null; then
 	exit 1
 fi
 
-echo "Running libtoolize"
-if ! "$LIBTOOLIZE" --force --install &>/dev/null; then
-	echo "libtoolize failed... skipping."
-	# exit 1
-fi
-
 # Run autoreconf twice on failure. Also see
 # https://github.com/tracebox/tracebox/issues/57
 echo "Running autoreconf"
@@ -116,26 +110,26 @@ echo "Updating config.sub"
 curl -o config.sub.new --silent --insecure 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub'
 
 # Solaris removes +w, can't overwrite
-chmod +w config.sub
-mv config.sub.new config.sub
-chmod +x config.sub
+chmod +w build-aux/config.sub
+mv config.sub.new build-aux/config.sub
+chmod +x build-aux/config.sub
 
 if [[ "$IS_DARWIN" -ne 0 ]] && [[ -n $(command -v xattr) ]]; then
 	echo "Removing config.sub quarantine"
-	xattr -d "com.apple.quarantine" config.sub &>/dev/null
+	xattr -d "com.apple.quarantine" build-aux/config.sub &>/dev/null
 fi
 
 echo "Updating config.guess"
 curl -o config.guess.new --silent --insecure 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess'
 
 # Solaris removes +w, can't overwrite
-chmod +w config.guess
-mv config.guess.new config.guess
-chmod +x config.guess
+chmod +w build-aux/config.guess
+mv config.guess.new build-aux/config.guess
+chmod +x build-aux/config.guess
 
 if [[ "$IS_DARWIN" -ne 0 ]] && [[ -n $(command -v xattr) ]]; then
 	echo "Removing config.guess quarantine"
-	xattr -d "com.apple.quarantine" config.guess &>/dev/null
+	xattr -d "com.apple.quarantine" build-aux/config.guess &>/dev/null
 fi
 
 #############################################################################
