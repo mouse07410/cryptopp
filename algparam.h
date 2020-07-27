@@ -14,6 +14,10 @@
 #include "integer.h"
 #include "misc.h"
 
+#include <string>
+#include <typeinfo>
+#include <exception>
+
 NAMESPACE_BEGIN(CryptoPP)
 
 /// \brief Used to pass byte array input as part of a NameValuePairs object
