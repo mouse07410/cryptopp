@@ -18,9 +18,14 @@
 #
 # Use the same compiler and environment to run configure and the makefile.
 #
-# This script was added at Crypto++ 8.3. Please verify the earlier version of
-# the library has the config_xxx.h files. The monolithic config.h was split
-# into config_xxx.h in May 2019 at Crypto++ 8.3. See GH #835, PR #836.
+# Do not use this script for a multiarch environment unless the cpu features
+# are the same for each arch. For example, -arch i386 -arch x86_64 could
+# cause problems if x86 only included SSE4.2, while x64 included AVX.
+#
+# This script was added at Crypto++ 8.3. Also see GH #850. This script will
+# work with earlier versions of the library that use config_xxx.h files.
+# The monolithic config.h was split into config_xxx.h in May 2019 at
+# Crypto++ 8.3. Also see GH #835, PR #836.
 
 
 # shellcheck disable=SC2086
@@ -29,6 +34,7 @@ TMPDIR="${TMPDIR:-/tmp}"
 TOUT="${TOUT:-a.out}"
 
 CXX="${CXX:-g++}"
+LD="${LD:-ld}"
 CXXFLAGS="${CXXFLAGS:--DNDEBUG -g2 -O3}"
 GREP="${GREP:-grep}"
 
@@ -39,6 +45,7 @@ fi
 
 SUN_COMPILER=$(${CXX} -V 2>/dev/null | ${GREP} -i -c -E 'CC: (Sun|Studio)')
 XLC_COMPILER=$(${CXX} -qversion 2>/dev/null | ${GREP} -i -c "IBM XL")
+CLANG_COMPILER=$(${CXX} --version 2>/dev/null | ${GREP} -i -c -E 'clang|llvm')
 
 if [[ "$SUN_COMPILER" -ne 0 ]]
 then
@@ -56,17 +63,47 @@ then
   IS_IA32=0
   IS_ARM32=0
   IS_ARMV8=0
-  IS_PPC=$(uname -m 2>&1 | ${GREP} -v 64 | ${GREP} -c -E 'ppc|powerpc')
+  IS_PPC=$(uname -m 2>&1 | ${GREP} -c -E 'ppc|powerpc')
   IS_PPC64=$(uname -m 2>&1 | ${GREP} -c -E 'ppc64|powerpc64')
+elif [[ "$CLANG_COMPILER" -ne 0 ]]
+then
+  IS_X86=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i386|i486|i585|i686')
+  IS_X64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i86pc|x86_64|amd64')
+  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
+  IS_ARM32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
+  IS_ARMV8=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
+  IS_PPC=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'ppc|powerpc')
+  IS_PPC64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'ppc64|powerpc64')
 else
-  IS_X86=$(${CXX} -dumpmachine 2>&1 | ${GREP} -c -E 'i386|i486|i585|i686')
-  IS_X64=$(${CXX} -dumpmachine 2>&1 | ${GREP} -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(${CXX} -dumpmachine 2>&1 | ${GREP} -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
-  IS_ARM32=$(${CXX} -dumpmachine 2>&1 | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
-  IS_ARMV8=$(${CXX} -dumpmachine 2>&1 | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
-  IS_PPC=$(${CXX} -dumpmachine 2>&1 | ${GREP} -v 64 | ${GREP} -c -E 'ppc|powerpc')
-  IS_PPC64=$(${CXX} -dumpmachine 2>&1 | ${GREP} -c -E 'ppc64|powerpc64')
+  IS_X86=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i386|i486|i585|i686')
+  IS_X64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
+  IS_IA32=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
+  IS_ARM32=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
+  IS_ARMV8=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
+  IS_PPC=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc|powerpc')
+  IS_PPC64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc64|powerpc64')
 fi
+
+# ===========================================================================
+# ================================== Fixups =================================
+# ===========================================================================
+
+if [[ "${IS_X64}" -ne 0 ]]; then IS_X86=0; fi
+if [[ "${IS_ARMV8}" -ne 0 ]]; then IS_ARM32=0; fi
+if [[ "${IS_PPC64}" -ne 0 ]]; then IS_PPC=0; fi
+
+# ===========================================================================
+# =================================== Info ==================================
+# ===========================================================================
+
+if [[ "${IS_X86}" -ne 0 ]]; then echo "Configuring for x86"; fi
+if [[ "${IS_X64}" -ne 0 ]]; then echo "Configuring for x86_64"; fi
+if [[ "${IS_ARM32}" -ne 0 ]]; then echo "Configuring for ARM32"; fi
+if [[ "${IS_ARMV8}" -ne 0 ]]; then echo "Configuring for Aarch64"; fi
+if [[ "${IS_PPC}" -ne 0 ]]; then echo "Configuring for PowerPC"; fi
+if [[ "${IS_PPC64}" -ne 0 ]]; then echo "Configuring for PowerPC64"; fi
+echo "Compiler: $(command -v ${CXX})"
+echo "Linker: $(command -v ${LD})"
 
 # ===========================================================================
 # =============================== config_asm.h ==============================
@@ -276,7 +313,7 @@ if [[ "$IS_ARM32" -ne 0 ]]; then
   # Shell redirection
   {
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -mfpu=neon TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} -mfpu=neon TestPrograms/test_arm_neon_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_HEADER 1'
   fi
@@ -296,22 +333,23 @@ if [[ "$IS_ARM32" -ne 0 ]]; then
   fi
 
   # Cryptogams is special. Attempt to compile the actual source files
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} aes_armv4.S -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  # TestPrograms/test_cxx.cxx is needed for main().
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} aes_armv4.S TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOGAMS_AES_AVAILABLE 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha1_armv4.S -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha1_armv4.S TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOGAMS_SHA1_AVAILABLE 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha256_armv4.S -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha256_armv4.S TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOGAMS_SHA256_AVAILABLE 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha512_armv4.S -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} sha512_armv4.S TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOGAMS_SHA512_AVAILABLE 1'
   fi
@@ -328,17 +366,25 @@ if [[ "$IS_ARMV8" -ne 0 ]]; then
   # Shell redirection
   {
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_neon_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_HEADER 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a TestPrograms/test_arm_acle.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a TestPrograms/test_arm_acle_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_ACLE_HEADER 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a TestPrograms/test_arm_asimd.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_ARM_NEON_AVAILABLE 1'
+  else
+    echo '#define CRYPTOPP_DISABLE_ARM_NEON 1'
+  fi
+
+  # This should be an unneeded test. ASIMD on Aarch64 is NEON on A32 and T32
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_asimd.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_ASIMD_AVAILABLE 1'
   else
@@ -493,6 +539,7 @@ fi
 {
   echo ''
   echo '#endif'
+  echo ''
 } >> config_asm.h.new
 
 if [[ -e config_asm.h ]]; then
