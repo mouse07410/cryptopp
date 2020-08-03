@@ -8,15 +8,22 @@
 # modern Android toolchains should be AES-NI and AVX capable, but the project
 # removes the compiler support.
 #
+# Use the same compiler and environment to run configure and the makefile.
+#
 # To use the script, copy the script to the root of the Crypto++ directory.
 # Set the environment, and then run the tool:
 #
-#     export CXX="..."
-#     export CXXFLAGS="..."
-#     export LDFLAGS="..."
-#     ./configure.sh
+#   export CXX="..."
+#   export CXXFLAGS="..."
+#   export LDFLAGS="..."
+#   ./configure.sh
 #
-# Use the same compiler and environment to run configure and the makefile.
+# Android and iOS would use the following if you are using setenv-android.sh
+# or setenv-ios.sh to set the environment:
+#
+#   export CXXFLAGS="$IOS_CXXFLAGS --sysroot=$IOS_SYSROOT"
+# or
+#   export CXXFLAGS="$ANDROID_CXXFLAGS --sysroot=$ANDROID_SYSROOT"
 #
 # Do not use this script for a multiarch environment unless the cpu features
 # are the same for each arch. For example, -arch i386 -arch x86_64 could
@@ -67,9 +74,9 @@ then
   IS_PPC64=$(uname -m 2>&1 | ${GREP} -c -E 'ppc64|powerpc64')
 elif [[ "$CLANG_COMPILER" -ne 0 ]]
 then
-  IS_X86=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i386|i486|i585|i686')
-  IS_X64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
+  IS_X86=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i386|i486|i585|i686')
+  IS_X64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
+  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
   IS_ARM32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
   IS_ARMV8=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
   IS_PPC=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'ppc|powerpc')
@@ -83,6 +90,10 @@ else
   IS_PPC=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc|powerpc')
   IS_PPC64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc64|powerpc64')
 fi
+
+# Default values for setenv-*.sh scripts
+IS_IOS="${IS_IOS:-0}"
+IS_ANDROID="${IS_ANDROID:-0}"
 
 # ===========================================================================
 # ================================== Fixups =================================
@@ -310,22 +321,32 @@ fi
 
 if [[ "$IS_ARM32" -ne 0 ]]; then
 
+  # IS_IOS is set when ./setenv-ios is run
+  if [[ "$IS_IOS" -ne 0 ]]; then
+    ARMV7_FLAG="-arch arm"
+    NEON_FLAG="-arch arm"
+  else
+    ARMV7_FLAG="-march=armv7"
+    NEON_FLAG="-mfpu=neon"
+  fi
+
   # Shell redirection
   {
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -mfpu=neon TestPrograms/test_arm_neon_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${NEON_FLAG} TestPrograms/test_arm_neon_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_HEADER 1'
+    HDRFLAGS="-DCRYPTOPP_ARM_NEON_HEADER=1"
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv7 TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV7_FLAG} TestPrograms/test_cxx.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_ARMV7_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_ARMV7 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -mfpu=neon TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${NEON_FLAG} TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_AVAILABLE 1'
   else
@@ -363,20 +384,35 @@ fi
 
 if [[ "$IS_ARMV8" -ne 0 ]]; then
 
+  # IS_IOS is set when ./setenv-ios is run
+  if [[ "$IS_IOS" -ne 0 ]]; then
+    ARMV8_FLAG="-arch arm64"
+    ARMV81_CRC_FLAG="-arch arm64"
+    ARMV81_CRYPTO_FLAG="-arch arm64"
+    ARMV84_CRYPTO_FLAG="-arch arm64"
+  else
+    ARMV8_FLAG="-march=armv8-a"
+    ARMV81_CRC_FLAG="-march=armv8-a+crc"
+    ARMV81_CRYPTO_FLAG="-march=armv8-a+crypto"
+    ARMV84_CRYPTO_FLAG="-march=armv8.4-a+crypto"
+  fi
+
   # Shell redirection
   {
 
   CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_neon_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_HEADER 1'
+    HDRFLAGS="-DCRYPTOPP_ARM_NEON_HEADER=1"
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a TestPrograms/test_arm_acle_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} TestPrograms/test_arm_acle_header.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_ACLE_HEADER 1'
+    HDRFLAGS="${HDRFLAGS} -DCRYPTOPP_ARM_ACLE_HEADER=1"
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} TestPrograms/test_arm_neon.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_NEON_AVAILABLE 1'
   else
@@ -384,35 +420,35 @@ if [[ "$IS_ARMV8" -ne 0 ]]; then
   fi
 
   # This should be an unneeded test. ASIMD on Aarch64 is NEON on A32 and T32
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_arm_asimd.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} TestPrograms/test_arm_asimd.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_ASIMD_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_ASIMD 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a+crc TestPrograms/test_arm_crc.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV81_CRC_FLAG} TestPrograms/test_arm_crc.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_CRC32_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_CRC32 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a+crypto TestPrograms/test_arm_aes.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV81_CRYPTO_FLAG} TestPrograms/test_arm_aes.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_AES_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_AES 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a+crypto TestPrograms/test_arm_pmull.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV81_CRYPTO_FLAG} TestPrograms/test_arm_pmull.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_PMULL_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_PMULL 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a+crypto TestPrograms/test_arm_sha1.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV81_CRYPTO_FLAG} TestPrograms/test_arm_sha1.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SHA_AVAILABLE 1'
     echo '#define CRYPTOPP_ARM_SHA1_AVAILABLE 1'
@@ -421,35 +457,35 @@ if [[ "$IS_ARMV8" -ne 0 ]]; then
     echo '#define CRYPTOPP_DISABLE_ARM_SHA1 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8-a+crypto TestPrograms/test_arm_sha256.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV81_CRYPTO_FLAG} TestPrograms/test_arm_sha256.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SHA2_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_SHA2 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8.4-a+crypto TestPrograms/test_arm_sha3.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV84_CRYPTO_FLAG} TestPrograms/test_arm_sha3.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SHA3_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_SHA3 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8.4-a+crypto TestPrograms/test_arm_sha512.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV84_CRYPTO_FLAG} TestPrograms/test_arm_sha512.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SHA512_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_SHA512 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8.4-a+crypto TestPrograms/test_arm_sm3.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV84_CRYPTO_FLAG} TestPrograms/test_arm_sm3.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SM3_AVAILABLE 1'
   else
     echo '#define CRYPTOPP_DISABLE_ARM_SM3 1'
   fi
 
-  CXX_RESULT=$(${CXX} ${CXXFLAGS} -march=armv8.4-a+crypto TestPrograms/test_arm_sm4.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} ${HDRFLAGS} ${ARMV84_CRYPTO_FLAG} TestPrograms/test_arm_sm4.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_ARM_SM4_AVAILABLE 1'
   else
