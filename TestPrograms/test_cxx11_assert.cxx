@@ -1,6 +1,7 @@
+// https://en.cppreference.com/w/cpp/feature_test
 int main(int argc, char* argv[])
 {
-#if __cplusplus >= 201703L
+#if __cpp_static_assert >= 200410L
     int x[1];
 #else
     int x[-1];
