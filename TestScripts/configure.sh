@@ -3,10 +3,10 @@
 # Written and placed in public domain by Jeffrey Walton
 #
 # This script attempts to update various config_xxx.h files based on the
-# current toolchain. It fills a gap where some features are enabled based on
-# compiler vendor and version, but the feature is not present. For example,
-# modern Android toolchains should be AES-NI and AVX capable, but the project
-# removes the compiler support.
+# current toolchain. It fills a gap where some features are misdetected based
+# on compiler version and associated macros, but the feature is (or is not)
+# present. For example, modern Android toolchains should be AES-NI and AVX
+# capable, but the project removes the feature support.
 #
 # Use the same compiler and environment to run configure and the makefile.
 #
@@ -19,7 +19,8 @@
 #   ./configure.sh
 #
 # Android and iOS would use the following if you are using setenv-android.sh
-# or setenv-ios.sh to set the environment:
+# or setenv-ios.sh to set the environment. Otherwise the script expects
+# CXX and CXXFLAGS to be set properly for Android or iOS.
 #
 #   export CXXFLAGS="$IOS_CXXFLAGS --sysroot=$IOS_SYSROOT"
 # or
@@ -29,6 +30,9 @@
 # are the same for each arch. For example, -arch i386 -arch x86_64 could
 # cause problems if x86 only included SSE4.2, while x64 included AVX.
 #
+# A wiki page is available for this script at
+# https://www.cryptopp.com/wiki/Configure.sh
+#
 # This script was added at Crypto++ 8.3. Also see GH #850. This script will
 # work with earlier versions of the library that use config_xxx.h files.
 # The monolithic config.h was split into config_xxx.h in May 2019 at
@@ -36,6 +40,12 @@
 
 
 # shellcheck disable=SC2086
+
+# Verify the file exists and is writeable.
+if [[ ! -w ./config_asm.h ]]; then
+    echo "Crypto++ is too old. Unable to locate config_asm.h"
+    exit 1
+fi
 
 TMPDIR="${TMPDIR:-/tmp}"
 TOUT="${TOUT:-a.out}"
@@ -99,6 +109,7 @@ IS_ANDROID="${IS_ANDROID:-0}"
 # ================================== Fixups =================================
 # ===========================================================================
 
+# A 64-bit platform often matches the 32-bit variant due to appending '64'
 if [[ "${IS_X64}" -ne 0 ]]; then IS_X86=0; fi
 if [[ "${IS_ARMV8}" -ne 0 ]]; then IS_ARM32=0; fi
 if [[ "${IS_PPC64}" -ne 0 ]]; then IS_PPC=0; fi
@@ -113,6 +124,7 @@ if [[ "${IS_ARM32}" -ne 0 ]]; then echo "Configuring for ARM32"; fi
 if [[ "${IS_ARMV8}" -ne 0 ]]; then echo "Configuring for Aarch64"; fi
 if [[ "${IS_PPC}" -ne 0 ]]; then echo "Configuring for PowerPC"; fi
 if [[ "${IS_PPC64}" -ne 0 ]]; then echo "Configuring for PowerPC64"; fi
+
 echo "Compiler: $(command -v ${CXX})"
 echo "Linker: $(command -v ${LD})"
 
@@ -133,9 +145,23 @@ rm -f config_asm.h.new
 } >> config_asm.h.new
 
 #############################################################################
+# Pickup CRYPTOPP_DISABLE_ASM
+
+disable_asm=$($GREP -c '\-DCRYPTOPP_DISABLE_ASM' <<< "${CPPFLAGS} ${CXXFLAGS}")
+if [[ "$disable_asm" -ne 0 ]]; then
+
+  # Shell redirection
+  {
+    echo '// Set in CPPFLAGS or CXXFLAGS'
+    echo '#define CRYPTOPP_DISABLE_ASM 1'
+  } >> config_asm.h.new
+
+fi
+
+#############################################################################
 # Intel x86-based machines
 
-if [[ "$IS_IA32" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_IA32" -ne 0 ]]; then
 
   if [[ "${SUN_COMPILER}" -ne 0 ]]; then
     SSE2_FLAG=-xarch=sse2
@@ -319,7 +345,7 @@ fi
 #############################################################################
 # ARM 32-bit machines
 
-if [[ "$IS_ARM32" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_ARM32" -ne 0 ]]; then
 
   # IS_IOS is set when ./setenv-ios is run
   if [[ "$IS_IOS" -ne 0 ]]; then
@@ -382,7 +408,7 @@ fi
 #############################################################################
 # ARM 64-bit machines
 
-if [[ "$IS_ARMV8" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_ARMV8" -ne 0 ]]; then
 
   # IS_IOS is set when ./setenv-ios is run
   if [[ "$IS_IOS" -ne 0 ]]; then
@@ -499,7 +525,7 @@ fi
 #############################################################################
 # PowerPC machines
 
-if [[ "$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 &&  ("$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
 
   if [[ "${XLC_COMPILER}" -ne 0 ]]; then
     POWER9_FLAG="-qarch=pwr9 -qaltivec"
