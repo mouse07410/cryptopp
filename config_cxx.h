@@ -35,9 +35,10 @@
 #define CRYPTOPP_DISABLE_UNCAUGHT_EXCEPTION
 #endif
 
-// Ancient Crypto++ define, dating back to C++98 and C++03.
+// Ancient Crypto++ define, dating back to C++98.
 #ifndef CRYPTOPP_DISABLE_UNCAUGHT_EXCEPTION
 # define CRYPTOPP_UNCAUGHT_EXCEPTION_AVAILABLE 1
+# define CRYPTOPP_CXX98_UNCAUGHT_EXCEPTION 1
 #endif
 
 // Compatibility with non-clang compilers.
@@ -99,7 +100,7 @@
 // atomics: MS at VS2012 (17.00); GCC at 4.4; Clang at 3.1/3.2; Intel 13.0; SunCC 5.14.
 #if (CRYPTOPP_MSC_VERSION >= 1700) || __has_feature(cxx_atomic) || \
 	(__INTEL_COMPILER >= 1300) || (CRYPTOPP_GCC_VERSION >= 40400) || (__SUNPRO_CC >= 0x5140)
-# define CRYPTOPP_CXX11_ATOMICS 1
+# define CRYPTOPP_CXX11_ATOMIC 1
 #endif // atomics
 
 // synchronization: MS at VS2012 (17.00); GCC at 4.4; Clang at 3.3; Xcode 5.0; Intel 12.0; SunCC 5.13.
@@ -147,6 +148,13 @@
 	(__INTEL_COMPILER >= 1500) || (CRYPTOPP_GCC_VERSION >= 40500) || (__SUNPRO_CC >= 0x5130)
 #  define CRYPTOPP_CXX11_ALIGNOF 1
 #endif // alignof
+
+// initializer lists: MS at VS2013 (18.00); GCC at 4.4; Clang at 3.1; Intel 14.0; SunCC 5.13.
+#if (CRYPTOPP_MSC_VERSION >= 1800) || (CRYPTOPP_LLVM_CLANG_VERSION >= 30100) || \
+	(CRYPTOPP_APPLE_CLANG_VERSION >= 40000) || (__INTEL_COMPILER >= 1400) || \
+	(CRYPTOPP_GCC_VERSION >= 40400) || (__SUNPRO_CC >= 0x5130)
+#  define CRYPTOPP_CXX11_INITIALIZER_LIST 1
+#endif // alignas
 
 // lambdas: MS at VS2012 (17.00); GCC at 4.9; Clang at 3.3; Intel 12.0; SunCC 5.14.
 #if (CRYPTOPP_MSC_VERSION >= 1700) || __has_feature(cxx_lambdas) || \
@@ -198,7 +206,7 @@
 // Extended static_assert with one argument
 // Microsoft cannot handle the single argument static_assert as of VS2019 (cl.exe 19.00)
 #if (__cpp_static_assert >= 201411)
-# define CRYPTOPP_CXX14_STATIC_ASSERT 1
+# define CRYPTOPP_CXX17_STATIC_ASSERT 1
 #endif // static_assert
 
 #endif
@@ -213,12 +221,12 @@
 #if defined(__clang__)
 # if __EXCEPTIONS && __has_feature(cxx_exceptions)
 #  if __cpp_lib_uncaught_exceptions
-#   define CRYPTOPP_CXX17_EXCEPTIONS 1
+#   define CRYPTOPP_CXX17_UNCAUGHT_EXCEPTIONS 1
 #  endif
 # endif
 #elif (CRYPTOPP_MSC_VERSION >= 1900) || (__INTEL_COMPILER >= 1800) || \
       (CRYPTOPP_GCC_VERSION >= 60000) || (__cpp_lib_uncaught_exceptions)
-# define CRYPTOPP_CXX17_EXCEPTIONS 1
+# define CRYPTOPP_CXX17_UNCAUGHT_EXCEPTIONS 1
 #endif // uncaught_exceptions compilers
 
 #endif  // CRYPTOPP_CXX17

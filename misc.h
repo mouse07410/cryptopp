@@ -147,7 +147,7 @@ class Integer;
 ///  a <tt>CompileAssert</tt> structure is used. When the structure is used
 ///  a negative-sized array triggers the assert at compile time.
 # define CRYPTOPP_COMPILE_ASSERT(expr) { ... }
-#elif defined(CRYPTOPP_CXX14_STATIC_ASSERT)
+#elif defined(CRYPTOPP_CXX17_STATIC_ASSERT)
 # define CRYPTOPP_COMPILE_ASSERT(expr) static_assert(expr)
 #else // CRYPTOPP_DOXYGEN_PROCESSING
 template <bool b>
@@ -267,7 +267,7 @@ struct NewObject
 ///  <tt>_ReadWriteBarrier()</tt> or <tt>__asm__("" ::: "memory")</tt> is used.
 #define MEMORY_BARRIER ...
 #else
-#if defined(CRYPTOPP_CXX11_ATOMICS)
+#if defined(CRYPTOPP_CXX11_ATOMIC)
 # define MEMORY_BARRIER() std::atomic_thread_fence(std::memory_order_acq_rel)
 #elif (_MSC_VER >= 1400)
 # pragma intrinsic(_ReadWriteBarrier)
@@ -324,7 +324,7 @@ private:
 template <class T, class F, int instance>
   const T & Singleton<T, F, instance>::Ref(CRYPTOPP_NOINLINE_DOTDOTDOT) const
 {
-#if defined(CRYPTOPP_CXX11_ATOMICS) && defined(CRYPTOPP_CXX11_SYNCHRONIZATION) && defined(CRYPTOPP_CXX11_DYNAMIC_INIT)
+#if defined(CRYPTOPP_CXX11_ATOMIC) && defined(CRYPTOPP_CXX11_SYNCHRONIZATION) && defined(CRYPTOPP_CXX11_DYNAMIC_INIT)
 	static std::mutex s_mutex;
 	static std::atomic<T*> s_pObject;
 
@@ -1189,11 +1189,6 @@ inline unsigned int GetAlignmentOf()
 #elif CRYPTOPP_BOOL_SLOW_WORD64
 	return UnsignedMin(4U, sizeof(T));
 #else
-# if __BIGGEST_ALIGNMENT__
-	if (__BIGGEST_ALIGNMENT__ < sizeof(T))
-		return __BIGGEST_ALIGNMENT__;
-	else
-# endif
 	return sizeof(T);
 #endif
 }

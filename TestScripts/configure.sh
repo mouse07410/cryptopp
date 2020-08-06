@@ -48,6 +48,7 @@ if [[ ! -w ./config_asm.h ]]; then
 fi
 
 TMPDIR="${TMPDIR:-/tmp}"
+TPROG="${TOUT:-TestPrograms/test_cxx.cxx}"
 TOUT="${TOUT:-a.out}"
 
 CXX="${CXX:-g++}"
@@ -84,13 +85,13 @@ then
   IS_PPC64=$(uname -m 2>&1 | ${GREP} -c -E 'ppc64|powerpc64')
 elif [[ "$CLANG_COMPILER" -ne 0 ]]
 then
-  IS_X86=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i386|i486|i585|i686')
-  IS_X64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
-  IS_ARM32=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
-  IS_ARMV8=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
-  IS_PPC=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -i -c -E 'ppc|powerpc')
-  IS_PPC64=$(${CXX} ${CXXFLAGS} -dM -E - </dev/null | ${GREP} -c -E 'ppc64|powerpc64')
+  IS_X86=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i386|i486|i585|i686')
+  IS_X64=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
+  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
+  IS_ARM32=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
+  IS_ARMV8=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
+  IS_PPC=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'ppc|powerpc')
+  IS_PPC64=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -c -E 'ppc64|powerpc64')
 else
   IS_X86=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i386|i486|i585|i686')
   IS_X64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
@@ -104,6 +105,7 @@ fi
 # Default values for setenv-*.sh scripts
 IS_IOS="${IS_IOS:-0}"
 IS_ANDROID="${IS_ANDROID:-0}"
+TIMESTAMP=$(date "+%A, %B %d %Y, %I:%M %p")
 
 # ===========================================================================
 # ================================== Fixups =================================
@@ -140,7 +142,7 @@ rm -f config_asm.h.new
   echo '#define CRYPTOPP_CONFIG_ASM_H'
   echo ''
   echo '// config_asm.h rewritten by configure.sh script'
-  echo '//' "$(date)"
+  echo '//' "${TIMESTAMP}"
   echo ''
 } >> config_asm.h.new
 
@@ -612,6 +614,248 @@ fi
 # ===========================================================================
 # =============================== config_cxx.h ==============================
 # ===========================================================================
+
+rm -f config_cxx.h.new
+
+# Common header
+{
+  echo '#ifndef CRYPTOPP_CONFIG_CXX_H'
+  echo '#define CRYPTOPP_CONFIG_CXX_H'
+  echo ''
+  echo '// config_cxx.h rewritten by configure.sh script'
+  echo '//' "${TIMESTAMP}"
+} >> config_cxx.h.new
+
+# Shell redirection
+{
+  echo ''
+  echo '// ***************** C++98 and C++03 ********************'
+  echo ''
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx98_exception.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '// Ancient Crypto++ define, dating back to C++98.'
+    echo '#define CRYPTOPP_UNCAUGHT_EXCEPTION_AVAILABLE 1'
+    echo '#define CRYPTOPP_CXX98_UNCAUGHT_EXCEPTION 1'
+  else
+    echo '// Ancient Crypto++ define, dating back to C++98.'
+    echo '// #define CRYPTOPP_UNCAUGHT_EXCEPTION_AVAILABLE 1'
+    echo '// #define CRYPTOPP_CXX98_UNCAUGHT_EXCEPTION 1'
+  fi
+
+  echo ''
+  echo '// ***************** C++11 and above ********************'
+  echo ''
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11 1'
+  else
+    echo '// test_cxx11.cxx returned non-zero result'
+    echo '// #define CRYPTOPP_CXX11 1'
+  fi
+
+  echo ''
+  echo '// C++11 is available'
+  echo '#if defined(CRYPTOPP_CXX11)'
+  echo ''
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_atomic.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_ATOMIC 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_ATOMIC 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_auto.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_AUTO 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_AUTO 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_sync.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_SYNCHRONIZATION 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_SYNCHRONIZATION 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_dyninit.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_DYNAMIC_INIT 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_DYNAMIC_INIT 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_deletefn.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_DELETED_FUNCTIONS 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_DELETED_FUNCTIONS 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_alignas.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_ALIGNAS 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_ALIGNAS 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_alignof.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_ALIGNOF 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_ALIGNOF 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_initializer.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_INITIALIZER_LIST 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_INITIALIZER_LIST 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_lambda.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_LAMBDA 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_LAMBDA 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_noexcept.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_NOEXCEPT 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_NOEXCEPT 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_vartemplates.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_VARIADIC_TEMPLATES 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_VARIADIC_TEMPLATES 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_constexpr.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_CONSTEXPR 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_CONSTEXPR 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_enumtype.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_ENUM 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_ENUM 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_nullptr.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_NULLPTR 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_NULLPTR 1'
+  fi
+
+  # 2-argument static assert
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_assert.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX11_ASSERT 1'
+  else
+    echo '// #define CRYPTOPP_CXX11_ASSERT 1'
+  fi
+
+  echo ''
+  echo '#endif  // CRYPTOPP_CXX11'
+
+  echo ''
+  echo '// ***************** C++14 and above ********************'
+  echo ''
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx14.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX14 1'
+  else
+    echo '// test_cxx14.cxx returned non-zero result'
+    echo '// #define CRYPTOPP_CXX14 1'
+  fi
+
+  echo ''
+  echo '// C++14 is available'
+  echo '#if defined(CRYPTOPP_CXX14)'
+  echo ''
+  echo '// No dead bodies here. Move on...'
+  echo ''
+  echo '#endif  // CRYPTOPP_CXX14'
+
+  echo ''
+  echo '// ***************** C++17 and above ********************'
+  echo ''
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx17.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX17 1'
+  else
+    echo '// test_cxx17.cxx returned non-zero result'
+    echo '// #define CRYPTOPP_CXX17 1'
+  fi
+
+  echo ''
+  echo '// C++17 is available'
+  echo '#if defined(CRYPTOPP_CXX17)'
+  echo ''
+
+  # 1-argument static assert
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx17_assert.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX17_ASSERT 1'
+  else
+    echo '// #define CRYPTOPP_CXX17_ASSERT 1'
+  fi
+
+  CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx17_exceptions.cxx -o ${TOUT} 2>&1 | tr ' ' '\n' | wc -l)
+  if [[ "${CXX_RESULT}" -eq 0 ]]; then
+    echo '#define CRYPTOPP_CXX17_UNCAUGHT_EXCEPTIONS 1'
+  else
+    echo '// #define CRYPTOPP_CXX17_UNCAUGHT_EXCEPTIONS 1'
+  fi
+
+  echo ''
+  echo '#endif  // CRYPTOPP_CXX17'
+
+  echo ''
+  echo '// ***************** C++ fixups ********************'
+  echo ''
+
+  echo '#if defined(CRYPTOPP_CXX11_NOEXCEPT)'
+  echo '#  define CRYPTOPP_THROW noexcept(false)'
+  echo '#  define CRYPTOPP_NO_THROW noexcept(true)'
+  echo '#else'
+  echo '#  define CRYPTOPP_THROW'
+  echo '#  define CRYPTOPP_NO_THROW'
+  echo '#endif // CRYPTOPP_CXX11_NOEXCEPT'
+  echo ''
+  echo '// C++11 nullptr_t type safety and analysis'
+  echo '#if defined(CRYPTOPP_CXX11_NULLPTR) && !defined(NULLPTR)'
+  echo '#  define NULLPTR nullptr'
+  echo '#elif !defined(NULLPTR)'
+  echo '#  define NULLPTR NULL'
+  echo '#endif // CRYPTOPP_CXX11_NULLPTR'
+
+} >> config_cxx.h.new
+
+# Common footer
+{
+  echo ''
+  echo '#endif'
+  echo ''
+} >> config_cxx.h.new
+
+if [[ -e config_cxx.h ]]; then
+  cp config_cxx.h config_cxx.h.old
+  mv config_cxx.h.new config_cxx.h
+fi
 
 rm -f "${TOUT}"
 
