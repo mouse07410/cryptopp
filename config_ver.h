@@ -24,7 +24,9 @@
 #define CRYPTOPP_REVISION 0
 #define CRYPTOPP_VERSION 830
 
-#ifdef __GNUC__
+// Compiler version macros
+
+#if defined(__GNUC__)
 # define CRYPTOPP_GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #endif
 
@@ -34,8 +36,10 @@
 
 // Apple and LLVM's Clang. Apple Clang version 7.0 roughly equals LLVM Clang version 3.7
 #if defined(__clang__) && defined(__apple_build_version__)
+# undef CRYPTOPP_GCC_VERSION
 # define CRYPTOPP_APPLE_CLANG_VERSION (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
 #elif defined(__clang__)
+# undef CRYPTOPP_GCC_VERSION
 # define CRYPTOPP_LLVM_CLANG_VERSION  (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
 #endif
 
