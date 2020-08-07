@@ -49,11 +49,7 @@
 // Define CRYPTOPP_NO_CXX11 to avoid C++11 related features shown at the
 // end of this file. Some compilers and standard C++ headers advertise C++11
 // but they are really just C++03 with some additional C++11 headers and
-// non-conforming classes. You might also consider `-std=c++03` or
-// `-std=gnu++03`, but they are required options when building the library
-// and all programs. CRYPTOPP_NO_CXX11 is probably easier to manage but it may
-// cause -Wterminate warnings under GCC. MSVC++ has a similar warning.
-// Also see https://github.com/weidai11/cryptopp/issues/529
+// non-conforming classes. Also see Issues 529.
 // #define CRYPTOPP_NO_CXX11 1
 
 // Define CRYPTOPP_NO_CXX17 to avoid C++17 related features shown at the end of
@@ -123,6 +119,7 @@
 // MS at VS2015 with Vista (19.00); GCC at 4.3; LLVM Clang at 2.9; Apple Clang at 4.0; Intel 11.1; SunCC 5.13.
 // Microsoft's implementation only works for Vista and above, so its further
 // limited. http://connect.microsoft.com/VisualStudio/feedback/details/1789709
+// Clang may not support this as early as we indicate. Also see https://bugs.llvm.org/show_bug.cgi?id=47012.
 #if (__cpp_threadsafe_static_init >= 200806) || \
 	(CRYPTOPP_MSC_VERSION >= 1900) && ((WINVER >= 0x0600) || (_WIN32_WINNT >= 0x0600)) || \
 	(CRYPTOPP_LLVM_CLANG_VERSION >= 20900) || (CRYPTOPP_APPLE_CLANG_VERSION >= 40000)  || \
@@ -187,7 +184,7 @@
 // Mircorosft and Intel had partial support earlier, but we require full support.
 #if (CRYPTOPP_MSC_VERSION >= 1700) || __has_feature(cxx_strong_enums) || \
 	(__INTEL_COMPILER >= 1400) || (CRYPTOPP_GCC_VERSION >= 40400) || (__SUNPRO_CC >= 0x5120)
-# define CRYPTOPP_CXX11_ENUM 1
+# define CRYPTOPP_CXX11_STRONG_ENUM 1
 #endif // constexpr compilers
 
 // nullptr_t: MS at VS2010 (16.00); GCC at 4.6; Clang at 3.3; Intel 10.0; SunCC 5.13.
