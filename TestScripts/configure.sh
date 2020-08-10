@@ -384,6 +384,9 @@ if [[ "$disable_asm" -eq 0 && "$IS_ARM32" -ne 0 ]]; then
   if [[ "$IS_IOS" -ne 0 ]]; then
     ARMV7_FLAG="-arch arm"
     NEON_FLAG="-arch arm"
+  elif [[ "$CLANG_COMPILER" -ne 0 ]]; then
+    ARMV7_FLAG="-march=armv7"
+    NEON_FLAG="-march=armv7 -mfpu=neon"
   else
     ARMV7_FLAG="-march=armv7"
     NEON_FLAG="-mfpu=neon"
@@ -720,11 +723,14 @@ rm -f config_cxx.h.new
     echo '// #define CRYPTOPP_CXX11_SYNCHRONIZATION 1'
   fi
 
+  # CRYPTOPP_CXX11_DYNAMIC_INIT is old name
   CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_staticinit.cxx -o ${TOUT} 2>&1 | wc -w)
   if [[ "${CXX_RESULT}" -eq 0 ]]; then
     echo '#define CRYPTOPP_CXX11_STATIC_INIT 1'
+    echo '#define CRYPTOPP_CXX11_DYNAMIC_INIT 1'
   else
     echo '// #define CRYPTOPP_CXX11_STATIC_INIT 1'
+    echo '// #define CRYPTOPP_CXX11_DYNAMIC_INIT 1'
   fi
 
   CXX_RESULT=$(${CXX} ${CXXFLAGS} TestPrograms/test_cxx11_deletefn.cxx -o ${TOUT} 2>&1 | wc -w)
