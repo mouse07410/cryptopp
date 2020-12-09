@@ -35,7 +35,7 @@ NAMESPACE_BEGIN(CryptoPP)
 struct CHAM64_Info : public FixedBlockSize<8>, public FixedKeyLength<16>
 {
     /// \brief The algorithm name
-    /// \returns the algorithm name
+    /// \return the algorithm name
     /// \details StaticAlgorithmName returns the algorithm's name as a static
     ///   member function.
     static const std::string StaticAlgorithmName()
@@ -50,7 +50,7 @@ struct CHAM64_Info : public FixedBlockSize<8>, public FixedKeyLength<16>
 struct CHAM128_Info : public FixedBlockSize<16>, public VariableKeyLength<16,16,32,16>
 {
     /// \brief The algorithm name
-    /// \returns the algorithm name
+    /// \return the algorithm name
     /// \details StaticAlgorithmName returns the algorithm's name as a static
     ///   member function.
     static const std::string StaticAlgorithmName()
@@ -77,7 +77,6 @@ public:
     {
     protected:
         void UncheckedSetKey(const byte *userKey, unsigned int keyLength, const NameValuePairs &params);
-        std::string AlgorithmProvider() const;
 
         SecBlock<word16> m_rk;
         mutable FixedSizeSecBlock<word16, 4> m_x;

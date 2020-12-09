@@ -37,7 +37,7 @@ NAMESPACE_BEGIN(CryptoPP)
 struct SIMECK32_Info : public FixedBlockSize<4>, public FixedKeyLength<8>, public FixedRounds<32>
 {
     /// \brief The algorithm name
-    /// \returns the algorithm name
+    /// \return the algorithm name
     /// \details StaticAlgorithmName returns the algorithm's name as a static
     ///   member function.
     static const std::string StaticAlgorithmName()
@@ -52,7 +52,7 @@ struct SIMECK32_Info : public FixedBlockSize<4>, public FixedKeyLength<8>, publi
 struct SIMECK64_Info : public FixedBlockSize<8>, public FixedKeyLength<16>, public FixedRounds<44>
 {
     /// \brief The algorithm name
-    /// \returns the algorithm name
+    /// \return the algorithm name
     /// \details StaticAlgorithmName returns the algorithm's name as a static
     ///   member function.
     static const std::string StaticAlgorithmName()

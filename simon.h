@@ -46,7 +46,7 @@ template <unsigned int L, unsigned int D, unsigned int N, unsigned int M>
 struct SIMON_Info : public FixedBlockSize<L>, VariableKeyLength<D, N, M>
 {
 	/// \brief The algorithm name
-	/// \returns the algorithm name
+	/// \return the algorithm name
 	/// \details StaticAlgorithmName returns the algorithm's name as a static
 	///  member function.
     static const std::string StaticAlgorithmName()
@@ -93,7 +93,7 @@ public:
     {
     public:
         /// \brief The algorithm name
-        /// \returns the algorithm name
+        /// \return the algorithm name
         /// \details AlgorithmName returns the algorithm's name as a
         ///  member function.
         std::string AlgorithmName() const {
@@ -155,7 +155,7 @@ public:
     {
     public:
         /// \brief The algorithm name
-        /// \returns the algorithm name
+        /// \return the algorithm name
         /// \details AlgorithmName returns the algorithm's name as a
         ///  member function.
         std::string AlgorithmName() const {
