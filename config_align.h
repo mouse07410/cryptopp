@@ -5,7 +5,7 @@
 /// \file config_align.h
 /// \brief Library configuration file
 /// \details <tt>config.h</tt> was split into components in May 2019 to better
-///  integrate with Autoconf and its feature tests. The splitting occured so
+///  integrate with Autoconf and its feature tests. The splitting occurred so
 ///  users could continue to include <tt>config.h</tt> while allowing Autoconf
 ///  to write new <tt>config_asm.h</tt> and new <tt>config_cxx.h</tt> using
 ///  its feature tests.
@@ -20,7 +20,7 @@
 #include "config_cxx.h"  // CRYPTOPP_CXX11_ALIGNAS
 #include "config_ver.h"  // Compiler versions
 
-// Nearly all Intel's and AMD's have SSE. Enable it independent of SSE ASM and intrinscs.
+// Nearly all Intel's and AMD's have SSE. Enable it independent of SSE ASM and intrinsics.
 // ARM NEON and ARMv8 ASIMD only need natural alignment of an element in the vector.
 // Altivec through POWER7 need vector alignment. POWER8 and POWER9 relax the requirement.
 #if defined(CRYPTOPP_DISABLE_ASM)
