@@ -71,60 +71,59 @@ if [[ -d /usr/gnu/bin ]]; then
   GREP=/usr/gnu/bin/grep
 fi
 
-SUN_COMPILER=$(${CXX} -V 2>/dev/null | ${GREP} -i -c -E 'CC: (Sun|Studio)')
-XLC_COMPILER=$(${CXX} -qversion 2>/dev/null | ${GREP} -i -c "IBM XL")
+# Initialize these once
+IS_X86=0
+IS_X64=0
+IS_IA32=0
+IS_ARM32=0
+IS_ARMV8=0
+IS_PPC=0
+IS_PPC64=0
+
+# Determine compiler
+GCC_COMPILER=$(${CXX} --version 2>/dev/null | ${GREP} -i -c -E '^g++')
+SUN_COMPILER=$(${CXX} -V 2>/dev/null | ${GREP} -i -c -E 'CC: (Sun|Oracle) Studio')
+XLC_COMPILER=$(${CXX} -qversion 2>/dev/null | ${GREP} -i -c "IBM XL C/C++")
 CLANG_COMPILER=$(${CXX} --version 2>/dev/null | ${GREP} -i -c -E 'clang|llvm')
 
 if [[ "$SUN_COMPILER" -ne 0 ]]
 then
+  # TODO: fix use of uname for SunCC
   IS_X86=$(uname -m 2>&1 | ${GREP} -c -E 'i386|i486|i585|i686')
   IS_X64=$(uname -m 2>&1 | ${GREP} -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(uname -m 2>&1 | ${GREP} -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
-  IS_ARM32=0
-  IS_ARMV8=0
-  IS_PPC=0
-  IS_PPC64=0
 elif [[ "$XLC_COMPILER" -ne 0 ]]
 then
-  IS_X86=0
-  IS_X64=0
-  IS_IA32=0
-  IS_ARM32=0
-  IS_ARMV8=0
-  IS_PPC=$(uname -m 2>&1 | ${GREP} -c -E 'ppc|powerpc')
-  IS_PPC64=$(uname -m 2>&1 | ${GREP} -c -E 'ppc64|powerpc64')
+  IS_PPC=$(${CXX} ${CXXFLAGS} -qshowmacros -E ${TPROG} | ${GREP} -i -c -E '__PPC__|__POWERPC__')
+  IS_PPC64=$(${CXX} ${CXXFLAGS} -qshowmacros -E ${TPROG} | ${GREP} -i -c -E '__PPC64__|__POWERPC64__')
 elif [[ "$CLANG_COMPILER" -ne 0 ]]
 then
   IS_X86=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i386|i486|i585|i686')
   IS_X64=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
   IS_ARM32=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
   IS_ARMV8=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
   IS_PPC=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -i -c -E 'ppc|powerpc')
   IS_PPC64=$(${CXX} ${CXXFLAGS} -dM -E ${TPROG} | ${GREP} -c -E 'ppc64|powerpc64')
 else
   IS_X86=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i386|i486|i585|i686')
-  IS_X64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i86pc|x86_64|amd64')
-  IS_IA32=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'i86pc|i386|i486|i585|i686|x86_64|amd64')
+  IS_X64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'x86_64|amd64')
   IS_ARM32=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'arm|armhf|armv7|eabihf|armv8')
   IS_ARMV8=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'aarch32|aarch64|arm64')
   IS_PPC=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc|powerpc')
   IS_PPC64=$(${CXX} ${CXXFLAGS} -dumpmachine 2>&1 | ${GREP} -i -c -E 'ppc64|powerpc64')
 fi
 
-# Default values for setenv-*.sh scripts
-IS_IOS="${IS_IOS:-0}"
-IS_ANDROID="${IS_ANDROID:-0}"
-TIMESTAMP=$(date "+%A, %B %d %Y, %I:%M %p")
-
-# ===========================================================================
-# ================================== Fixups =================================
-# ===========================================================================
+# One check for intel compatibles
+if [[ "${IS_X86}" -ne 0 || "${IS_X64}" -ne 0 ]]; then IS_IA32=1; fi
 
 # A 64-bit platform often matches the 32-bit variant due to appending '64'
 if [[ "${IS_X64}" -ne 0 ]]; then IS_X86=0; fi
 if [[ "${IS_ARMV8}" -ne 0 ]]; then IS_ARM32=0; fi
 if [[ "${IS_PPC64}" -ne 0 ]]; then IS_PPC=0; fi
+
+# Default values for setenv-*.sh scripts
+IS_IOS="${IS_IOS:-0}"
+IS_ANDROID="${IS_ANDROID:-0}"
+TIMESTAMP=$(date "+%A, %B %d %Y, %I:%M %p")
 
 # ===========================================================================
 # =================================== Info ==================================
@@ -146,7 +145,9 @@ echo "Linker: $(command -v ${LD})"
 
 rm -f config_asm.h.new
 
-# Common header
+# ====================================================
+# =================== common header ==================
+# ====================================================
 {
   echo '// config_asm.h rewritten by configure.sh script'
   echo '//' "${TIMESTAMP}"
@@ -161,7 +162,8 @@ rm -f config_asm.h.new
 # Pickup CRYPTOPP_DISABLE_ASM
 
 disable_asm=$($GREP -c '\-DCRYPTOPP_DISABLE_ASM' <<< "${CPPFLAGS} ${CXXFLAGS}")
-if [[ "$disable_asm" -ne 0 ]]; then
+if [[ "$disable_asm" -ne 0 ]];
+then
 
   # Shell redirection
   {
@@ -175,7 +177,8 @@ fi
 #############################################################################
 # Intel x86-based machines
 
-if [[ "$disable_asm" -eq 0 && "$IS_IA32" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_IA32" -ne 0 ]];
+then
 
   if [[ "${SUN_COMPILER}" -ne 0 ]]; then
     SSE2_FLAG=-xarch=sse2
@@ -378,7 +381,8 @@ fi
 #############################################################################
 # ARM 32-bit machines
 
-if [[ "$disable_asm" -eq 0 && "$IS_ARM32" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_ARM32" -ne 0 ]];
+then
 
   # IS_IOS is set when ./setenv-ios is run
   if [[ "$IS_IOS" -ne 0 ]]; then
@@ -444,7 +448,8 @@ fi
 #############################################################################
 # ARM 64-bit machines
 
-if [[ "$disable_asm" -eq 0 && "$IS_ARMV8" -ne 0 ]]; then
+if [[ "$disable_asm" -eq 0 && "$IS_ARMV8" -ne 0 ]];
+then
 
   # IS_IOS is set when ./setenv-ios is run
   if [[ "$IS_IOS" -ne 0 ]]; then
@@ -561,14 +566,19 @@ fi
 #############################################################################
 # PowerPC machines
 
-if [[ "$disable_asm" -eq 0 &&  ("$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
+if [[ "$disable_asm" -eq 0 &&  ("$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0) ]];
+then
 
+  # IBM XL C/C++ has the -qaltivec flag really screwed up. We can't seem
+  # to get it enabled without an -qarch= option. And -qarch= produces an
+  # error on later versions of the compiler. The only thing that seems
+  # to work consistently is -qarch=auto.
   if [[ "${XLC_COMPILER}" -ne 0 ]]; then
     POWER9_FLAG="-qarch=pwr9 -qaltivec"
     POWER8_FLAG="-qarch=pwr8 -qaltivec"
     POWER7_VSX_FLAG="-qarch=pwr7 -qvsx -qaltivec"
     POWER7_PWR_FLAG="-qarch=pwr7 -qaltivec"
-    ALTIVEC_FLAG="-qaltivec"
+    ALTIVEC_FLAG="-qarch=auto -qaltivec"
   else
     POWER9_FLAG="-mcpu=power9"
     POWER8_FLAG="-mcpu=power8"
@@ -608,7 +618,7 @@ if [[ "$disable_asm" -eq 0 &&  ("$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
   fi
 
   CXX_RESULT=$(${CXX} ${CXXFLAGS} ${POWER9_FLAG} TestPrograms/test_ppc_power9.cxx -o ${TOUT} 2>&1 | wc -w)
-  if [[ "${CXX_RESULT}" -ne 0 && "$have_power8" -ne 0 ]]; then
+  if [[ "${CXX_RESULT}" -eq 0 && "$have_power8" -ne 0 ]]; then
     have_power9=1
     echo '#define CRYPTOPP_POWER9_AVAILABLE 1'
   else
@@ -641,7 +651,9 @@ if [[ "$disable_asm" -eq 0 &&  ("$IS_PPC" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
 
 fi
 
-# Common footer
+# ====================================================
+# =================== common footer ==================
+# ====================================================
 {
   echo ''
   echo '#endif  // CRYPTOPP_CONFIG_ASM_H'
@@ -659,7 +671,9 @@ fi
 
 rm -f config_cxx.h.new
 
-# Common header
+# ====================================================
+# =================== common header ==================
+# ====================================================
 {
   echo '// config_cxx.h rewritten by configure.sh script'
   echo '//' "${TIMESTAMP}"
@@ -888,7 +902,9 @@ rm -f config_cxx.h.new
 
 } >> config_cxx.h.new
 
-# Common footer
+# ====================================================
+# =================== common footer ==================
+# ====================================================
 {
   echo ''
   echo '#endif  // CRYPTOPP_CONFIG_CXX_H'
