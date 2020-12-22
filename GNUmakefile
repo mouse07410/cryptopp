@@ -632,16 +632,18 @@ endif
 ifneq ($(IS_PPC32)$(IS_PPC64),00)
 ifeq ($(DETECT_FEATURES),1)
 
+  # IBM XL C/C++ has the -qaltivec flag really screwed up. We can't seem
+  # to get it enabled without an -qarch= option. And -qarch= produces an
+  # error on later versions of the compiler. The only thing that seems
+  # to work consistently is -qarch=auto.
+
   # XLC requires -qaltivec in addition to Arch or CPU option
   ifeq ($(XLC_COMPILER),1)
     POWER9_FLAG = -qarch=pwr9 -qaltivec
     POWER8_FLAG = -qarch=pwr8 -qaltivec
     POWER7_VSX_FLAG = -qarch=pwr7 -qvsx -qaltivec
     POWER7_PWR_FLAG = -qarch=pwr7 -qaltivec
-    POWER6_FLAG = -qarch=pwr6 -qaltivec
-    POWER5_FLAG = -qarch=pwr5 -qaltivec
-    POWER4_FLAG = -qarch=pwr4 -qaltivec
-    ALTIVEC_FLAG = -qaltivec
+    ALTIVEC_FLAG = -qarch=auto -qaltivec
   else
     POWER9_FLAG = -mcpu=power9
     POWER8_FLAG = -mcpu=power8
@@ -719,34 +721,10 @@ ifeq ($(DETECT_FEATURES),1)
   TPROG = TestPrograms/test_ppc_altivec.cxx
   TOPT = $(ALTIVEC_FLAG)
   HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
-  ifneq ($(strip $(HAVE_OPT)),0)
+  ifeq ($(strip $(HAVE_OPT)),0)
+    ALTIVEC_FLAG := $(ALTIVEC_FLAG)
+  else
     ALTIVEC_FLAG =
-  endif
-
-  # XLC fixup
-  ifeq ($(XLC_COMPILER)$(ALTIVEC_FLAG),1)
-    TPROG = TestPrograms/test_ppc_altivec.cxx
-    TOPT = $(POWER4_FLAG)
-    HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
-    ifeq ($(strip $(HAVE_OPT)),0)
-      ALTIVEC_FLAG = $(POWER4_FLAG)
-    else
-      TPROG = TestPrograms/test_ppc_altivec.cxx
-      TOPT = $(POWER5_FLAG)
-      HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
-      ifeq ($(strip $(HAVE_OPT)),0)
-        ALTIVEC_FLAG = $(POWER5_FLAG)
-      else
-        TPROG = TestPrograms/test_ppc_altivec.cxx
-        TOPT = $(POWER6_FLAG)
-        HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
-        ifeq ($(strip $(HAVE_OPT)),0)
-          ALTIVEC_FLAG = $(POWER6_FLAG)
-        else
-          ALTIVEC_FLAG =
-        endif
-      endif
-    endif
   endif
 
   ifneq ($(ALTIVEC_FLAG),)
