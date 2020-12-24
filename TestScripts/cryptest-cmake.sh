@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 
-PWD_DIR=$(pwd)
-function cleanup {
-    cd "$PWD_DIR"
-}
-trap cleanup EXIT
-
 # Fixup ancient Bash
 # https://unix.stackexchange.com/q/468579/56041
 if [[ -z "$BASH_SOURCE" ]]; then
@@ -40,15 +34,15 @@ files=(CMakeLists.txt cryptopp-config.cmake)
 
 for file in "${files[@]}"; do
 	echo "Downloading $file"
-	if ! curl -o "$file" --silent --insecure "https://raw.githubusercontent.com/noloader/cryptopp-cmake/master/$file"; then
+	if ! curl -o "$file" --silent "https://raw.githubusercontent.com/noloader/cryptopp-cmake/master/$file"; then
 		echo "$file download failed"
 		exit 1
 	fi
 done
 
-rm -rf "$PWD_DIR/cmake_build"
-mkdir -p "$PWD_DIR/cmake_build"
-cd "$PWD_DIR/cmake_build"
+rm -rf "$(pwd)/cmake_build"
+mkdir -p "$(pwd)/cmake_build"
+cd "$(pwd)/cmake_build" || exit 1
 
 #############################################################################
 
@@ -56,7 +50,7 @@ echo ""
 echo "Building test artifacts"
 echo ""
 
-if [[ ! -z "$CXX" ]];
+if [[ -n "$CXX" ]];
 then
 	if ! CXX="$CXX" "$CMAKE" -DCMAKE_CXX_COMPILER="$CXX" ../; then
 		echo "cmake failed"
