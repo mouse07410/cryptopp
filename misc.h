@@ -1113,7 +1113,7 @@ inline T2 ModPowerOf2(const T1 &a, const T2 &b)
 /// \tparam T1 class or type
 /// \tparam T2 class or type
 /// \param n the value to reduce
-/// \param m the value to reduce \n to to a multiple
+/// \param m the value to reduce <tt>n</tt> to a multiple
 /// \return the possibly unmodified value \n
 /// \details RoundDownToMultipleOf is effectively a floor function based on m. The function returns
 ///  the value <tt>n - n\%m</tt>. If n is a multiple of m, then the original value is returned.
@@ -1142,7 +1142,7 @@ inline T1 RoundDownToMultipleOf(const T1 &n, const T2 &m)
 /// \tparam T1 class or type
 /// \tparam T2 class or type
 /// \param n the value to reduce
-/// \param m the value to reduce \n to to a multiple
+/// \param m the value to reduce <tt>n</tt> to a multiple
 /// \return the possibly unmodified value \n
 /// \details RoundUpToMultipleOf is effectively a ceiling function based on m. The function
 ///  returns the value <tt>n + n\%m</tt>. If n is a multiple of m, then the original value is
@@ -1170,12 +1170,11 @@ inline T1 RoundUpToMultipleOf(const T1 &n, const T2 &m)
 /// \brief Returns the minimum alignment requirements of a type
 /// \tparam T class or type
 /// \return the minimum alignment requirements of <tt>T</tt>, in bytes
-/// \details Internally the function calls C++11's <tt>alignof</tt> if available. If not
-///  available, then the function uses compiler specific extensions such as
-///  <tt>__alignof</tt> and <tt>_alignof_</tt>. If an extension is not available, then
-///  the function uses <tt>__BIGGEST_ALIGNMENT__</tt> if <tt>__BIGGEST_ALIGNMENT__</tt>
-///  is smaller than <tt>sizeof(T)</tt>. <tt>sizeof(T)</tt> is used if all others are
-///  not available.
+/// \details Internally the function calls C++11's <tt>alignof</tt> if
+///  available. If not available, then the function uses compiler
+///  specific extensions such as <tt>__alignof</tt> and <tt>_alignof_</tt>.
+///  If an extension is not available, then the function uses
+///  <tt>sizeof(T)</tt>.
 template <class T>
 inline unsigned int GetAlignmentOf()
 {
