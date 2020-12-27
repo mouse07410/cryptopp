@@ -42,9 +42,14 @@
 # shellcheck disable=SC2086
 
 # Verify the file exists and is writeable.
-if [[ ! -w ./config_asm.h ]]; then
-    echo "Crypto++ is too old. Unable to locate config_asm.h"
-    exit 1
+if [[ ! -f ./config_asm.h ]]; then
+    echo "WARNING:"
+    echo "WARNING: Unable to locate config_asm.h"
+    echo "WARNING:"
+elif [[ ! -w ./config_asm.h ]]; then
+    echo "WARNING:"
+    echo "WARNING: Unable to write to config_asm.h"
+    echo "WARNING:"
 fi
 
 TMPDIR="${TMPDIR:-$HOME/tmp}"
@@ -665,6 +670,8 @@ if [[ -e config_asm.h ]]; then
   mv config_asm.h.new config_asm.h
 fi
 
+echo 'Done writing config_asm.h'
+
 # ===========================================================================
 # =============================== config_cxx.h ==============================
 # ===========================================================================
@@ -915,6 +922,8 @@ if [[ -e config_cxx.h ]]; then
   cp config_cxx.h config_cxx.h.old
   mv config_cxx.h.new config_cxx.h
 fi
+
+echo 'Done writing config_cxx.h'
 
 rm -f "${TOUT}"
 
