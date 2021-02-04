@@ -322,7 +322,7 @@ public:
 	/// \brief Calculates the greatest common denominator in the ring
 	/// \param a the first element
 	/// \param b the second element
-	/// \return the the greatest common denominator of a and b.
+	/// \return the greatest common denominator of a and b.
 	virtual const Element& Gcd(const Element &a, const Element &b) const {
 		Element g[3]={b, a};
 		unsigned int i0=0, i1=1, i2=2;
