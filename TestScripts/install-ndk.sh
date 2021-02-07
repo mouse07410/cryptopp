@@ -35,17 +35,31 @@
 # Mac: https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
 # Windows: https://dl.google.com/android/repository/platform-tools-latest-windows.zip
 
+function cleanup {
+    # Cleanup downloads
+    rm -f android-sdk.zip android-ndk.zip platform-tools.zip
+}
+trap cleanup EXIT
+
 if [ -z "${ANDROID_SDK_ROOT}" ]; then
-    echo "ERROR: ANDROID_SDK_ROOT is not set. Please set it."
-    echo "SDK root is ${ANDROID_SDK_ROOT}"
+    echo "ERROR: ANDROID_SDK_ROOT is not set for ${USER}. Please set it."
     exit 1
 fi
 
 if [ -z "${ANDROID_NDK_ROOT}" ]; then
-    echo "ERROR: ANDROID_NDK_ROOT is not set. Please set it."
-    echo "NDK root is ${ANDROID_NDK_ROOT}"
+    echo "ERROR: ANDROID_NDK_ROOT is not set for ${USER}. Please set it."
     exit 1
 fi
+
+# Temp directory
+if [[ -z "${TMPDIR}" ]]; then
+    TMPDIR="$HOME/tmp"
+    mkdir -p "${TMPDIR}"
+fi
+
+# User feedback
+#echo "ANDROID_NDK_ROOT is '${ANDROID_NDK_ROOT}'"
+#echo "ANDROID_SDK_ROOT is '${ANDROID_SDK_ROOT}'"
 
 IS_DARWIN=$(uname -s 2>/dev/null | grep -i -c darwin)
 IS_LINUX=$(uname -s 2>/dev/null | grep -i -c linux)
@@ -94,6 +108,7 @@ then
     exit 1
 fi
 
+# Android SDK does not include a top level directory
 echo "Unpacking SDK to ${ANDROID_SDK_ROOT}"
 if ! unzip -u -qq android-sdk.zip -d "${ANDROID_SDK_ROOT}";
 then
@@ -101,8 +116,9 @@ then
     exit 1
 fi
 
-echo "Unpacking NDK to ${ANDROID_NDK_ROOT}"
-if ! unzip -u -qq android-ndk.zip -d "$HOME";
+# Android NDK includes top level NDK_NAME directory
+echo "Unpacking NDK to ${NDK_TOP}/${NDK_NAME}"
+if ! unzip -u -qq android-ndk.zip -d "${NDK_TOP}";
 then
     echo "Failed to unpack NDK"
     exit 1
@@ -116,32 +132,22 @@ then
 fi
 
 # Unlink as needed
-if [[ -d "${ANDROID_NDK_ROOT}" ]]; then
+if [[ -e "${ANDROID_NDK_ROOT}" ]]; then
     ls_output=$(ls -l "${ANDROID_NDK_ROOT}" 2>/dev/null | head -n 1)
+    # Only remove soft links
     if [[ ${ls_output:0:1} == "l" ]]; then
         unlink "${ANDROID_NDK_ROOT}"
     fi
 fi
 
-# Remove an old directory
-rm -rf "${NDK_TOP}/${NDK_NAME}"
-
-# Place the new directory. mv should be faster on the same partition.
-if ! mv "$HOME/${NDK_NAME}" ${NDK_TOP};
-then
-    echo "Failed to move $HOME/${NDK_NAME} to ${NDK_TOP}"
-    exit 1
-fi
-
-# Run in a subshell
+# Create softlink
 (
+    echo "Symlinking ${NDK_NAME} to android-ndk"
     cd ${NDK_TOP} || exit 1
-    ln -s ${NDK_NAME} android-ndk
+    if ! ln -s "${NDK_NAME}" android-ndk; then
+        echo "Failed to link ${NDK_NAME} to android-ndk"
+    fi
 )
-
-rm -f android-sdk.zip
-rm -f android-ndk.zip
-rm -f platform-tools.zip
 
 # We don't set ANDROID_HOME to ANDROID_SDK_ROOT.
 # https://stackoverflow.com/a/47028911/608639
@@ -151,6 +157,24 @@ touch "${ANDROID_SDK_ROOT}/repositories.cfg"
 mkdir -p "${HOME}/.android"
 touch "${HOME}/.android/repositories.cfg"
 
-echo "Finished preparing SDK and NDK"
+if [[ -n "${SUDO_USER}" ]]; then
+    chown -R "${SUDO_USER}" "${HOME}/.android"
+fi
+
+count=$(ls -1 "${ANDROID_SDK_ROOT}" 2>/dev/null | wc -l)
+if [[ "${count}" -lt 2 ]]; then
+    echo "ANDROID_SDK_ROOT appears empty. The contents are listed."
+    echo "$(ls "${ANDROID_SDK_ROOT}")"
+    exit 1
+fi
+
+count=$(ls -1 "${ANDROID_NDK_ROOT}" 2>/dev/null | wc -l)
+if [[ "${count}" -lt 2 ]]; then
+    echo "ANDROID_NDK_ROOT appears empty. The contents are listed."
+    echo "$(ls "${ANDROID_NDK_ROOT}")"
+    exit 1
+fi
+
+echo "Finished installing SDK and NDK"
 
 exit 0
