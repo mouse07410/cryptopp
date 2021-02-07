@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 
-# ====================================================================
-# Tests Android cross-compiles
+#############################################################################
+#
+# This script tests the cryptopp-android gear.
+#
+# Written and placed in public domain by Jeffrey Walton.
+#
+# Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
+# licensed under the Boost Software License 1.0, while the individual files
+# in the compilation are all public domain.
 #
 # See http://www.cryptopp.com/wiki/Android_(Command_Line) for more details
-# ====================================================================
+#
+#############################################################################
 
 if [ -z "$(command -v ./setenv-android.sh)" ]; then
     echo "Failed to locate setenv-android.sh"
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+    exit 1
 fi
 
 # Temp directory
@@ -17,11 +25,16 @@ if [[ -z "$TMPDIR" ]]; then
     mkdir -p "$TMPDIR"
 fi
 
-MAKE_JOBS=2
+# Sane default
+if [[ -z "${MAKE_JOBS}" ]]; then
+    MAKE_JOBS=4
+fi
 
 # Cleanup old artifacts
 rm -rf "$TMPDIR/build.failed" 2>/dev/null
 rm -rf "$TMPDIR/build.log" 2>/dev/null
+
+#############################################################################
 
 PLATFORMS=(armv7a aarch64 x86 x86_64)
 
@@ -48,8 +61,8 @@ do
     fi
 
     echo
+    echo "===================================================================="
     echo "Building for $platform..."
-    echo
 
     # run in subshell to not keep any envars
     (
@@ -64,13 +77,13 @@ do
     )
 done
 
-echo ""
+echo
 echo "====================================================="
 cat "$TMPDIR/build.log"
 
 # let the script fail if any of the builds failed
 if [ -f "$TMPDIR/build.failed" ]; then
-    [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
+    exit 1
 fi
 
-[[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 0 || return 0
+exit 0
