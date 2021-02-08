@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-# ====================================================================
-# Sets the cross compile environment for Xcode/iOS
+#############################################################################
 #
-# Based upon OpenSSL's setenv-ios.sh  by TH, JW, and SM.
+# This script sets the cross-compile environment for Xcode/iOS.
+#
+# Based upon OpenSSL's setenv-android.sh by TH, JW, and SM.
 # Heavily modified by JWW for Crypto++.
 #
 # Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
@@ -11,7 +12,7 @@
 # in the compilation are all public domain.
 #
 # See http://www.cryptopp.com/wiki/iOS_(Command_Line) for more details
-# ====================================================================
+#############################################################################
 
 #########################################
 #####        Some validation        #####
@@ -26,16 +27,32 @@ if [ "$0" = "${BASH_SOURCE[0]}" ]; then
     echo "setenv-ios.sh is usually sourced, but not this time."
 fi
 
-# This supports 'source setenv-ios.sh iPhone arm64' and friends
-if [[ -z "$IOS_SDK" && -n "$1" ]]; then
-    printf "Using positional arg, IOS_SDK=%s\n" "$1"
-    IOS_SDK="$1"
+# This supports 'source setenv-ios.sh iPhone arm64' and
+# 'source setenv-ios.sh IOS_SDK=iPhone IOS_CPU=arm64'
+if [[ -n "$1" ]]
+then
+    arg1=$(echo "$1" | cut -f 1 -d '=')
+    arg2=$(echo "$1" | cut -f 2 -d '=')
+    if [[ -n "${arg2}" ]]; then
+        IOS_SDK="${arg2}"
+    else
+        IOS_SDK="${arg1}"
+    fi
+    printf "Using positional arg, IOS_SDK=%s\n" "${IOS_SDK}"
 fi
 
-# This supports 'source setenv-ios.sh iPhone arm64' and friends
-if [[ -z "$IOS_CPU" && -n "$2" ]]; then
-    printf "Using positional arg, IOS_CPU=%s\n" "$2"
-    IOS_CPU="$2"
+# This supports 'source setenv-ios.sh iPhone arm64' and
+# 'source setenv-ios.sh IOS_SDK=iPhone IOS_CPU=arm64'
+if [[ -n "$2" ]]
+then
+    arg1=$(echo "$2" | cut -f 1 -d '=')
+    arg2=$(echo "$2" | cut -f 2 -d '=')
+    if [[ -n "${arg2}" ]]; then
+        IOS_CPU="${arg2}"
+    else
+        IOS_CPU="${arg1}"
+    fi
+    printf "Using positional arg, IOS_CPU=%s\n" "${IOS_CPU}"
 fi
 
 if [ -z "$IOS_SDK" ]; then
