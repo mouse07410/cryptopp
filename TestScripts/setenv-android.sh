@@ -30,8 +30,8 @@ if [ "$0" = "${BASH_SOURCE[0]}" ]; then
     echo "setenv-android.sh is usually sourced, but not this time."
 fi
 
-# This supports both 'source setenv-android.sh 23 arm64' and
-# 'source setenv-android.sh ANDROID_API=23 ANDROID_CPU=arm64'
+# This supports both 'source setenv-android.sh 21 arm64' and
+# 'source setenv-android.sh ANDROID_API=21 ANDROID_CPU=arm64'
 if [[ -n "$1" ]]
 then
     arg1=$(echo "$1" | cut -f 1 -d '=')
@@ -44,8 +44,8 @@ then
     printf "Using positional arg, ANDROID_API=%s\n" "${ANDROID_API}"
 fi
 
-# This supports both 'source setenv-android.sh 23 arm64' and
-# 'source setenv-android.sh ANDROID_API=23 ANDROID_CPU=arm64'
+# This supports both 'source setenv-android.sh 21 arm64' and
+# 'source setenv-android.sh ANDROID_API=21 ANDROID_CPU=arm64'
 if [[ -n "$2" ]]
 then
     arg1=$(echo "$2" | cut -f 1 -d '=')
@@ -76,7 +76,9 @@ unset IS_IOS
 unset IS_ANDROID
 unset IS_ARM_EMBEDDED
 
+unset ANDROID_CPPFLAGS
 unset ANDROID_CXXFLAGS
+unset ANDROID_LDFLAGS
 unset ANDROID_SYSROOT
 
 #####################################################################
@@ -158,9 +160,9 @@ THE_ARCH=$(tr '[:upper:]' '[:lower:]' <<< "${ANDROID_CPU}")
 
 # https://developer.android.com/ndk/guides/abis.html and
 # https://developer.android.com/ndk/guides/cpp-support.
-# Since NDK r18 the only STL available is libc++, so we
-# add -stdlib=libc++ to CXXFLAGS. This is consistent with
-# Android.mk and 'APP_STL := c++_shared'.
+# Since NDK r16 the only STL available is libc++, so we
+# add -std=c++11 -stdlib=libc++ to CXXFLAGS. This is
+# consistent with Android.mk and 'APP_STL := c++_shared'.
 case "$THE_ARCH" in
   armv7*|armeabi*)
     CC="armv7a-linux-androideabi${ANDROID_API}-clang"
@@ -171,8 +173,14 @@ case "$THE_ARCH" in
     RANLIB="arm-linux-androideabi-ranlib"
     STRIP="arm-linux-androideabi-strip"
 
+    # You may need this on older NDKs
+    # ANDROID_CPPFLAGS="-D__ANDROID__=${ANDROID_API}"
+
     # Android NDK r19 and r20 no longer use -mfloat-abi=softfp. Add it as required.
-    ANDROID_CXXFLAGS="-march=armv7-a -mthumb -fstack-protector-strong -funwind-tables -stdlib=libc++ -fexceptions -frtti"
+    ANDROID_CXXFLAGS="-target armv7-none-linux-androideabi${ANDROID_API} -std=c++11 -stdlib=libc++"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -march=armv7-a -mthumb"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fstack-protector-strong -funwind-tables -fexceptions -frtti"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fno-addrsig -fno-experimental-isel"
     ;;
   armv8*|aarch64|arm64*)
     CC="aarch64-linux-android${ANDROID_API}-clang"
@@ -183,7 +191,13 @@ case "$THE_ARCH" in
     RANLIB="aarch64-linux-android-ranlib"
     STRIP="aarch64-linux-android-strip"
 
-    ANDROID_CXXFLAGS="-funwind-tables -fstack-protector-strong -stdlib=libc++ -fexceptions -frtti"
+    # You may need this on older NDKs
+    # ANDROID_CPPFLAGS="-D__ANDROID__=${ANDROID_API}"
+
+    ANDROID_CXXFLAGS="-target aarch64-none-linux-android${ANDROID_API}"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -std=c++11 -stdlib=libc++"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fstack-protector-strong -funwind-tables -fexceptions -frtti"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fno-addrsig -fno-experimental-isel"
     ;;
   i686|x86)
     CC="i686-linux-android${ANDROID_API}-clang"
@@ -194,7 +208,14 @@ case "$THE_ARCH" in
     RANLIB="i686-linux-android-ranlib"
     STRIP="i686-linux-android-strip"
 
-    ANDROID_CXXFLAGS="-mtune=intel -mssse3 -mfpmath=sse -fstack-protector-strong -funwind-tables -stdlib=libc++ -fexceptions -frtti"
+    # You may need this on older NDKs
+    # ANDROID_CPPFLAGS="-D__ANDROID__=${ANDROID_API}"
+
+    ANDROID_CXXFLAGS="-target i686-none-linux-android${ANDROID_API}"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -std=c++11 -stdlib=libc++"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -mtune=intel -mssse3 -mfpmath=sse"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fstack-protector-strong -funwind-tables -fexceptions -frtti"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fno-addrsig -fno-experimental-isel"
     ;;
   x86_64|x64)
     CC="x86_64-linux-android${ANDROID_API}-clang"
@@ -205,7 +226,14 @@ case "$THE_ARCH" in
     RANLIB="x86_64-linux-android-ranlib"
     STRIP="x86_64-linux-android-strip"
 
-    ANDROID_CXXFLAGS="-march=x86-64 -msse4.2 -mpopcnt -mtune=intel -fstack-protector-strong -funwind-tables -stdlib=libc++ -fexceptions -frtti"
+    # You may need this on older NDKs
+    # ANDROID_CPPFLAGS="-D__ANDROID__=${ANDROID_API}"
+
+    ANDROID_CXXFLAGS="-target x86_64-none-linux-android${ANDROID_API}"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -std=c++11 -stdlib=libc++"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -march=x86-64 -msse4.2 -mpopcnt -mtune=intel"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fstack-protector-strong -funwind-tables -fexceptions -frtti"
+    ANDROID_CXXFLAGS="${ANDROID_CXXFLAGS} -fno-addrsig -fno-experimental-isel"
     ;;
   *)
     echo "ERROR: Unknown architecture ${ANDROID_CPU}"
@@ -220,7 +248,8 @@ esac
 export IS_ANDROID=1
 
 export CPP CC CXX LD AS AR RANLIB STRIP
-export ANDROID_CXXFLAGS ANDROID_API ANDROID_CPU ANDROID_SYSROOT
+export ANDROID_CPPFLAGS ANDROID_CXXFLAGS ANDROID_LDFLAGS
+export ANDROID_API ANDROID_CPU ANDROID_SYSROOT
 
 # Do NOT use ANDROID_SYSROOT_INC or ANDROID_SYSROOT_LD
 # https://github.com/android/ndk/issues/894#issuecomment-470837964
@@ -274,9 +303,9 @@ fi
 
 #####################################################################
 
-# Now that we are using cpu-features from Android rather than CPU probing, we
-# need to copy cpu-features.h and cpu-features.c from the NDK into our source
-# directory and then build it.
+# Now that we are using cpu-features from Android rather than
+# CPU probing, we need to copy cpu-features.h and cpu-features.c
+# from the NDK into our source directory and then build it.
 
 if [[ ! -e "${ANDROID_NDK_ROOT}/sources/android/cpufeatures/cpu-features.h" ]]; then
     echo "ERROR: Unable to locate cpu-features.h"
@@ -294,20 +323,14 @@ cp "${ANDROID_NDK_ROOT}/sources/android/cpufeatures/cpu-features.c" .
 # Cleanup the sources for the C++ compiler
 # https://github.com/weidai11/cryptopp/issues/926
 
-sed -e 's/p = memmem/p = (const char*)memmem/g' \
-    -e 's/p  = memmem/p  = (const char*)memmem/g' \
-    -e 's/p = memchr/p = (const char*)memchr/g' \
-    -e 's/p  = memchr/p  = (const char*)memchr/g' \
-    -e 's/q = memmem/q = (const char*)memmem/g' \
-    -e 's/q  = memmem/q  = (const char*)memmem/g' \
-    -e 's/q = memchr/q = (const char*)memchr/g' \
-    -e 's/q  = memchr/q  = (const char*)memchr/g' \
-    -e 's/cpuinfo = malloc/cpuinfo = (char*)malloc/g' \
+sed -e 's/= memmem/= (const char*)memmem/g' \
+    -e 's/= memchr/= (const char*)memchr/g' \
+    -e 's/= malloc/= (char*)malloc/g' \
     cpu-features.c > cpu-features.c.fixed
 mv cpu-features.c.fixed cpu-features.c
 
 # Fix permissions. For some reason cpu-features.h is +x.
-chmod ugo+r,ugo-x cpu-features.h cpu-features.c
+chmod u=rw,go=r cpu-features.h cpu-features.c
 
 #####################################################################
 
@@ -317,7 +340,13 @@ if [ "$VERBOSE" -gt 0 ]; then
   echo "ANDROID_API: ${ANDROID_API}"
   echo "ANDROID_CPU: ${ANDROID_CPU}"
   echo "ANDROID_SYSROOT: ${ANDROID_SYSROOT}"
+  if [ -n "${ANDROID_CPPFLAGS}" ]; then
+    echo "ANDROID_CPPFLAGS: ${ANDROID_CPPFLAGS}"
+  fi
   echo "ANDROID_CXXFLAGS: ${ANDROID_CXXFLAGS}"
+  if [ -n "${ANDROID_LDFLAGS}" ]; then
+    echo "ANDROID_LDFLAGS: ${ANDROID_LDFLAGS}"
+  fi
   if [ -e "cpu-features.h" ] && [ -e "cpu-features.c" ]; then
     echo "CPU FEATURES: cpu-features.h and cpu-features.c are present"
   fi
@@ -328,8 +357,7 @@ fi
 echo
 echo "*******************************************************************************"
 echo "It looks the the environment is set correctly. Your next step is build"
-echo "the library with 'make -f GNUmakefile-cross'. You can create a versioned"
-echo "shared object using 'HAS_SOLIB_VERSION=1 make -f GNUmakefile-cross'"
+echo "the library with 'make -f GNUmakefile-cross'."
 echo "*******************************************************************************"
 echo
 

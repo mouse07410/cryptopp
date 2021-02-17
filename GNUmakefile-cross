@@ -111,12 +111,14 @@ endif
 # Android cross-compile configuration.
 #   See http://www.cryptopp.com/wiki/Android_(Command_Line).
 ifeq ($(IS_ANDROID),1)
-  CPPFLAGS += -DANDROID -D__ANDROID_API__=$(ANDROID_API)
+  CPPFLAGS += $(ANDROID_CPPFLAGS)
+  CPPFLAGS += -DANDROID
   CXXFLAGS += $(ANDROID_CXXFLAGS)
   CXXFLAGS += --sysroot=$(ANDROID_SYSROOT)
   CXXFLAGS += -Wa,--noexecstack
 
   # Aarch64 ld does not understand --warn-execstack
+  LDFLAGS += $(ANDROID_LDFLAGS)
   LDFLAGS += -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
   LDFLAGS += -Wl,--warn-shared-textrel -Wl,--warn-common
   LDFLAGS += -Wl,--warn-unresolved-symbols
@@ -780,13 +782,13 @@ distclean: clean autotools-clean cmake-clean android-clean
 install: cryptest.exe install-lib
 	@-$(MKDIR) $(DESTDIR)$(BINDIR)
 	$(CP) cryptest.exe $(DESTDIR)$(BINDIR)
-	$(CHMOD) 0755 $(DESTDIR)$(BINDIR)/cryptest.exe
+	$(CHMOD) u=rwx,go=rx $(DESTDIR)$(BINDIR)/cryptest.exe
 	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestData
 	@-$(MKDIR) $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
 	$(CP) TestData/*.dat $(DESTDIR)$(DATADIR)/cryptopp/TestData
-	$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestData/*.dat
+	$(CHMOD) u=rw,go=r $(DESTDIR)$(DATADIR)/cryptopp/TestData/*.dat
 	$(CP) TestVectors/*.txt $(DESTDIR)$(DATADIR)/cryptopp/TestVectors
-	$(CHMOD) 0644 $(DESTDIR)$(DATADIR)/cryptopp/TestVectors/*.txt
+	$(CHMOD) u=rw,go=r $(DESTDIR)$(DATADIR)/cryptopp/TestVectors/*.txt
 
 # A recipe to install only the library, and not cryptest.exe. Also
 # see https://github.com/weidai11/cryptopp/issues/653.
@@ -794,22 +796,22 @@ install: cryptest.exe install-lib
 install-lib:
 	@-$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
 	$(CP) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	$(CHMOD) 0644 $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
+	$(CHMOD) u=rw,go=r $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
 ifneq ($(wildcard libcryptopp.a),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
 	$(CP) libcryptopp.a $(DESTDIR)$(LIBDIR)
-	$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/libcryptopp.a
+	$(CHMOD) u=rw,go=r $(DESTDIR)$(LIBDIR)/libcryptopp.a
 endif
 ifneq ($(wildcard libcryptopp.dylib),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
 	$(CP) libcryptopp.dylib $(DESTDIR)$(LIBDIR)
-	$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
+	$(CHMOD) u=rwx,go=rx $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
 	-install_name_tool -id $(DESTDIR)$(LIBDIR)/libcryptopp.dylib $(DESTDIR)$(LIBDIR)/libcryptopp.dylib
 endif
 ifneq ($(wildcard libcryptopp.so$(SOLIB_VERSION_SUFFIX)),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
 	$(CP) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)
-	$(CHMOD) 0755 $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_VERSION_SUFFIX)
+	$(CHMOD) u=rwx,go=rx $(DESTDIR)$(LIBDIR)/libcryptopp.so$(SOLIB_VERSION_SUFFIX)
 ifeq ($(HAS_SOLIB_VERSION),1)
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) $(DESTDIR)$(LIBDIR)/libcryptopp.so
 	$(LDCONF) $(DESTDIR)$(LIBDIR)
@@ -818,7 +820,7 @@ endif
 ifneq ($(wildcard libcryptopp.pc),)
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)/pkgconfig
 	$(CP) libcryptopp.pc $(DESTDIR)$(LIBDIR)/pkgconfig
-	$(CHMOD) 0644 $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
+	$(CHMOD) u=rw,go=r $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
 endif
 
 .PHONY: remove uninstall
@@ -880,14 +882,17 @@ ifeq ($(wildcard GNUmakefile.deps),GNUmakefile.deps)
 -include GNUmakefile.deps
 endif # Dependencies
 
+# A few recipes trigger warnings for -std=c++11 and -stdlib=c++
+NOSTD_CXXFLAGS=$(filter-out -stdlib=%,$(filter-out -std=%,$(CXXFLAGS)))
+
 # Cryptogams ARM asm implementation. AES needs -mthumb for Clang
 aes_armv4.o : aes_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_THUMB_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(NOSTD_CXXFLAGS) $(CRYPTOGAMS_ARMV4_THUMB_FLAG) -c) $<
 
 # Use C++ compiler on C source after patching.
 # https://github.com/weidai11/cryptopp/issues/926
 cpu-features.o: cpu-features.h cpu-features.c
-	$(CXX) -x c $(strip $(CPPFLAGS) $(CXXFLAGS) -c) cpu-features.c
+	$(CXX) -x c $(strip $(CPPFLAGS) $(NOSTD_CXXFLAGS) -c) cpu-features.c
 
 # SSSE3 or NEON available
 aria_simd.o : aria_simd.cpp
@@ -959,15 +964,15 @@ sha_simd.o : sha_simd.cpp
 
 # Cryptogams SHA1 asm implementation.
 sha1_armv4.o : sha1_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(NOSTD_CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA256 asm implementation.
 sha256_armv4.o : sha256_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(NOSTD_CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # Cryptogams SHA512 asm implementation.
 sha512_armv4.o : sha512_armv4.S
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
+	$(CXX) $(strip $(CPPFLAGS) $(NOSTD_CXXFLAGS) $(CRYPTOGAMS_ARMV4_FLAG) -c) $<
 
 # SSE4.2/SHA-NI or ARMv8a available
 shacal2_simd.o : shacal2_simd.cpp
