@@ -28,10 +28,20 @@ if [ ! -d "${ANDROID_SDK_ROOT}" ]; then
     exit 1
 fi
 
+# Error checking
+if [ -z "$(command -v ndk-build 2>/dev/null)"  ]; then
+    echo "ERROR: ndk-build is not on-path for ${USER}. Please set it."
+    echo "PATH is '${PATH}'"
+    exit 1
+fi
+
 # Temp directory
 if [[ -z "${TMPDIR}" ]]; then
     TMPDIR="$HOME/tmp"
     mkdir -p "${TMPDIR}"
+    if [ -n "${SUDO_USER}" ]; then
+        chown -R "${SUDO_USER}" "${TMPDIR}"
+    fi
 fi
 
 # Sane default
@@ -59,14 +69,15 @@ for file in "${files[@]}"; do
         echo "${file} download failed"
         exit 1
     fi
+    # Permissions
+    chmod u=rw,go=r "${file}"
     # Throttle
     sleep 1
 done
 
-# Fix permissions
-chmod +x make_neon.sh
+# Fix permissions and quarantine
+chmod u=rwx,go=rx make_neon.sh
 
-# Fix Apple quarantine
 if [[ "${IS_DARWIN}" -ne 0 ]] && [[ $(command -v xattr 2>/dev/null) ]]; then
     echo "Removing make_neon.sh quarantine"
     xattr -d "com.apple.quarantine" make_neon.sh &>/dev/null
