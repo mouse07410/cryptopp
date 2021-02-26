@@ -2,7 +2,8 @@
 
 #############################################################################
 #
-# This script tests the cryptopp-android gear using ndk-build.
+# This script tests the cryptopp-android-mk gear using ndk-build. The
+# source files include Application.mk and Android.mk.
 #
 # Written and placed in public domain by Jeffrey Walton.
 #
@@ -28,10 +29,20 @@ if [ ! -d "${ANDROID_SDK_ROOT}" ]; then
     exit 1
 fi
 
+# Error checking
+if [ -z "$(command -v ndk-build 2>/dev/null)"  ]; then
+    echo "ERROR: ndk-build is not on-path for ${USER}. Please set it."
+    echo "PATH is '${PATH}'"
+    exit 1
+fi
+
 # Temp directory
 if [[ -z "${TMPDIR}" ]]; then
     TMPDIR="$HOME/tmp"
     mkdir -p "${TMPDIR}"
+    if [ -n "${SUDO_USER}" ]; then
+        chown -R "${SUDO_USER}" "${TMPDIR}"
+    fi
 fi
 
 # Sane default
@@ -55,18 +66,19 @@ files=(Android.mk Application.mk make_neon.sh test_shared.hxx test_shared.cxx)
 
 for file in "${files[@]}"; do
     echo "Downloading $file"
-    if ! curl -L -s -o "${file}" "https://raw.githubusercontent.com/noloader/cryptopp-android/master/${file}"; then
+    if ! curl -L -s -o "${file}" "https://raw.githubusercontent.com/noloader/cryptopp-android-mk/master/${file}"; then
         echo "${file} download failed"
         exit 1
     fi
+    # Permissions
+    chmod u=rw,go=r "${file}"
     # Throttle
     sleep 1
 done
 
-# Fix permissions
-chmod +x make_neon.sh
+# Fix permissions and quarantine
+chmod u=rwx,go=rx make_neon.sh
 
-# Fix Apple quarantine
 if [[ "${IS_DARWIN}" -ne 0 ]] && [[ $(command -v xattr 2>/dev/null) ]]; then
     echo "Removing make_neon.sh quarantine"
     xattr -d "com.apple.quarantine" make_neon.sh &>/dev/null

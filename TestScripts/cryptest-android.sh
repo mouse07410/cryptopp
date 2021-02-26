@@ -2,7 +2,7 @@
 
 #############################################################################
 #
-# This script tests the cryptopp-android gear.
+# This script tests Android cross-compiles using setenv-android.sh script.
 #
 # Written and placed in public domain by Jeffrey Walton.
 #
@@ -34,10 +34,20 @@ if [ ! -d "${ANDROID_SDK_ROOT}" ]; then
     exit 1
 fi
 
+# Error checking
+if [ -z "$(command -v ndk-build 2>/dev/null)"  ]; then
+    echo "ERROR: ndk-build is not on-path for ${USER}. Please set it."
+    echo "PATH is '${PATH}'"
+    exit 1
+fi
+
 # Temp directory
 if [[ -z "${TMPDIR}" ]]; then
     TMPDIR="$HOME/tmp"
     mkdir -p "${TMPDIR}"
+    if [ -n "${SUDO_USER}" ]; then
+        chown -R "${SUDO_USER}" "${TMPDIR}"
+    fi
 fi
 
 # Sane default
@@ -56,7 +66,8 @@ PLATFORMS=(armv7a aarch64 x86 x86_64)
 for platform in "${PLATFORMS[@]}"
 do
     # setenv-android.sh reads these two variables for configuration info.
-    export ANDROID_API="23"
+    # Android 5.0 is 21. Android 6.0 is 23.
+    export ANDROID_API="21"
     export ANDROID_CPU="${platform}"
 
     make -f GNUmakefile-cross distclean > /dev/null 2>&1
