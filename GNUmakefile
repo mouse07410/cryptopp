@@ -1353,7 +1353,6 @@ install-lib:
 ifneq ($(wildcard libcryptopp.a),)
 	$(MKDIR) $(DESTDIR)$(INCLUDEDIR)/cryptopp
 	$(CP) *.h $(DESTDIR)$(INCLUDEDIR)/cryptopp
-	$(CHMOD) 0644 $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
 	$(CHMOD) u=rw,go=r $(DESTDIR)$(INCLUDEDIR)/cryptopp/*.h
 	@-$(MKDIR) $(DESTDIR)$(LIBDIR)
 	$(CP) libcryptopp.a $(DESTDIR)$(LIBDIR)
