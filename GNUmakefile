@@ -62,7 +62,7 @@ IS_PPC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'ppc|po
 IS_PPC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'ppc64|powerpc64|power64')
 IS_SPARC32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'sun|sparc')
 IS_SPARC64 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'sun|sparc64')
-IS_ARM32 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'arm|armhf|armv7|eabihf|armv8')
+IS_ARM32 := $(shell echo "$(HOSTX)" | $(GREP) -v "64" | $(GREP) -i -c -E 'arm|armhf|armv7|eabihf|armv8')
 IS_ARMV8 := $(shell echo "$(HOSTX)" | $(GREP) -i -c -E 'aarch32|aarch64|arm64')
 
 # Attempt to determine platform
@@ -101,7 +101,7 @@ ifneq ($(IS_LINUX)$(IS_HURD)$(IS_SUN),000)
   HAS_SOLIB_VERSION := 1
 endif
 
-# Formely adhoc.cpp was created from adhoc.cpp.proto when needed.
+# Formerly adhoc.cpp was created from adhoc.cpp.proto when needed.
 ifeq ($(wildcard adhoc.cpp),)
 $(shell cp adhoc.cpp.proto adhoc.cpp)
 endif
@@ -1395,7 +1395,7 @@ endif
 	@-$(RM) $(DESTDIR)$(LIBDIR)/pkgconfig/libcryptopp.pc
 	@-$(RM) -r $(DESTDIR)$(DATADIR)/cryptopp
 
-libcryptopp.a: $(LIBOBJS)
+libcryptopp.a: $(LIBOBJS) | osx_warning
 	$(AR) $(ARFLAGS) $@ $(LIBOBJS)
 ifeq ($(IS_SUN),0)
 	$(RANLIB) $@
@@ -1417,10 +1417,10 @@ ifeq ($(HAS_SOLIB_VERSION),1)
 	-$(LN) libcryptopp.so$(SOLIB_VERSION_SUFFIX) libcryptopp.so$(SOLIB_COMPAT_SUFFIX)
 endif
 
-libcryptopp.dylib: $(LIBOBJS)
+libcryptopp.dylib: $(LIBOBJS) | osx_warning
 	$(CXX) -dynamiclib -o $@ $(CXXFLAGS) -install_name "$@" -current_version "$(LIB_MAJOR).$(LIB_MINOR).$(LIB_PATCH)" -compatibility_version "$(LIB_MAJOR).$(LIB_MINOR)" -headerpad_max_install_names $(LDFLAGS) $(LIBOBJS)
 
-cryptest.exe: $(LINK_LIBRARY) $(TESTOBJS)
+cryptest.exe: $(LINK_LIBRARY) $(TESTOBJS) | osx_warning
 	$(CXX) -o $@ $(CXXFLAGS) $(TESTOBJS) $(LINK_LIBRARY_PATH)$(LINK_LIBRARY) $(LDFLAGS) $(LDLIBS)
 
 # Makes it faster to test changes
@@ -1717,10 +1717,23 @@ validat1.o : validat1.cpp
 .PHONY: so_warning
 so_warning:
 ifeq ($(HAS_SOLIB_VERSION),1)
+	$(info )
 	$(info WARNING: Only the symlinks to the shared-object library have been updated.)
 	$(info WARNING: If the library is installed in a system directory you will need)
 	$(info WARNING: to run 'ldconfig' to update the shared-object library cache.)
 	$(info )
+endif
+
+.PHONY: osx_warning
+osx_warning:
+ifeq ($(IS_DARWIN),1)
+  ifeq ($(findstring -stdlib=libc++,$(CRYPTOPP_CXXFLAGS)$(CXXFLAGS)),)
+	$(info )
+	$(info INFO: Crypto++ was built without LLVM's libc++. If you are using the library)
+	$(info INFO: with Xcode, then you should add -stdlib=libc++ to CXXFLAGS. It is)
+	$(info INFO: already present in the makefile, and you only need to uncomment it.)
+	$(info )
+  endif
 endif
 
 .PHONY: dep deps depend

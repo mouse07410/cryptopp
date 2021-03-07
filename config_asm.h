@@ -31,7 +31,7 @@
 // compiled using C++ only. The library code will not include SSE2 (and
 // above), NEON, Aarch32, Aarch64, or Altivec (and above). Note the compiler
 // may use higher ISAs depending on compiler options, but the library will not
-// explictly use the ISAs. When disabling ASM, it is best to do it from
+// explicitly use the ISAs. When disabling ASM, it is best to do it from
 // config.h to ensure the library and all programs share the setting.
 // #define CRYPTOPP_DISABLE_ASM 1
 
@@ -108,7 +108,7 @@
 # endif
 #endif
 
-// Intrinsics availible in GCC 4.3 (http://gcc.gnu.org/gcc-4.3/changes.html) and
+// Intrinsics available in GCC 4.3 (http://gcc.gnu.org/gcc-4.3/changes.html) and
 // MSVC 2008 (http://msdn.microsoft.com/en-us/library/bb892950%28v=vs.90%29.aspx)
 // SunCC could generate SSE4 at 12.1, but the intrinsics are missing until 12.4.
 #if !defined(CRYPTOPP_DISABLE_SSE4) && defined(CRYPTOPP_SSSE3_AVAILABLE) && \
@@ -324,7 +324,7 @@
 # endif  // Platforms
 #endif
 
-// ARMv8 and SHA-512, SHA-3. -march=armv8.4-a+crypto or above must be present
+// ARMv8 and SHA-512, SHA-3. -march=armv8.2-a+crypto or above must be present
 // Requires GCC 8.0, Clang ??? or Visual Studio 20??
 // Do not use APPLE_CLANG_VERSION; use __ARM_FEATURE_XXX instead.
 #if !defined(CRYPTOPP_ARM_SHA3_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ARM_SHA)
@@ -336,7 +336,7 @@
 # endif  // Platforms
 #endif
 
-// ARMv8 and SM3, SM4. -march=armv8.4-a+crypto or above must be present
+// ARMv8 and SM3, SM4. -march=armv8.2-a+crypto or above must be present
 // Requires GCC 8.0, Clang ??? or Visual Studio 20??
 // Do not use APPLE_CLANG_VERSION; use __ARM_FEATURE_XXX instead.
 #if !defined(CRYPTOPP_ARM_SM3_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ARM_SM3)
@@ -360,16 +360,22 @@
 // Limit the <arm_acle.h> include.
 #if !defined(CRYPTOPP_ARM_ACLE_HEADER)
 # if defined(__aarch32__) || defined(__aarch64__) || (__ARM_ARCH >= 8) || defined(__ARM_ACLE)
-#  if !defined(__ANDROID__) && !defined(ANDROID) && !defined(__APPLE__)
-#   define CRYPTOPP_ARM_ACLE_HEADER 1
-#  endif
+#  define CRYPTOPP_ARM_ACLE_HEADER 1
 # endif
 #endif
 
-// Fixup Apple Clang and PMULL. Apple defines __ARM_FEATURE_CRYPTO for Xcode 6
-// but does not provide PMULL. TODO: determine when PMULL is available.
-#if defined(CRYPTOPP_APPLE_CLANG_VERSION) && (CRYPTOPP_APPLE_CLANG_VERSION < 70000)
-# undef CRYPTOPP_ARM_PMULL_AVAILABLE
+// Apple M1 hack. Xcode cross-compiles for iOS lack
+// arm_acle.h. Apple M1 needs arm_acle.h. The problem
+// in practice is, we can't get CRYPTOPP_ARM_ACLE_HEADER
+// quite right based on ARM preprocessor macros.
+#if defined(__APPLE__) && !defined(__ARM_FEATURE_CRC32)
+# undef CRYPTOPP_ARM_ACLE_HEADER
+#endif
+
+// Android hack. TODO: look at this in more detail
+// now that Android has switched over to Clang.
+#if defined(__ANDROID__) || defined(ANDROID)
+# undef CRYPTOPP_ARM_ACLE_HEADER
 #endif
 
 // Disable for Android. Android only offers the base Aarch64 architecture.

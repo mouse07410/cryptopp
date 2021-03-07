@@ -48,6 +48,7 @@ unsigned long int getauxval(unsigned long int) { return 0; }
 
 #if defined(__APPLE__)
 # include <sys/utsname.h>
+# include <sys/sysctl.h>
 #endif
 
 // The cpu-features header and source file are located in
@@ -140,7 +141,7 @@ class AppleMachineInfo
 {
 public:
 	enum { PowerMac=1, Mac, iPhone, iPod, iPad, AppleTV, AppleWatch };
-	enum { PowerPC=1, I386, I686, X86_64, ARM32, ARMV8, ARMV84 };
+	enum { PowerPC=1, I386, I686, X86_64, ARM32, ARMV8, ARMV82, ARMV83 };
 
 	AppleMachineInfo() : m_device(0), m_version(0), m_arch(0)
 	{
@@ -210,8 +211,36 @@ public:
 		}
 		else if (machine.find("arm64") != std::string::npos)
 		{
-			m_device = Mac;
-			m_arch = ARMV8;
+			// M1 machine?
+			std::string brand;
+			size_t size = 0;
+
+			if (sysctlbyname("machdep.cpu.brand_string", NULL, &size, NULL, 0) == 0 && size > 0)
+			{
+				brand.resize(size);
+				if (sysctlbyname("machdep.cpu.brand_string", &brand[0], &size, NULL, 0) == 0 && size > 0)
+				{
+					if (brand[size-1] == '\0')
+						size--;
+					brand.resize(size);
+				}
+			}
+
+			if (brand == "Apple M1")
+			{
+				m_device = Mac;
+				m_arch = ARMV82;
+			}
+			else
+			{
+				// ???
+				m_device = 0;
+				m_arch = ARMV8;
+			}
+		}
+		else
+		{
+			CRYPTOPP_ASSERT(0);
 		}
 	}
 
@@ -232,11 +261,15 @@ public:
 	}
 
 	bool IsARMv8() const {
-		return m_arch == ARMV8;
+		return m_arch >= ARMV8;
 	}
 
-	bool IsARMv84() const {
-		return m_arch == ARMV84;
+	bool IsARMv82() const {
+		return m_arch >= ARMV82;
+	}
+
+	bool IsARMv83() const {
+		return m_arch >= ARMV83;
 	}
 
 private:
@@ -276,7 +309,29 @@ inline bool IsAppleMachineARMv8()
 		unsigned int unused;
 		GetAppleMachineInfo(unused, unused, arch);
 	}
-	return arch == AppleMachineInfo::ARMV8;
+	return arch >= AppleMachineInfo::ARMV8;
+}
+
+inline bool IsAppleMachineARMv82()
+{
+	static unsigned int arch;
+	if (arch == 0)
+	{
+		unsigned int unused;
+		GetAppleMachineInfo(unused, unused, arch);
+	}
+	return arch >= AppleMachineInfo::ARMV82;
+}
+
+inline bool IsAppleMachineARMv83()
+{
+	static unsigned int arch;
+	if (arch == 0)
+	{
+		unsigned int unused;
+		GetAppleMachineInfo(unused, unused, arch);
+	}
+	return arch >= AppleMachineInfo::ARMV83;
 }
 
 #endif  // __APPLE__
@@ -825,8 +880,9 @@ inline bool CPU_QueryCRC32()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_CRC32) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	// No compiler support. CRC intrinsics result in a failed compiled.
-	return false;
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
 #endif
 	return false;
 }
@@ -848,8 +904,9 @@ inline bool CPU_QueryPMULL()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_PMULL) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	// No compiler support. PMULL intrinsics result in a failed compiled.
-	return false;
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
 #endif
 	return false;
 }
@@ -920,32 +977,15 @@ inline bool CPU_QuerySHA256()
 	return false;
 }
 
-inline bool CPU_QuerySHA512()
-{
-// Some ARMv8.4 features are disabled at the moment
-#if defined(__ANDROID__) && defined(__aarch64__) && 0
-	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
-		((android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_SHA512) != 0))
-		return true;
-#elif defined(__ANDROID__) && defined(__aarch32__) && 0
-	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM) != 0) &&
-		((android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_SHA512) != 0))
-		return true;
-#elif defined(__linux__) && defined(__aarch64__)
-	if ((getauxval(AT_HWCAP) & HWCAP_SHA512) != 0)
-		return true;
-#elif defined(__linux__) && defined(__aarch32__)
-	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA512) != 0)
-		return true;
-#elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return false;
-#endif
-	return false;
-}
-
+// Some ARMv8.2 features are disabled at the moment
 inline bool CPU_QuerySHA3()
 {
-// Some ARMv8.4 features are disabled at the moment
+	// According to the ARM manual, SHA3 depends upon SHA1 and SHA2.
+	// If SHA1 and SHA2 are not present, then SHA3 and SHA512 are
+	// not present. Also see Arm A64 Instruction Set Architecture,
+	// https://developer.arm.com/documentation/ddi0596/2020-12/
+	if (!g_hasSHA1 || !g_hasSHA2) { return false; }
+
 #if defined(__ANDROID__) && defined(__aarch64__) && 0
 	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
 		((android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_SHA3) != 0))
@@ -960,15 +1000,48 @@ inline bool CPU_QuerySHA3()
 #elif defined(__linux__) && defined(__aarch32__)
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA3) != 0)
 		return true;
-#elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return false;
+#elif defined(__APPLE__) && defined(__aarch64__)
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
 #endif
 	return false;
 }
 
+// Some ARMv8.2 features are disabled at the moment
+inline bool CPU_QuerySHA512()
+{
+	// According to the ARM manual, SHA512 depends upon SHA1 and SHA2.
+	// If SHA1 and SHA2 are not present, then SHA3 and SHA512 are
+	// not present. Also see Arm A64 Instruction Set Architecture,
+	// https://developer.arm.com/documentation/ddi0596/2020-12/
+	if (!g_hasSHA1 || !g_hasSHA2) { return false; }
+
+#if defined(__ANDROID__) && defined(__aarch64__) && 0
+	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
+		((android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_SHA512) != 0))
+		return true;
+#elif defined(__ANDROID__) && defined(__aarch32__) && 0
+	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM) != 0) &&
+		((android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_SHA512) != 0))
+		return true;
+#elif defined(__linux__) && defined(__aarch64__)
+	if ((getauxval(AT_HWCAP) & HWCAP_SHA512) != 0)
+		return true;
+#elif defined(__linux__) && defined(__aarch32__)
+	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA512) != 0)
+		return true;
+#elif defined(__APPLE__) && defined(__aarch64__)
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
+#endif
+	return false;
+}
+
+// Some ARMv8.2 features are disabled at the moment
 inline bool CPU_QuerySM3()
 {
-// Some ARMv8.4 features are disabled at the moment
 #if defined(__ANDROID__) && defined(__aarch64__) && 0
 	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
 		((android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_SM3) != 0))
@@ -984,14 +1057,14 @@ inline bool CPU_QuerySM3()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM3) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return false;
+	// No Apple support yet.
 #endif
 	return false;
 }
 
+// Some ARMv8.2 features are disabled at the moment
 inline bool CPU_QuerySM4()
 {
-// Some ARMv8.4 features are disabled at the moment
 #if defined(__ANDROID__) && defined(__aarch64__) && 0
 	if (((android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) != 0) &&
 		((android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_SM4) != 0))
@@ -1007,7 +1080,7 @@ inline bool CPU_QuerySM4()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SM4) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__) && 0
-	return false;
+	// No Apple support yet.
 #endif
 	return false;
 }
