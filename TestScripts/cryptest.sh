@@ -79,12 +79,12 @@ TEST_LIST=()
 ############################################
 # Setup tools and platforms
 
-GREP=grep
-SED=sed
-AWK=awk
-MAKE=make
+GREP="grep"
+SED="sed"
+AWK="awk"
+MAKE="make"
 
-DISASS=objdump
+DISASS="objdump"
 DISASSARGS=("--disassemble")
 
 # Fixup, Solaris and friends
@@ -137,6 +137,13 @@ IS_SPARC=$("$GREP" -i -c "sparc" <<< "$THIS_MACHINE")
 IS_X32=0
 
 # Fixup
+if [[ "$IS_AIX" -ne 0 ]]; then
+    THIS_MACHINE="$(prtconf | "$GREP" -i "Processor Type" | head -n 1 | cut -f 2 -d ':')"
+    IS_PPC32=$("$GREP" -i -c -E "(Power|PPC)" <<< "$THIS_MACHINE")
+    IS_PPC64=$("$GREP" -i -c -E "(Power64|PPC64)" <<< "$THIS_MACHINE")
+fi
+
+# Fixup
 if [[ "$IS_PPC64" -ne 0 ]]; then
     IS_PPC32=0
 fi
@@ -158,6 +165,12 @@ if [[ "$IS_DARWIN" -ne 0 ]]; then
     DISASSARGS=("-tV")
 fi
 
+# Fixup
+if [[ "$IS_AIX" -ne 0 ]]; then
+    DISASS=dis
+    DISASSARGS=()
+fi
+
 # CPU features and flags
 if [[ ("$IS_X86" -ne 0 || "$IS_X64" -ne 0) ]]; then
     if [[ ("$IS_DARWIN" -ne 0) ]]; then
@@ -165,9 +178,9 @@ if [[ ("$IS_X86" -ne 0 || "$IS_X64" -ne 0) ]]; then
     elif [[ ("$IS_SOLARIS" -ne 0) ]]; then
         X86_CPU_FLAGS=$(isainfo -v 2>/dev/null)
     elif [[ ("$IS_FREEBSD" -ne 0) ]]; then
-        X86_CPU_FLAGS=$(grep Features /var/run/dmesg.boot)
+        X86_CPU_FLAGS=$("$GREP" Features /var/run/dmesg.boot)
     elif [[ ("$IS_DRAGONFLY" -ne 0) ]]; then
-        X86_CPU_FLAGS=$(dmesg | grep Features)
+        X86_CPU_FLAGS=$(dmesg | "$GREP" Features)
     elif [[ ("$IS_HURD" -ne 0) ]]; then
         : # Do nothing... cpuid is not helpful at the moment
     else
@@ -176,8 +189,48 @@ if [[ ("$IS_X86" -ne 0 || "$IS_X64" -ne 0) ]]; then
 elif [[ ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0) ]]; then
     if [[ ("$IS_DARWIN" -ne 0) ]]; then
         ARM_CPU_FLAGS="$(sysctl machdep.cpu.features 2>&1 | cut -f 2 -d ':')"
+        # Apple M1 hardware
+        if [[ $(sysctl hw.optional.arm64 2>&1 | "$GREP" -i 'hw.optional.arm64: 1') ]]; then
+            ARM_CPU_FLAGS="asimd crc32 aes pmull sha1 sha2"
+        fi
+        if [[ $(sysctl hw.optional.armv8_2_sha3 2>&1 | "$GREP" -i 'hw.optional.armv8_2_sha3: 1') ]]; then
+            ARM_CPU_FLAGS+=" sha3"
+        fi
+        if [[ $(sysctl hw.optional.armv8_2_sha512 2>&1 | "$GREP" -i 'hw.optional.armv8_2_sha512: 1') ]]; then
+            ARM_CPU_FLAGS+=" sha512"
+        fi
     else
         ARM_CPU_FLAGS="$($AWK '{IGNORECASE=1}{if ($1 == "Features"){print;exit}}' < /proc/cpuinfo | cut -f 2 -d ':')"
+    fi
+elif [[ ("$IS_PPC32" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
+    if [[ ("$IS_DARWIN" -ne 0) ]]; then
+        PPC_CPU_FLAGS="$(sysctl -a 2>&1 | "$GREP" machdep.cpu.features | cut -f 2 -d ':')"
+        # PowerMac
+        if [[ $(sysctl hw.optional.altivec 2>&1 | "$GREP" -i 'hw.optional.altivec: 1') ]]; then
+            PPC_CPU_FLAGS+=" altivec"
+        fi
+    elif [[ ("$IS_AIX" -ne 0) ]]; then
+        CPUINFO="$(prtconf | "$GREP" -i "Processor Type" | head -n 1 | cut -f 2 -d ':')"
+        if echo -n "$CPUINFO" | "$GREP" -q -i -c "power9"; then
+            PPC_CPU_FLAGS="power9 power8 power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "power8"; then
+            PPC_CPU_FLAGS="power8 power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "power7"; then
+            PPC_CPU_FLAGS="power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "altivec"; then
+            PPC_CPU_FLAGS="altivec"
+        fi
+    else
+        CPUINFO="$(cat /proc/cpuinfo | grep "cpu" | head -n 1 | cut -f 2 -d ':')"
+        if echo -n "$CPUINFO" | "$GREP" -q -i -c "power9"; then
+            PPC_CPU_FLAGS="power9 power8 power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "power8"; then
+            PPC_CPU_FLAGS="power8 power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "power7"; then
+            PPC_CPU_FLAGS="power7 altivec"
+        elif echo -n "$CPUINFO" | "$GREP" -q -i -c "altivec"; then
+            PPC_CPU_FLAGS="altivec"
+        fi
     fi
 fi
 
@@ -704,48 +757,77 @@ fi
 if [[ ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0) ]]; then
 
     if [[ (-z "$HAVE_ARMV7A" && "$IS_ARM32" -ne 0) ]]; then
-        HAVE_ARMV7A=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'neon')
+        HAVE_ARMV7A=$("$GREP" -i -c 'neon' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARMV7A" -gt 0) ]]; then HAVE_ARMV7A=1; fi
     fi
 
-    if [[ (-z "$HAVE_ARMV8A" && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; then
-        HAVE_ARMV8A=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c -E '(asimd|crc|crypto)')
-        if [[ ("$HAVE_ARMV8A" -gt 0) ]]; then HAVE_ARMV8A=1; fi
+    if [[ (-z "$HAVE_ARMV8" && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; then
+        HAVE_ARMV8=$("$GREP" -i -c -E '(asimd|crc|crypto)' <<< "$ARM_CPU_FLAGS")
+        if [[ ("$HAVE_ARMV8" -gt 0) ]]; then HAVE_ARMV8=1; fi
     fi
 
     if [[ (-z "$HAVE_ARM_VFPV3") ]]; then
-        HAVE_ARM_VFPV3=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'vfpv3')
+        HAVE_ARM_VFPV3=$("$GREP" -i -c 'vfpv3' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_VFPV3" -gt 0) ]]; then HAVE_ARM_VFPV3=1; fi
     fi
 
     if [[ (-z "$HAVE_ARM_VFPV4") ]]; then
-        HAVE_ARM_VFPV4=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'vfpv4')
+        HAVE_ARM_VFPV4=$("$GREP" -i -c 'vfpv4' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_VFPV4" -gt 0) ]]; then HAVE_ARM_VFPV4=1; fi
     fi
 
     if [[ (-z "$HAVE_ARM_VFPV5") ]]; then
-        HAVE_ARM_VFPV5=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'fpv5')
+        HAVE_ARM_VFPV5=$("$GREP" -i -c 'fpv5' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_VFPV5" -gt 0) ]]; then HAVE_ARM_VFPV5=1; fi
     fi
 
     if [[ (-z "$HAVE_ARM_VFPD32") ]]; then
-        HAVE_ARM_VFPD32=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'vfpd32')
+        HAVE_ARM_VFPD32=$("$GREP" -i -c 'vfpd32' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_VFPD32" -gt 0) ]]; then HAVE_ARM_VFPD32=1; fi
     fi
 
     if [[ (-z "$HAVE_ARM_NEON") ]]; then
-        HAVE_ARM_NEON=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'neon')
+        HAVE_ARM_NEON=$("$GREP" -i -c 'neon' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_NEON" -gt 0) ]]; then HAVE_ARM_NEON=1; fi
     fi
 
+    if [[ (-z "$HAVE_ARM_CRC") ]]; then
+        HAVE_ARM_CRC=$("$GREP" -i -c 'crc32' <<< "$ARM_CPU_FLAGS")
+        if [[ ("$HAVE_ARM_CRC" -gt 0) ]]; then HAVE_ARM_CRC=1; fi
+    fi
+
     if [[ (-z "$HAVE_ARM_CRYPTO") ]]; then
-        HAVE_ARM_CRYPTO=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c -E '(aes|pmull|sha1|sha2)')
+        HAVE_ARM_CRYPTO=$("$GREP" -i -c -E '(aes|pmull|sha1|sha2)' <<< "$ARM_CPU_FLAGS")
         if [[ ("$HAVE_ARM_CRYPTO" -gt 0) ]]; then HAVE_ARM_CRYPTO=1; fi
     fi
 
-    if [[ (-z "$HAVE_ARM_CRC") ]]; then
-        HAVE_ARM_CRC=$(echo -n "$ARM_CPU_FLAGS" | "$GREP" -i -c 'crc32')
-        if [[ ("$HAVE_ARM_CRC" -gt 0) ]]; then HAVE_ARM_CRC=1; fi
+    if [[ (-z "$HAVE_ARM_SHA3") ]]; then
+        HAVE_ARM_SHA3=$("$GREP" -i -c 'sha3' <<< "$ARM_CPU_FLAGS")
+        if [[ ("$HAVE_ARM_SHA3" -gt 0) ]]; then HAVE_ARM_SHA3=1; fi
+    fi
+
+    if [[ (-z "$HAVE_ARM_SHA512") ]]; then
+        HAVE_ARM_SHA512=$("$GREP" -i -c 'sha512' <<< "$ARM_CPU_FLAGS")
+        if [[ ("$HAVE_ARM_SHA512" -gt 0) ]]; then HAVE_ARM_SHA512=1; fi
+    fi
+fi
+
+if [[ ("$IS_PPC32" -ne 0 || "$IS_PPC64" -ne 0) ]]; then
+    if [[ (-z "$HAVE_PPC_ALTIVEC") ]]; then
+        HAVE_PPC_ALTIVEC=$("$GREP" -i -c 'altivec' <<< "$PPC_CPU_FLAGS")
+        if [[ ("$HAVE_PPC_ALTIVEC" -gt 0) ]]; then HAVE_PPC_ALTIVEC=1; fi
+    fi
+    if [[ (-z "$HAVE_PPC_POWER7") ]]; then
+        HAVE_PPC_POWER7=$("$GREP" -i -c -E 'pwr7|power7' <<< "$PPC_CPU_FLAGS")
+        if [[ ("$HAVE_PPC_POWER7" -gt 0) ]]; then HAVE_PPC_POWER7=1; fi
+    fi
+    if [[ (-z "$HAVE_PPC_POWER8") ]]; then
+        HAVE_PPC_POWER8=$("$GREP" -i -c -E 'pwr8|power8' <<< "$PPC_CPU_FLAGS")
+        if [[ ("$HAVE_PPC_POWER8" -gt 0) ]]; then HAVE_PPC_POWER8=1; fi
+    fi
+    if [[ (-z "$HAVE_PPC_POWER9") ]]; then
+        HAVE_PPC_POWER9=$("$GREP" -i -c -E 'pwr9|power9' <<< "$PPC_CPU_FLAGS")
+        if [[ ("$HAVE_PPC_POWER9" -gt 0) ]]; then HAVE_PPC_POWER9=1; fi
     fi
 fi
 
@@ -862,8 +944,8 @@ elif [[ "$IS_ARM32" -ne 0 ]]; then
 fi
 if [[ "$HAVE_ARMV7A" -ne 0 ]]; then
     echo "HAVE_ARMV7A: $HAVE_ARMV7A" | tee -a "$TEST_RESULTS"
-elif [[ "$HAVE_ARMV8A" -ne 0 ]]; then
-    echo "HAVE_ARMV8A: $HAVE_ARMV8A" | tee -a "$TEST_RESULTS"
+elif [[ "$HAVE_ARMV8" -ne 0 ]]; then
+    echo "HAVE_ARMV8: $HAVE_ARMV8" | tee -a "$TEST_RESULTS"
 fi
 if [[ "$HAVE_ARM_NEON" -ne 0 ]]; then
     echo "HAVE_ARM_NEON: $HAVE_ARM_NEON" | tee -a "$TEST_RESULTS"
@@ -882,6 +964,24 @@ if [[ "$HAVE_ARM_CRC" -ne 0 ]]; then
 fi
 if [[ "$HAVE_ARM_CRYPTO" -ne 0 ]]; then
     echo "HAVE_ARM_CRYPTO: $HAVE_ARM_CRYPTO" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_ARM_SHA3" -ne 0 ]]; then
+    echo "HAVE_ARM_SHA3: $HAVE_ARM_SHA3" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_ARM_SHA512" -ne 0 ]]; then
+    echo "HAVE_ARM_SHA512: $HAVE_ARM_SHA512" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_PPC_ALTIVEC" -ne 0 ]]; then
+    echo "HAVE_PPC_ALTIVEC: $HAVE_PPC_ALTIVEC" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_PPC_POWER7" -ne 0 ]]; then
+    echo "HAVE_PPC_POWER7: $HAVE_PPC_POWER7" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_PPC_POWER8" -ne 0 ]]; then
+    echo "HAVE_PPC_POWER8: $HAVE_PPC_POWER8" | tee -a "$TEST_RESULTS"
+fi
+if [[ "$HAVE_PPC_POWER9" -ne 0 ]]; then
+    echo "HAVE_PPC_POWER9: $HAVE_PPC_POWER9" | tee -a "$TEST_RESULTS"
 fi
 
 if [[ "$IS_X32" -ne 0 ]]; then
@@ -1003,6 +1103,10 @@ if [[ "$IS_DARWIN" -ne 0 ]]; then
     if [[ (-z "$CPU_FREQ") || ("$CPU_FREQ" -eq 0) ]]; then
         CPU_FREQ="$(sysctl -a 2>&1 | $GREP "hw.cpufrequency" | $AWK '{print int($2); exit;}')"
         CPU_FREQ="$(echo "$CPU_FREQ" | $AWK '{print int($0/1024/1024/1024)}')"
+    fi
+    if [[ (-z "$CPU_FREQ") || ("$CPU_FREQ" -eq 0) ]]; then
+        CPU_FREQ="$(sysctl -a 2>&1 | $GREP "hw.tbfrequency" | $AWK '{print int($2); exit;}')"
+        CPU_FREQ="$(echo "$CPU_FREQ" | $AWK '{print int($0/10/1024/1024)}')"
     fi
 fi
 
@@ -1503,7 +1607,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
         FAILED=0
         DISASS_TEXT=$("$DISASS" "${DISASSARGS[@]}" "$OBJFILE" 2>/dev/null)
 
-        if [[ ("$HAVE_ARMV8A" -ne 0) ]]; then
+        if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 4 ldr q{N}
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ldr[[:space:]]*q')
             if [[ ("$COUNT" -lt 4) ]]; then
@@ -1519,7 +1623,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
             fi
         fi
 
-        if [[ ("$HAVE_ARMV8A" -ne 0) ]]; then
+        if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 str q{N}
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'str[[:space:]]*q')
             if [[ ("$COUNT" -lt 16) ]]; then
@@ -1535,7 +1639,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
             fi
         fi
 
-        if [[ ("$HAVE_ARMV8A" -ne 0) ]]; then
+        if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 shl v{N}
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shl[[:space:]]*v')
             if [[ ("$COUNT" -lt 16) ]]; then
@@ -1547,27 +1651,27 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vshl')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
-                echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
+                echo "ERROR: failed to generate NEON shift left instructions" | tee -a "$TEST_RESULTS"
             fi
         fi
 
-        if [[ ("$HAVE_ARMV8A" -ne 0) ]]; then
+        if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 shr v{N}
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shr[[:space:]]*v')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
-                echo "ERROR: failed to generate NEON shift left instructions" | tee -a "$TEST_RESULTS"
+                echo "ERROR: failed to generate NEON shift right instructions" | tee -a "$TEST_RESULTS"
             fi
         else
             # ARIA::UncheckedKeySet: 17 vshr
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vshr')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
-                echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
+                echo "ERROR: failed to generate NEON shift right instructions" | tee -a "$TEST_RESULTS"
             fi
         fi
 
-        if [[ ("$HAVE_ARMV8A" -ne 0) ]]; then
+        if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 12 ext v{N}
             COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ext[[:space:]]*v')
             if [[ ("$COUNT" -lt 12) ]]; then
@@ -1596,7 +1700,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
         ARM_CRC32=1
     fi
 
-    if [[ ("$HAVE_ARMV8A" -ne 0 && "$ARM_CRC32" -ne 0) ]]; then
+    if [[ ("$HAVE_ARMV8" -ne 0 && "$ARM_CRC32" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
         echo "Testing: ARM CRC32 code generation" | tee -a "$TEST_RESULTS"
@@ -1648,7 +1752,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
         ARM_PMULL=1
     fi
 
-    if [[ ("$HAVE_ARMV8A" -ne 0 && "$ARM_PMULL" -ne 0) ]]; then
+    if [[ ("$HAVE_ARMV8" -ne 0 && "$ARM_PMULL" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
         echo "Testing: ARM carryless multiply code generation" | tee -a "$TEST_RESULTS"
@@ -1688,13 +1792,13 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
         ARM_AES=1
     fi
 
-    if [[ ("$HAVE_ARMV8A" -ne 0 && "$ARM_AES" -ne 0) ]]; then
+    if [[ ("$HAVE_ARMV8" -ne 0 && "$ARM_AES" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
-        echo "Testing: ARM AES generation" | tee -a "$TEST_RESULTS"
+        echo "Testing: ARM AES code generation" | tee -a "$TEST_RESULTS"
         echo
 
-        TEST_LIST+=("ARM AES generation")
+        TEST_LIST+=("ARM AES code generation")
 
         OBJFILE=rijndael_simd.o; rm -f "$OBJFILE" 2>/dev/null
         CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1737,16 +1841,17 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
     "$CXX" -march=armv8-a+crypto "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
     if [[ "$?" -eq 0 ]]; then
-        ARM_SHA=1
+        ARM_SHA1=1
+        ARM_SHA2=1
     fi
 
-    if [[ ("$HAVE_ARMV8A" -ne 0 && "$ARM_SHA" -ne 0) ]]; then
+    if [[ ("$HAVE_ARMV8" -ne 0 && "$ARM_SHA1" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
-        echo "Testing: ARM SHA generation" | tee -a "$TEST_RESULTS"
+        echo "Testing: ARM SHA1 code generation" | tee -a "$TEST_RESULTS"
         echo
 
-        TEST_LIST+=("ARM SHA generation")
+        TEST_LIST+=("ARM SHA1 code generation")
 
         OBJFILE=sha_simd.o; rm -f "$OBJFILE" 2>/dev/null
         CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
@@ -1791,6 +1896,27 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
             echo "ERROR: failed to generate sha1su1 instruction" | tee -a "$TEST_RESULTS"
         fi
 
+        if [[ ("$FAILED" -eq 0) ]]; then
+            echo "Verified sha1c, sha1m, sha1p, sha1su0, sha1su1 machine instructions" | tee -a "$TEST_RESULTS"
+        fi
+    fi
+
+
+    if [[ ("$HAVE_ARMV8" -ne 0 && "$ARM_SHA2" -ne 0) ]]; then
+        echo
+        echo "************************************" | tee -a "$TEST_RESULTS"
+        echo "Testing: ARM SHA2 code generation" | tee -a "$TEST_RESULTS"
+        echo
+
+        TEST_LIST+=("ARM SHA2 code generation")
+
+        OBJFILE=sha_simd.o; rm -f "$OBJFILE" 2>/dev/null
+        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
+
+        COUNT=0
+        FAILED=0
+        DISASS_TEXT=$("$DISASS" "${DISASSARGS[@]}" "$OBJFILE" 2>/dev/null)
+
         COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -v sha256h2 | "$GREP" -i -c sha256h)
         if [[ ("$COUNT" -eq 0) ]]; then
             FAILED=1
@@ -1816,7 +1942,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
         fi
 
         if [[ ("$FAILED" -eq 0) ]]; then
-            echo "Verified sha1c, sha1m, sha1p, sha1su0, sha1su1, sha256h, sha256h2, sha256su0, sha256su1 machine instructions" | tee -a "$TEST_RESULTS"
+            echo "Verified sha256h, sha256h2, sha256su0, sha256su1 machine instructions" | tee -a "$TEST_RESULTS"
         fi
     fi
 fi
@@ -1833,27 +1959,25 @@ if [[ ("$HAVE_DISASS" -ne 0 && "$GCC_4_8_OR_ABOVE" -ne 0 && ("$IS_PPC32" -ne 0 |
         "$CXX" -mcpu=power8 "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_AES=1
-            PPC_AES_FLAGS="-mcpu=power8"
         fi
     fi
     if [[ ("$PPC_AES" -eq 0) ]]; then
         "$CXX" -qarch=pwr8 -qaltivec "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_AES=1
-            PPC_AES_FLAGS="-qarch=pwr8 -qaltivec"
         fi
     fi
 
     if [[ ("$PPC_AES" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
-        echo "Testing: Power8 AES generation" | tee -a "$TEST_RESULTS"
+        echo "Testing: Power8 AES code generation" | tee -a "$TEST_RESULTS"
         echo
 
-        TEST_LIST+=("Power8 AES generation")
+        TEST_LIST+=("Power8 AES code generation")
 
         OBJFILE=rijndael_simd.o; rm -f "$OBJFILE" 2>/dev/null
-        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS $PPC_AES_FLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
+        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
         COUNT=0
         FAILED=0
@@ -1884,7 +2008,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && "$GCC_4_8_OR_ABOVE" -ne 0 && ("$IS_PPC32" -ne 0 |
         fi
 
         if [[ ("$FAILED" -eq 0) ]]; then
-            echo "Verified vcipher, vcipherlast,vncipher, vncipherlast machine instructions" | tee -a "$TEST_RESULTS"
+            echo "Verified vcipher, vcipherlast, vncipher, vncipherlast machine instructions" | tee -a "$TEST_RESULTS"
         fi
     fi
 
@@ -1896,27 +2020,25 @@ if [[ ("$HAVE_DISASS" -ne 0 && "$GCC_4_8_OR_ABOVE" -ne 0 && ("$IS_PPC32" -ne 0 |
         "$CXX" -mcpu=power8 "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_SHA=1
-            PPC_SHA_FLAGS="-mcpu=power8"
         fi
     fi
     if [[ ("$PPC_SHA" -eq 0) ]]; then
         "$CXX" -qarch=pwr8 -qaltivec "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_SHA=1
-            PPC_SHA_FLAGS="-qarch=pwr8 -qaltivec"
         fi
     fi
 
     if [[ ("$PPC_SHA" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
-        echo "Testing: Power8 SHA generation" | tee -a "$TEST_RESULTS"
+        echo "Testing: Power8 SHA code generation" | tee -a "$TEST_RESULTS"
         echo
 
-        TEST_LIST+=("Power8 SHA generation")
+        TEST_LIST+=("Power8 SHA code generation")
 
         OBJFILE=sha_simd.o; rm -f "$OBJFILE" 2>/dev/null
-        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS $PPC_SHA_FLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
+        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
         COUNT=0
         FAILED=0
@@ -1947,27 +2069,25 @@ if [[ ("$HAVE_DISASS" -ne 0 && "$GCC_4_8_OR_ABOVE" -ne 0 && ("$IS_PPC32" -ne 0 |
         "$CXX" -mcpu=power8 "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_VMULL=1
-            PPC_VMULL_FLAGS="-mcpu=power8"
         fi
     fi
     if [[ ("$PPC_VMULL" -eq 0) ]]; then
         "$CXX" -qarch=pwr8 "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
         if [[ "$?" -eq 0 ]]; then
             PPC_VMULL=1
-            PPC_VMULL_FLAGS="-qarch=pwr8"
         fi
     fi
 
     if [[ ("$PPC_VMULL" -ne 0) ]]; then
         echo
         echo "************************************" | tee -a "$TEST_RESULTS"
-        echo "Testing: Power8 carryless multiply generation" | tee -a "$TEST_RESULTS"
+        echo "Testing: Power8 carryless multiply code generation" | tee -a "$TEST_RESULTS"
         echo
 
-        TEST_LIST+=("Power8 carryless multiply generation")
+        TEST_LIST+=("Power8 carryless multiply code generation")
 
         OBJFILE=gcm_simd.o; rm -f "$OBJFILE" 2>/dev/null
-        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS $PPC_VMULL_FLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
+        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
 
         COUNT=0
         FAILED=0
@@ -7178,7 +7298,7 @@ if [[ ("$IS_CYGWIN" -eq 0) && ("$IS_MINGW" -eq 0) ]]; then
     else
         OLD_DIR=$(pwd)
         "$MAKE" "${MAKEARGS[@]}" install PREFIX="$INSTALL_DIR" 2>&1 | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
-        cd "$INSTALL_DIR/bin"
+        cd "$INSTALL_DIR/bin" || exit
 
         echo
         echo "************************************" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
@@ -7219,7 +7339,7 @@ if [[ ("$IS_CYGWIN" -eq 0) && ("$IS_MINGW" -eq 0) ]]; then
         fi
 
         # Restore original PWD
-        cd "$OLD_DIR"
+        cd "$OLD_DIR" || exit
     fi
 fi
 

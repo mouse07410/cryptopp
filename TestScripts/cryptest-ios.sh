@@ -4,7 +4,7 @@
 #
 # This script tests the cryptopp-ios gear.
 #
-# Written and placed in public domain by Jeffrey Walton.
+# Written and placed in public domain by Jeffrey Walton and Uri Blumenthal.
 #
 # Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
 # licensed under the Boost Software License 1.0, while the individual files
@@ -33,6 +33,17 @@ fi
 # Cleanup old artifacts
 rm -rf "${TMPDIR}/build.failed" 2>/dev/null
 rm -rf "${TMPDIR}/build.log" 2>/dev/null
+
+#############################################################################
+
+# Prepare the environment
+unset CXX CPPFLAGS CXXFLAGS LDFLAGS
+unset IOS_CPPFLAGS IOS_CXXFLAGS IOS_LDFLAGS IOS_SYSROOT
+
+if [[ -e TestScripts/setenv-ios.sh ]]; then
+    cp TestScripts/setenv-ios.sh .
+    chmod u+x setenv-ios.sh
+fi
 
 #############################################################################
 
@@ -83,12 +94,58 @@ do
     # run in subshell to not keep any envars
     (
         source ./setenv-ios.sh
+
         if make -k -j "${MAKE_JOBS}" -f GNUmakefile-cross static dynamic cryptest.exe;
         then
             echo "${platform} ==> SUCCESS" >> "${TMPDIR}/build.log"
         else
             echo "${platform} ==> FAILURE" >> "${TMPDIR}/build.log"
             touch "${TMPDIR}/build.failed"
+        fi
+
+        # Test code generation
+        if [[ "${cpu}" == "arm64" ]]
+        then
+
+            # Test AES code generation
+            count=$(otool -tV rijndael_simd.o 2>&1 | grep -c -E 'aese|aesd|aesmc|aesimc')
+            if [[ "${count}" -gt 0 ]]
+            then
+                echo "${platform} : AES ==> SUCCESS" >> "${TMPDIR}/build.log"
+            else
+                echo "${platform} : AES ==> FAILURE" >> "${TMPDIR}/build.log"
+                touch "${TMPDIR}/build.failed"
+            fi
+
+            # Test PMULL code generation
+            count=$(otool -tV gcm_simd.o 2>&1 | grep -c -E 'pmull|pmull2')
+            if [[ "${count}" -gt 0 ]]
+            then
+                echo "${platform} : PMULL ==> SUCCESS" >> "${TMPDIR}/build.log"
+            else
+                echo "${platform} : PMULL ==> FAILURE" >> "${TMPDIR}/build.log"
+                touch "${TMPDIR}/build.failed"
+            fi
+
+            # Test SHA1 code generation
+            count=$(otool -tV sha_simd.o 2>&1 | grep -c -E 'sha1c|sha1m|sha1p|sha1h|sha1su0|sha1su1')
+            if [[ "${count}" -gt 0 ]]
+            then
+                echo "${platform} : SHA1 ==> SUCCESS" >> "${TMPDIR}/build.log"
+            else
+                echo "${platform} : SHA1 ==> FAILURE" >> "${TMPDIR}/build.log"
+                touch "${TMPDIR}/build.failed"
+            fi
+
+            # Test SHA2 code generation
+            count=$(otool -tV sha_simd.o | grep -c -E 'sha256h|sha256su0|sha256su1')
+            if [[ "${count}" -gt 0 ]]
+            then
+                echo "${platform} : SHA2 ==> SUCCESS" >> "${TMPDIR}/build.log"
+            else
+                echo "${platform} : SHA2 ==> FAILURE" >> "${TMPDIR}/build.log"
+                touch "${TMPDIR}/build.failed"
+            fi
         fi
     )
 done

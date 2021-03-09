@@ -5,7 +5,7 @@
 # This script tests the cryptopp-android-mk gear using ndk-build. The
 # source files include Application.mk and Android.mk.
 #
-# Written and placed in public domain by Jeffrey Walton.
+# Written and placed in public domain by Jeffrey Walton and Uri Blumenthal.
 #
 # Crypto++ Library is copyrighted as a compilation and (as of version 5.6.2)
 # licensed under the Boost Software License 1.0, while the individual files
@@ -59,6 +59,17 @@ fi
 # Cleanup old artifacts
 rm -rf "${TMPDIR}/build.failed" 2>/dev/null
 rm -rf "${TMPDIR}/build.log" 2>/dev/null
+
+#############################################################################
+
+# Prepare the environment
+unset CXX CPPFLAGS CXXFLAGS LDFLAGS
+unset ANDROID_CPPFLAGS ANDROID_CXXFLAGS ANDROID_LDFLAGS ANDROID_SYSROOT
+
+if [[ -e TestScripts/setenv-android.sh ]]; then
+    cp TestScripts/setenv-android.sh .
+    chmod u+x setenv-android.sh
+fi
 
 #############################################################################
 
