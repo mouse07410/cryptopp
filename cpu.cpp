@@ -20,6 +20,13 @@
 # include <immintrin.h>
 #endif
 
+// For IsProcessorFeaturePresent on Microsoft Arm64 platforms,
+// https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-isprocessorfeaturepresent
+#if defined(_WIN32) && defined(_M_ARM64)
+# include <Windows.h>
+# include <processthreadsapi.h>
+#endif
+
 #ifdef _AIX
 # include <sys/systemcfg.h>
 #endif
@@ -213,17 +220,16 @@ public:
 		{
 			// M1 machine?
 			std::string brand;
-			size_t size = 0;
+			size_t size = 32;
 
-			if (sysctlbyname("machdep.cpu.brand_string", NULL, &size, NULL, 0) == 0 && size > 0)
+			// Supply an oversized buffer, and avoid
+			// an extra call to sysctlbyname.
+			brand.resize(size);
+			if (sysctlbyname("machdep.cpu.brand_string", &brand[0], &size, NULL, 0) == 0 && size > 0)
 			{
+				if (brand[size-1] == '\0')
+					size--;
 				brand.resize(size);
-				if (sysctlbyname("machdep.cpu.brand_string", &brand[0], &size, NULL, 0) == 0 && size > 0)
-				{
-					if (brand[size-1] == '\0')
-						size--;
-					brand.resize(size);
-				}
 			}
 
 			if (brand == "Apple M1")
@@ -569,7 +575,8 @@ void DetectX86Features()
     // x86_64 machines don't check some flags because SSE2
     // is part of the core instruction set architecture
     CRYPTOPP_UNUSED(MMX_FLAG); CRYPTOPP_UNUSED(SSE_FLAG);
-    CRYPTOPP_UNUSED(SSE3_FLAG); CRYPTOPP_UNUSED(XSAVE_FLAG);
+    CRYPTOPP_UNUSED(SSE2_FLAG); CRYPTOPP_UNUSED(SSE3_FLAG);
+    CRYPTOPP_UNUSED(XSAVE_FLAG);
 
 #if (CRYPTOPP_BOOL_X32 || CRYPTOPP_BOOL_X64)
 	// 64-bit core instruction set includes SSE2. Just check
@@ -833,6 +840,9 @@ inline bool CPU_QueryARMv7()
 #elif defined(__APPLE__) && defined(__arm__)
 	// Apple hardware is ARMv7 or above.
 	return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	// Windows 10 ARM64 is only supported on Armv8a and above
+	return true;
 #endif
 	return false;
 }
@@ -858,7 +868,12 @@ inline bool CPU_QueryNEON()
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
 	// Core feature set for Aarch32 and Aarch64.
-	return true;
+	if (IsAppleMachineARMv8())
+		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	// Windows 10 ARM64 is only supported on Armv8a and above
+	if (IsProcessorFeaturePresent(PF_ARM_V8_INSTRUCTIONS_AVAILABLE) != 0)
+		return true;
 #endif
 	return false;
 }
@@ -882,6 +897,9 @@ inline bool CPU_QueryCRC32()
 #elif defined(__APPLE__) && defined(__aarch64__)
 	// M1 processor
 	if (IsAppleMachineARMv82())
+		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	if (IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE) != 0)
 		return true;
 #endif
 	return false;
@@ -907,6 +925,9 @@ inline bool CPU_QueryPMULL()
 	// M1 processor
 	if (IsAppleMachineARMv82())
 		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != 0)
+		return true;
 #endif
 	return false;
 }
@@ -928,7 +949,12 @@ inline bool CPU_QueryAES()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_AES) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	return IsAppleMachineARMv8();
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != 0)
+		return true;
 #endif
 	return false;
 }
@@ -950,7 +976,12 @@ inline bool CPU_QuerySHA1()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA1) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	return IsAppleMachineARMv8();
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != 0)
+		return true;
 #endif
 	return false;
 }
@@ -972,7 +1003,12 @@ inline bool CPU_QuerySHA256()
 	if ((getauxval(AT_HWCAP2) & HWCAP2_SHA2) != 0)
 		return true;
 #elif defined(__APPLE__) && defined(__aarch64__)
-	return IsAppleMachineARMv8();
+	// M1 processor
+	if (IsAppleMachineARMv82())
+		return true;
+#elif defined(_WIN32) && defined(_M_ARM64)
+	if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != 0)
+		return true;
 #endif
 	return false;
 }

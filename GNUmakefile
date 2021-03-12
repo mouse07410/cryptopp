@@ -159,6 +159,9 @@ ifneq ($(IS_DARWIN),0)
   ARFLAGS = -static -o
 endif
 
+# Uncomment for debugging
+# $(info Here's what we found... IS_X86: $(IS_X86), IS_X64: $(IS_X64), IS_ARM32: $(IS_ARM32), IS_ARMV8: $(IS_ARMV8))
+
 ###########################################################
 #####                General Variables                #####
 ###########################################################
@@ -476,15 +479,12 @@ ifeq ($(DETECT_FEATURES),1)
   ifeq ($(strip $(HAVE_OPT)),0)
     NEON_FLAG = -march=armv7-a -mfpu=neon
     ARIA_FLAG = -march=armv7-a -mfpu=neon
-    AES_FLAG = -march=armv7-a -mfpu=neon
-    CRC_FLAG = -march=armv7-a -mfpu=neon
     GCM_FLAG = -march=armv7-a -mfpu=neon
     BLAKE2B_FLAG = -march=armv7-a -mfpu=neon
     BLAKE2S_FLAG = -march=armv7-a -mfpu=neon
     CHACHA_FLAG = -march=armv7-a -mfpu=neon
     CHAM_FLAG = -march=armv7-a -mfpu=neon
     LEA_FLAG = -march=armv7-a -mfpu=neon
-    SHA_FLAG = -march=armv7-a -mfpu=neon
     SIMON128_FLAG = -march=armv7-a -mfpu=neon
     SPECK128_FLAG = -march=armv7-a -mfpu=neon
     SM4_FLAG = -march=armv7-a -mfpu=neon
@@ -1730,7 +1730,7 @@ ifeq ($(IS_DARWIN),1)
   ifeq ($(findstring -stdlib=libc++,$(CRYPTOPP_CXXFLAGS)$(CXXFLAGS)),)
 	$(info )
 	$(info INFO: Crypto++ was built without LLVM's libc++. If you are using the library)
-	$(info INFO: with Xcode, then you should add -stdlib=libc++ to CXXFLAGS. It is)
+	$(info INFO: with modern Xcode, then you should add -stdlib=libc++ to CXXFLAGS. It is)
 	$(info INFO: already present in the makefile, and you only need to uncomment it.)
 	$(info )
   endif
