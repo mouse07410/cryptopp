@@ -19,13 +19,25 @@
 #include "integer.h"
 #include "secblock.h"
 
-#if defined(__AVX__) || defined(__SSE2__)
-# include <immintrin.h>
+// Hack for OpenBSD and GCC 4.2.1. I believe they are stuck at 4.2.1 due to GPLv3.
+#if defined(__OpenBSD__)
+# if defined (CRYPTOPP_GCC_VERSION) && (CRYPTOPP_GCC_VERSION < 43000)
+#  undef  CRYPTOPP_DISABLE_ASM
+#  define CRYPTOPP_DISABLE_ASM 1
+# endif
 #endif
 
-#if (CRYPTOPP_ARM_NEON_HEADER)
-# include <arm_neon.h>
-#endif
+#ifndef CRYPTOPP_DISABLE_ASM
+# if defined(__AVX__) || defined(__SSE2__)
+#  include <immintrin.h>
+# endif
+
+# if defined(__aarch64__) || defined(__aarch32__) || defined(_M_ARM64)
+#  if defined(CRYPTOPP_ARM_NEON_HEADER)
+#   include <arm_neon.h>
+#  endif
+# endif
+#endif  // CRYPTOPP_DISABLE_ASM
 
 NAMESPACE_BEGIN(CryptoPP)
 
@@ -58,7 +70,8 @@ void xorbuf(byte *buf, const byte *mask, size_t count)
 	CRYPTOPP_ASSERT(mask != NULLPTR);
 	CRYPTOPP_ASSERT(count > 0);
 
-#if defined(__AVX__)
+#ifndef CRYPTOPP_DISABLE_ASM
+# if defined(__AVX__)
 	while (count >= 32)
 	{
 		__m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(buf));
@@ -69,8 +82,8 @@ void xorbuf(byte *buf, const byte *mask, size_t count)
 	}
 	// https://software.intel.com/en-us/articles/avoiding-avx-sse-transition-penalties
 	_mm256_zeroupper();
-#endif
-#if defined(__SSE2__)
+# endif
+# if defined(__SSE2__)
 	while (count >= 16)
 	{
 		__m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buf));
@@ -79,18 +92,35 @@ void xorbuf(byte *buf, const byte *mask, size_t count)
 			_mm_xor_ps(_mm_castsi128_ps(b), _mm_castsi128_ps(m))));
 		buf += 16; mask += 16; count -= 16;
 	}
-
-	if (count == 0) return;
-#endif
-#if defined(__ARM_FEATURE_NEON)
+# endif
+# if defined(__aarch64__) || defined(__aarch32__) || defined(_M_ARM64)
 	while (count >= 16)
 	{
 		vst1q_u8(buf, veorq_u8(vld1q_u8(buf), vld1q_u8(mask)));
 		buf += 16; mask += 16; count -= 16;
 	}
+# endif
+#endif  // CRYPTOPP_DISABLE_ASM
 
-	if (count == 0) return;
+#if CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64
+	// word64 and stride of 8 slows things down on x86_64.
+	// word64 and stride of 8 makes no difference on ARM.
+	// word64 and stride of 16 benefits PowerPC.
+	while (count >= 16)
+	{
+		word64 r[2], b[2], m[2];
+		memcpy(&b, buf, 16); memcpy(&m, mask, 16);
+
+		r[0] = b[0] ^ m[0];
+		r[1] = b[1] ^ m[1];
+		memcpy(buf, &r, 16);
+
+		buf += 16; mask += 16; count -= 16;
+	}
 #endif
+
+	// One of the arch specific xor's may have cleared the request
+	if (count == 0) return;
 
 	while (count >= 4)
 	{
@@ -114,7 +144,8 @@ void xorbuf(byte *output, const byte *input, const byte *mask, size_t count)
 	CRYPTOPP_ASSERT(input != NULLPTR);
 	CRYPTOPP_ASSERT(count > 0);
 
-#if defined(__AVX__)
+#ifndef CRYPTOPP_DISABLE_ASM
+# if defined(__AVX__)
 	while (count >= 32)
 	{
 		__m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(input));
@@ -125,8 +156,8 @@ void xorbuf(byte *output, const byte *input, const byte *mask, size_t count)
 	}
 	// https://software.intel.com/en-us/articles/avoiding-avx-sse-transition-penalties
 	_mm256_zeroupper();
-#endif
-#if defined(__SSE2__)
+# endif
+# if defined(__SSE2__)
 	while (count >= 16)
 	{
 		__m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(input));
@@ -135,18 +166,35 @@ void xorbuf(byte *output, const byte *input, const byte *mask, size_t count)
 			_mm_xor_ps(_mm_castsi128_ps(b), _mm_castsi128_ps(m))));
 		output += 16; input += 16; mask += 16; count -= 16;
 	}
-
-	if (count == 0) return;
-#endif
-#if defined(__ARM_FEATURE_NEON)
+# endif
+# if defined(__aarch64__) || defined(__aarch32__) || defined(_M_ARM64)
 	while (count >= 16)
 	{
 		vst1q_u8(output, veorq_u8(vld1q_u8(input), vld1q_u8(mask)));
 		output += 16; input += 16; mask += 16; count -= 16;
 	}
+# endif
+#endif  // CRYPTOPP_DISABLE_ASM
 
-	if (count == 0) return;
+#if CRYPTOPP_BOOL_PPC32 || CRYPTOPP_BOOL_PPC64
+	// word64 and stride of 8 slows things down on x86_64.
+	// word64 and stride of 8 makes no difference on ARM.
+	// word64 and stride of 16 benefits PowerPC.
+	while (count >= 16)
+	{
+		word64 b[2], m[2], r[2];
+		memcpy(&b, input, 16); memcpy(&m, mask, 16);
+
+		r[0] = b[0] ^ m[0];
+		r[1] = b[1] ^ m[1];
+		memcpy(output, &r, 16);
+
+		output += 16; input += 16; mask += 16; count -= 16;
+	}
 #endif
+
+	// One of the arch specific xor's may have cleared the request
+	if (count == 0) return;
 
 	while (count >= 4)
 	{
@@ -229,7 +277,7 @@ std::string StringNarrow(const wchar_t *str, bool throwOnError)
 	if (err != 0)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringNarrow: wcstombs_s() call failed with error " + IntToString(err));
+			throw InvalidArgument("StringNarrow: wcstombs_s() failed with error " + IntToString(err));
 		else
 			return std::string();
 	}
@@ -240,7 +288,7 @@ std::string StringNarrow(const wchar_t *str, bool throwOnError)
 	if (err != 0)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringNarrow: wcstombs_s() call failed with error " + IntToString(err));
+			throw InvalidArgument("StringNarrow: wcstombs_s() failed with error " + IntToString(err));
 		else
 			return std::string();
 	}
@@ -254,7 +302,7 @@ std::string StringNarrow(const wchar_t *str, bool throwOnError)
 	if (size == (size_t)-1)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringNarrow: wcstombs() call failed");
+			throw InvalidArgument("StringNarrow: wcstombs() failed");
 		else
 			return std::string();
 	}
@@ -265,7 +313,7 @@ std::string StringNarrow(const wchar_t *str, bool throwOnError)
 	if (size == (size_t)-1)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringNarrow: wcstombs() call failed");
+			throw InvalidArgument("StringNarrow: wcstombs() failed");
 		else
 			return std::string();
 	}
@@ -293,7 +341,7 @@ std::wstring StringWiden(const char *str, bool throwOnError)
 	if (err != 0)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringWiden: wcstombs_s() call failed with error " + IntToString(err));
+			throw InvalidArgument("StringWiden: wcstombs_s() failed with error " + IntToString(err));
 		else
 			return std::wstring();
 	}
@@ -304,7 +352,7 @@ std::wstring StringWiden(const char *str, bool throwOnError)
 	if (err != 0)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringWiden: wcstombs_s() call failed with error " + IntToString(err));
+			throw InvalidArgument("StringWiden: wcstombs_s() failed with error " + IntToString(err));
 		else
 			return std::wstring();
 	}
@@ -318,7 +366,7 @@ std::wstring StringWiden(const char *str, bool throwOnError)
 	if (size == (size_t)-1)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringWiden: mbstowcs() call failed");
+			throw InvalidArgument("StringWiden: mbstowcs() failed");
 		else
 			return std::wstring();
 	}
@@ -329,7 +377,7 @@ std::wstring StringWiden(const char *str, bool throwOnError)
 	if (size == (size_t)-1)
 	{
 		if (throwOnError)
-			throw InvalidArgument("StringWiden: mbstowcs() call failed");
+			throw InvalidArgument("StringWiden: mbstowcs() failed");
 		else
 			return std::wstring();
 	}
