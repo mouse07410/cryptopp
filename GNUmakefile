@@ -155,7 +155,12 @@ endif
 ifneq ($(IS_DARWIN),0)
   CXX ?= c++
   # CRYPTOPP_CXXFLAGS += -stdlib=libc++
-  AR = libtool
+  IS_APPLE_LIBTOOL=$(shell libtool -V 2>&1 | $(GREP) -i -c 'Apple')
+  ifeq ($(IS_APPLE_LIBTOOL),1)
+    AR = libtool
+  else
+    AR = /usr/bin/libtool
+  endif
   ARFLAGS = -static -o
 endif
 
@@ -1295,7 +1300,7 @@ clean:
 	-$(RM) adhoc.cpp.o adhoc.cpp.proto.o $(CLEAN_OBJS) rdrand-*.o
 	@-$(RM) libcryptopp.a libcryptopp.dylib cryptopp.dll libcryptopp.dll.a libcryptopp.import.a
 	@-$(RM) libcryptopp.so libcryptopp.so$(SOLIB_COMPAT_SUFFIX) libcryptopp.so$(SOLIB_VERSION_SUFFIX)
-	@-$(RM) cryptest.exe dlltest.exe cryptest.import.exe cryptest.dat cryptest.info ct et
+	@-$(RM) cryptest.exe dlltest.exe cryptest.import.exe cryptest.dat ct et
 	@-$(RM) *.la *.lo *.gcov *.gcno *.gcda *.stackdump core core-*
 	@-$(RM) /tmp/adhoc.exe
 	@-$(RM) -r /tmp/cryptopp_test/
@@ -1323,6 +1328,7 @@ android-clean:
 .PHONY: distclean
 distclean: clean autotools-clean cmake-clean android-clean
 	-$(RM) adhoc.cpp adhoc.cpp.copied GNUmakefile.deps benchmarks.html cryptest.txt
+	-$(RM) cryptest_all.info cryptest_debug.info cryptest_noasm.info cryptest_base.info cryptest.info cryptest_release.info
 	@-$(RM) cryptest-*.txt cryptopp.tgz libcryptopp.pc *.o *.bc *.ii *~
 	@-$(RM) -r cryptlib.lib cryptest.exe *.suo *.sdf *.pdb Win32/ x64/ ipch/
 	@-$(RM) -r $(LIBOBJS:.o=.obj) $(TESTOBJS:.o=.obj)
@@ -1490,9 +1496,9 @@ endif
 convert:
 	@-$(CHMOD) u=rwx,go=rx $(EXEC_DIRS)
 	@-$(CHMOD) u=rw,go=r $(TEXT_FILES) *.supp .*.yml *.asm *.zip TestVectors/*.txt TestData/*.dat TestPrograms/*.cxx
-	@-$(CHMOD) u=rwx,go=rx $(EXEC_FILES)
+	@-$(CHMOD) u=rwx,go=rx $(EXEC_FILES) *.sh
 	-unix2dos --keepdate --quiet $(TEXT_FILES) .*.yml *.asm TestScripts/*.cmd TestScripts/*.txt TestScripts/*.cpp
-	-dos2unix --keepdate --quiet GNUmakefile GNUmakefile-cross *.S *.supp *.mapfile TestScripts/*.sh
+	-dos2unix --keepdate --quiet GNUmakefile GNUmakefile-cross *.sh *.S *.supp *.mapfile TestScripts/*.sh
 ifneq ($(IS_DARWIN),0)
 	@-xattr -c *
 endif

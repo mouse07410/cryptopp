@@ -1609,14 +1609,14 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
         if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 4 ldr q{N}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ldr[[:space:]]*q')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ldr[[:space:]]*q|ldp[[:space:]]*q')
             if [[ ("$COUNT" -lt 4) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON load instructions" | tee -a "$TEST_RESULTS"
             fi
         else  # ARMv7
             # ARIA::UncheckedKeySet: 4 vld1.32 {d1,d2}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vld1.32[[:space:]]*{')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vld1.32[[:space:]]*')
             if [[ ("$COUNT" -lt 4) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON load instructions" | tee -a "$TEST_RESULTS"
@@ -1625,14 +1625,14 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
         if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 str q{N}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'str[[:space:]]*q')
-            if [[ ("$COUNT" -lt 16) ]]; then
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'str[[:space:]]*q|stp[[:space:]]*q')
+            if [[ ("$COUNT" -lt 8) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
             fi
         else
             # ARIA::UncheckedKeySet: 17 vstr1.32 {d1,d2}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vst1.32[[:space:]]*{')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'vst1.32[[:space:]]*')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON store instructions" | tee -a "$TEST_RESULTS"
@@ -1641,7 +1641,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
         if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 shl v{N}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shl[[:space:]]*v')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shl[[:space:]]*v|shl.4s')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON shift left instructions" | tee -a "$TEST_RESULTS"
@@ -1657,7 +1657,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
         if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 17 shr v{N}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shr[[:space:]]*v')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'shr[[:space:]]*v|shr.4s')
             if [[ ("$COUNT" -lt 16) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON shift right instructions" | tee -a "$TEST_RESULTS"
@@ -1673,7 +1673,7 @@ if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_ARM32" -ne 0 || "$IS_ARM64" -ne 0)) ]]; the
 
         if [[ ("$HAVE_ARMV8" -ne 0) ]]; then
             # ARIA::UncheckedKeySet: 12 ext v{N}
-            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ext[[:space:]]*v')
+            COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c -E 'ext[[:space:]]*v|ext.*v')
             if [[ ("$COUNT" -lt 12) ]]; then
                 FAILED=1
                 echo "ERROR: failed to generate NEON extract instructions" | tee -a "$TEST_RESULTS"
@@ -2106,8 +2106,81 @@ if [[ ("$HAVE_DISASS" -ne 0 && "$GCC_4_8_OR_ABOVE" -ne 0 && ("$IS_PPC32" -ne 0 |
 fi
 
 ############################################
+# Altivec generation tests
+if [[ ("$HAVE_DISASS" -ne 0 && ("$IS_PPC32" -ne 0 || "$IS_PPC64" -ne 0)) ]]; then
+
+    ############################################
+    # Altivec
+
+    PPC_ALTIVEC=0
+    if [[ ("$PPC_ALTIVEC" -eq 0) ]]; then
+        "$CXX" -maltivec "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
+        if [[ "$?" -eq 0 ]]; then
+            PPC_ALTIVEC=1
+        fi
+    fi
+    if [[ ("$PPC_ALTIVEC" -eq 0) ]]; then
+        "$CXX" -qarch=altivec "$test_prog" -o "${TMPDIR}/test.exe" &>/dev/null
+        if [[ "$?" -eq 0 ]]; then
+            PPC_ALTIVEC=1
+        fi
+    fi
+
+    if [[ ("$PPC_ALTIVEC" -ne 0) ]]; then
+        echo
+        echo "************************************" | tee -a "$TEST_RESULTS"
+        echo "Testing: Altivec code generation" | tee -a "$TEST_RESULTS"
+        echo
+
+        TEST_LIST+=("Altivec code generation")
+
+        OBJFILE=speck128_simd.o; rm -f "$OBJFILE" 2>/dev/null
+        CXX="$CXX" CXXFLAGS="$RELEASE_CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" $OBJFILE 2>&1 | tee -a "$TEST_RESULTS"
+
+        COUNT=0
+        FAILED=0
+        DISASS_TEXT=$("$DISASS" "${DISASSARGS[@]}" "$OBJFILE" 2>/dev/null)
+
+        COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c lvx)
+        if [[ ("$COUNT" -lt 8) ]]; then
+            FAILED=1
+            echo "ERROR: failed to generate lvx instruction" | tee -a "$TEST_RESULTS"
+        fi
+
+        COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c stvx)
+        if [[ ("$COUNT" -lt 8) ]]; then
+            FAILED=1
+            echo "ERROR: failed to generate stvx instruction" | tee -a "$TEST_RESULTS"
+        fi
+
+        COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c vsldoi)
+        if [[ ("$COUNT" -lt 8) ]]; then
+            FAILED=1
+            echo "ERROR: failed to generate vsldoi instruction" | tee -a "$TEST_RESULTS"
+        fi
+
+        COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c vxor)
+        if [[ ("$COUNT" -lt 8) ]]; then
+            FAILED=1
+            echo "ERROR: failed to generate vxor instruction" | tee -a "$TEST_RESULTS"
+        fi
+
+        COUNT=$(echo -n "$DISASS_TEXT" | "$GREP" -i -c vperm)
+        if [[ ("$COUNT" -lt 8) ]]; then
+            FAILED=1
+            echo "ERROR: failed to generate vperm instruction" | tee -a "$TEST_RESULTS"
+        fi
+
+        if [[ ("$FAILED" -eq 0) ]]; then
+            echo "Verified vxl, stvx, vsldoi, vxor, vperm instructions" | tee -a "$TEST_RESULTS"
+        fi
+    fi
+fi
+
+############################################
 # Default CXXFLAGS
 if true; then
+
     ############################################
     # Debug build
     echo
@@ -7382,6 +7455,83 @@ if [[ ("$IS_CYGWIN" -eq 0 && "$IS_MINGW" -eq 0) ]]; then
         elif [[ (-e "$INSTALL_DIR/lib/libcryptopp.so") ]]; then
             echo "ERROR: failed to remove libcryptopp.so dynamic library" | tee -a "$TEST_RESULTS" "$INSTALL_RESULTS"
         fi
+    fi
+fi
+
+############################################
+# Test latest zip with unzip -a
+if true; then
+
+    major=8; minor=5; rev=0
+    base="cryptopp${major}${minor}${rev}"
+    filename="${base}.zip"
+    url="https://cryptopp.com/${filename}"
+
+    rm -rf "${base}" 2>/dev/null
+    if wget -q -O ${filename} "${url}";
+    then
+        unzip -aoq "${filename}" -d "${base}"
+        cd "${base}" || exit 1
+
+        ############################################
+        # Debug build
+        echo
+        echo "************************************" | tee -a "$TEST_RESULTS"
+        echo "Testing: Latest zip, unzip -a, Debug" | tee -a "$TEST_RESULTS"
+        echo
+
+        TEST_LIST+=("Latest zip, unzip -a, Debug CXXFLAGS")
+
+        "$MAKE" clean &>/dev/null
+        rm -f "${TMPDIR}/test.exe" &>/dev/null
+
+        CXXFLAGS="$DEBUG_CXXFLAGS"
+        CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+        if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+            echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+        else
+            ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+            if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+                echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+            fi
+            ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+            if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+                echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+            fi
+        fi
+
+        ############################################
+        # Release build
+        echo
+        echo "************************************" | tee -a "$TEST_RESULTS"
+        echo "Testing: Latest zip, unzip -a, Release" | tee -a "$TEST_RESULTS"
+        echo
+
+        TEST_LIST+=("Latest zip, unzip -a, Release CXXFLAGS")
+
+        "$MAKE" clean &>/dev/null
+        rm -f "${TMPDIR}/test.exe" &>/dev/null
+
+        CXXFLAGS="$RELEASE_CXXFLAGS"
+        CXX="$CXX" CXXFLAGS="$CXXFLAGS" "$MAKE" "${MAKEARGS[@]}" static dynamic cryptest.exe 2>&1 | tee -a "$TEST_RESULTS"
+
+        if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+            echo "ERROR: failed to make cryptest.exe" | tee -a "$TEST_RESULTS"
+        else
+            ./cryptest.exe v 2>&1 | tee -a "$TEST_RESULTS"
+            if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+                echo "ERROR: failed to execute validation suite" | tee -a "$TEST_RESULTS"
+            fi
+            ./cryptest.exe tv all 2>&1 | tee -a "$TEST_RESULTS"
+            if [[ ("${PIPESTATUS[0]}" -ne 0) ]]; then
+                echo "ERROR: failed to execute test vectors" | tee -a "$TEST_RESULTS"
+            fi
+            echo
+        fi
+
+        cd ../ || exit 1
+        rm -rf "${base}"
     fi
 fi
 
