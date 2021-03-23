@@ -12,6 +12,12 @@
 # licensed under the Boost Software License 1.0, while the individual files
 # in the compilation are all public domain.
 #
+# cpp is set to Apple's cpp. Actually, cpp is merely on-path so Apple's cpp
+# is used. But Apple's cpp is sufficiently different from GNU's cpp and causes
+# Autotools a lot of trouble because Autotools tests are predicated on GNU cpp.
+# If your Autotools project results in "configure:6560: error: C preprocessor
+# cpp fails sanity check", then file a bug report with Autotools.
+#
 # See http://www.cryptopp.com/wiki/MacOS_(Command_Line) for more details
 #############################################################################
 
@@ -290,8 +296,8 @@ if [ ! -d "${XCODE_TOOLCHAIN}" ]; then
   [ "$0" = "${BASH_SOURCE[0]}" ] && exit 1 || return 1
 fi
 
-MACOS_CFLAGS="-arch $MACOS_CPU $MIN_VER"
-MACOS_CXXFLAGS="-arch $MACOS_CPU $MIN_VER ${MACOS_STDLIB}"
+MACOS_CFLAGS="-arch $MACOS_CPU $MIN_VER -fno-common"
+MACOS_CXXFLAGS="-arch $MACOS_CPU $MIN_VER ${MACOS_STDLIB} -fno-common"
 MACOS_SYSROOT="${XCODE_DEVELOPER_SDK}/${XCODE_SDK}"
 
 if [ ! -d "${MACOS_SYSROOT}" ]; then
