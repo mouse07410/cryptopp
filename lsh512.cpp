@@ -33,26 +33,17 @@
 # if (defined(__SSE2__) && defined(__amd64__)) || (defined(_MSC_VER) && defined(_M_X64))
 #  define CRYPTOPP_LSH512_SSE2_AVAILABLE 1
 # endif
-# if (defined(__SSSE3__) && defined(__amd64__))
+# if defined(__SSSE3__) && defined(__amd64__)
 #  define CRYPTOPP_LSH512_SSSE3_AVAILABLE 1
 # endif
-# if (defined(__AVX__) && defined(__amd64__))
+# if defined(__XOP__) && defined(__amd64__)
+#  define CRYPTOPP_LSH512_XOP_AVAILABLE 1
+# endif
+# if defined(__AVX__) && defined(__amd64__)
 #  define CRYPTOPP_LSH512_AVX_AVAILABLE 1
 # endif
-# if (defined(__AVX2__) && defined(__amd64__))
+# if defined(__AVX2__) && defined(__amd64__)
 #  define CRYPTOPP_LSH512_AVX2_AVAILABLE 1
-# endif
-#endif
-
-#if defined(CRYPTOPP_LSH512_SSE2_AVAILABLE)
-# include <emmintrin.h>
-# define M128_CAST(x) ((__m128i *)(void *)(x))
-# define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
-# if defined(__XOP__)
-#  include <ammintrin.h>
-#  if defined(__GNUC__)
-#   include <x86intrin.h>
-#  endif
 # endif
 #endif
 
@@ -60,10 +51,15 @@
 # include <tmmintrin.h>
 #endif
 
+#if defined(CRYPTOPP_LSH512_XOP_AVAILABLE)
+# include <ammintrin.h>
+# if defined(__GNUC__)
+#  include <x86intrin.h>
+# endif
+#endif
+
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
 # include <immintrin.h>
-# define M256_CAST(x) ((__m256i *)(void *)(x))
-# define CONST_M256_CAST(x) ((const __m256i *)(const void *)(x))
 #endif
 
 #if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
@@ -72,10 +68,10 @@
 
 #if defined(CRYPTOPP_HAVE_ATTRIBUTE_TARGET)
 # include <x86intrin.h>
-# undef M128_CAST
-# undef CONST_M128_CAST
-# define M128_CAST(x) ((__m128i *)(void *)(x))
-# define CONST_M128_CAST(x) ((const __m128i *)(const void *)(x))
+#endif
+
+#if defined(__GNUC__) && defined(__amd64__)
+# include <x86intrin.h>
 #endif
 
 ANONYMOUS_NAMESPACE_BEGIN
@@ -126,8 +122,14 @@ struct LSH512_Internal
 };
 
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+// Zero the upper 128 bits of all YMM registers
+// on entry and exit. It avoids AVX state
+// transition penalties when saving state.
 struct AVX_Cleanup
 {
+	AVX_Cleanup() {
+		_mm256_zeroupper();
+	}
 	~AVX_Cleanup() {
 		_mm256_zeroupper();
 	}
@@ -204,7 +206,7 @@ lsh_u64 ROTL64(lsh_u64 x, lsh_u32 r) {
 # define MAYBE_CONSTEXPR const
 #endif
 
-CRYPTOPP_ALIGN_DATA(16)
+CRYPTOPP_ALIGN_DATA(32)
 MAYBE_CONSTEXPR lsh_u64 g_IV224[CV_WORD_LEN] = {
 	W64LIT(0x0C401E9FE8813A55), W64LIT(0x4A5F446268FD3D35), W64LIT(0xFF13E452334F612A), W64LIT(0xF8227661037E354A),
 	W64LIT(0xA5F223723C9CA29D), W64LIT(0x95D965A11AED3979), W64LIT(0x01E23835B9AB02CC), W64LIT(0x52D49CBAD5B30616),
@@ -212,7 +214,7 @@ MAYBE_CONSTEXPR lsh_u64 g_IV224[CV_WORD_LEN] = {
 	W64LIT(0x31E2B67D25BE3813), W64LIT(0xD522C4DEED8E4D83), W64LIT(0xA79F5509B43FBAFE), W64LIT(0xE00D2CD88B4B6C6A),
 };
 
-CRYPTOPP_ALIGN_DATA(16)
+CRYPTOPP_ALIGN_DATA(32)
 MAYBE_CONSTEXPR lsh_u64 g_IV256[CV_WORD_LEN] = {
 	W64LIT(0x6DC57C33DF989423), W64LIT(0xD8EA7F6E8342C199), W64LIT(0x76DF8356F8603AC4), W64LIT(0x40F1B44DE838223A),
 	W64LIT(0x39FFE7CFC31484CD), W64LIT(0x39C4326CC5281548), W64LIT(0x8A2FF85A346045D8), W64LIT(0xFF202AA46DBDD61E),
@@ -220,7 +222,7 @@ MAYBE_CONSTEXPR lsh_u64 g_IV256[CV_WORD_LEN] = {
 	W64LIT(0xB596875BF8FF6DBA), W64LIT(0xFCCA39B089EF4615), W64LIT(0xECFF4017D020B4B6), W64LIT(0x7E77384C772ED802),
 };
 
-CRYPTOPP_ALIGN_DATA(16)
+CRYPTOPP_ALIGN_DATA(32)
 MAYBE_CONSTEXPR lsh_u64 g_IV384[CV_WORD_LEN] = {
 	W64LIT(0x53156A66292808F6), W64LIT(0xB2C4F362B204C2BC), W64LIT(0xB84B7213BFA05C4E), W64LIT(0x976CEB7C1B299F73),
 	W64LIT(0xDF0CC63C0570AE97), W64LIT(0xDA4441BAA486CE3F), W64LIT(0x6559F5D9B5F2ACC2), W64LIT(0x22DACF19B4B52A16),
@@ -228,7 +230,7 @@ MAYBE_CONSTEXPR lsh_u64 g_IV384[CV_WORD_LEN] = {
 	W64LIT(0xBB08043FB34E3E30), W64LIT(0xA0DEC48D54618EAD), W64LIT(0x150317267464BC57), W64LIT(0x32D1501FDE63DC93)
 };
 
-CRYPTOPP_ALIGN_DATA(16)
+CRYPTOPP_ALIGN_DATA(32)
 MAYBE_CONSTEXPR lsh_u64 g_IV512[CV_WORD_LEN] = {
 	W64LIT(0xadd50f3c7f07094e), W64LIT(0xe3f3cee8f9418a4f), W64LIT(0xb527ecde5b3d0ae9), W64LIT(0x2ef6dec68076f501),
 	W64LIT(0x8cb994cae5aca216), W64LIT(0xfbb9eae4bba48cc7), W64LIT(0x650a526174725fea), W64LIT(0x1f9a61a73f8d8085),
@@ -391,26 +393,22 @@ inline void msg_exp_even(LSH512_Internal* i_state)
 	lsh_u64* submsg_o_r = i_state->submsg_o_r;
 
 #if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
-	_mm256_storeu_si256(M256_CAST(submsg_e_l+0),
-		_mm256_add_epi64(
-			_mm256_loadu_si256(CONST_M256_CAST(submsg_o_l+0)),
-			_mm256_permute4x64_epi64(
-				_mm256_loadu_si256(CONST_M256_CAST(submsg_e_l+0)), _MM_SHUFFLE(1,0,2,3))));
-	_mm256_storeu_si256(M256_CAST(submsg_e_l+4),
-		_mm256_add_epi64(
-			_mm256_loadu_si256(CONST_M256_CAST(submsg_o_l+4)),
-			_mm256_permute4x64_epi64(
-				_mm256_loadu_si256(CONST_M256_CAST(submsg_e_l+4)), _MM_SHUFFLE(2,1,0,3))));
-	_mm256_storeu_si256(M256_CAST(submsg_e_r+0),
-		_mm256_add_epi64(
-			_mm256_loadu_si256(CONST_M256_CAST(submsg_o_r+0)),
-			_mm256_permute4x64_epi64(
-				_mm256_loadu_si256(CONST_M256_CAST(submsg_e_r+0)), _MM_SHUFFLE(1,0,2,3))));
-	_mm256_storeu_si256(M256_CAST(submsg_e_r+4),
-		_mm256_add_epi64(
-			_mm256_loadu_si256(CONST_M256_CAST(submsg_o_r+4)),
-			_mm256_permute4x64_epi64(
-				_mm256_loadu_si256(CONST_M256_CAST(submsg_e_r+4)), _MM_SHUFFLE(2,1,0,3))));
+	_mm256_storeu_si256(M256_CAST(submsg_e_l+0), _mm256_add_epi64(
+		_mm256_loadu_si256(CONST_M256_CAST(submsg_o_l+0)),
+		_mm256_permute4x64_epi64(
+			_mm256_loadu_si256(CONST_M256_CAST(submsg_e_l+0)), _MM_SHUFFLE(1,0,2,3))));
+	_mm256_storeu_si256(M256_CAST(submsg_e_l+4), _mm256_add_epi64(
+		_mm256_loadu_si256(CONST_M256_CAST(submsg_o_l+4)),
+		_mm256_permute4x64_epi64(
+			_mm256_loadu_si256(CONST_M256_CAST(submsg_e_l+4)), _MM_SHUFFLE(2,1,0,3))));
+	_mm256_storeu_si256(M256_CAST(submsg_e_r+0), _mm256_add_epi64(
+		_mm256_loadu_si256(CONST_M256_CAST(submsg_o_r+0)),
+		_mm256_permute4x64_epi64(
+			_mm256_loadu_si256(CONST_M256_CAST(submsg_e_r+0)), _MM_SHUFFLE(1,0,2,3))));
+	_mm256_storeu_si256(M256_CAST(submsg_e_r+4), _mm256_add_epi64(
+		_mm256_loadu_si256(CONST_M256_CAST(submsg_o_r+4)),
+		_mm256_permute4x64_epi64(
+			_mm256_loadu_si256(CONST_M256_CAST(submsg_e_r+4)), _MM_SHUFFLE(2,1,0,3))));
 
 #elif defined(CRYPTOPP_LSH512_SSE2_AVAILABLE)
 	__m128i temp;
@@ -785,7 +783,7 @@ inline void rotate_blk(lsh_u64 cv[8])
 		_mm256_slli_epi64(_mm256_loadu_si256(CONST_M256_CAST(cv+4)), R),
 		_mm256_srli_epi64(_mm256_loadu_si256(CONST_M256_CAST(cv+4)), 64-R)));
 
-#elif defined(CRYPTOPP_LSH512_SSE2_AVAILABLE) && defined(__XOP__)
+#elif defined(CRYPTOPP_LSH512_XOP_AVAILABLE)
 	_mm_storeu_si128(M128_CAST(cv),
 		_mm_roti_epi64(_mm_loadu_si128(CONST_M128_CAST(cv)), R));
 	_mm_storeu_si128(M128_CAST(cv+2),
@@ -1042,6 +1040,10 @@ inline void compress(LSH512_Context* ctx, const lsh_u8 pdMsgBlk[LSH512_MSG_BLK_B
 	lsh_u64 *cv_l = ctx->cv_l;
 	lsh_u64 *cv_r = ctx->cv_r;
 
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
+
 	load_msg_blk(i_state, pdMsgBlk);
 
 	msg_add_even(cv_l, cv_r, i_state);
@@ -1077,18 +1079,19 @@ inline void compress(LSH512_Context* ctx, const lsh_u8 pdMsgBlk[LSH512_MSG_BLK_B
 
 inline void load_iv(word64* cv_l, word64* cv_r, const word64* iv)
 {
+	// The IV's are 32-byte aligned so we can use aligned loads.
+
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
 	_mm256_storeu_si256(M256_CAST(cv_l+0),
-		_mm256_loadu_si256(CONST_M256_CAST(iv+0)));
+		_mm256_load_si256(CONST_M256_CAST(iv+0)));
 	_mm256_storeu_si256(M256_CAST(cv_l+4),
-		_mm256_loadu_si256(CONST_M256_CAST(iv+4)));
+		_mm256_load_si256(CONST_M256_CAST(iv+4)));
 	_mm256_storeu_si256(M256_CAST(cv_r+0),
-		_mm256_loadu_si256(CONST_M256_CAST(iv+8)));
+		_mm256_load_si256(CONST_M256_CAST(iv+8)));
 	_mm256_storeu_si256(M256_CAST(cv_r+4),
-		_mm256_loadu_si256(CONST_M256_CAST(iv+12)));
+		_mm256_load_si256(CONST_M256_CAST(iv+12)));
 
 #elif defined(CRYPTOPP_LSH512_SSE2_AVAILABLE)
-	// The IV's are 16-byte aligned so we can use _mm_load_si128.
 	_mm_storeu_si128(M128_CAST(cv_l+0),
 		_mm_load_si128(CONST_M128_CAST(iv+0)));
 	_mm_storeu_si128(M128_CAST(cv_l+2),
@@ -1122,6 +1125,29 @@ inline void load_iv(word64* cv_l, word64* cv_r, const word64* iv)
 	cv_r[5] = iv[13];
 	cv_r[6] = iv[14];
 	cv_r[7] = iv[15];
+#endif
+}
+
+inline void zero_iv(lsh_u64* cv_l, lsh_u64* cv_r)
+{
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	_mm256_storeu_si256(M256_CAST(cv_l+0), _mm256_setzero_si256());
+	_mm256_storeu_si256(M256_CAST(cv_l+4), _mm256_setzero_si256());
+	_mm256_storeu_si256(M256_CAST(cv_r+0), _mm256_setzero_si256());
+	_mm256_storeu_si256(M256_CAST(cv_r+4), _mm256_setzero_si256());
+
+#elif defined(CRYPTOPP_LSH512_SSE2_AVAILABLE)
+	_mm_storeu_si128(M128_CAST(cv_l+0), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_l+2), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_l+4), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_l+6), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_r+0), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_r+2), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_r+4), _mm_setzero_si128());
+	_mm_storeu_si128(M128_CAST(cv_r+6), _mm_setzero_si128());
+#else
+	memset(cv_l, 0, 8*sizeof(lsh_u64));
+	memset(cv_r, 0, 8*sizeof(lsh_u64));
 #endif
 }
 
@@ -1165,6 +1191,10 @@ inline void init224(LSH512_Context* ctx)
 {
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
 
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
+
 	zero_submsgs(ctx);
 	load_iv(ctx->cv_l, ctx->cv_r, g_IV224);
 }
@@ -1173,6 +1203,10 @@ inline void init256(LSH512_Context* ctx)
 {
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
 
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
+
 	zero_submsgs(ctx);
 	load_iv(ctx->cv_l, ctx->cv_r, g_IV256);
 }
@@ -1180,6 +1214,10 @@ inline void init256(LSH512_Context* ctx)
 inline void init384(LSH512_Context* ctx)
 {
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
+
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
 
 	zero_submsgs(ctx);
 	load_iv(ctx->cv_l, ctx->cv_r, g_IV384);
@@ -1190,7 +1228,7 @@ inline void init512(LSH512_Context* ctx)
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
 
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
-	AVX_Cleanup cleanup();
+	AVX_Cleanup cleanup;
 #endif
 
 	zero_submsgs(ctx);
@@ -1202,6 +1240,10 @@ inline void init512(LSH512_Context* ctx)
 inline void fin(LSH512_Context* ctx)
 {
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
+
+#if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
 
 #if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
 	_mm256_storeu_si256(M256_CAST(ctx->cv_l+0), _mm256_xor_si256(
@@ -1257,13 +1299,8 @@ lsh_err lsh512_init(LSH512_Context* ctx)
 	CRYPTOPP_ASSERT(ctx != NULLPTR);
 	CRYPTOPP_ASSERT(ctx->algtype != 0);
 
-#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
-	AVX_Cleanup cleanup();
-#endif
-
 	lsh_u32 algtype = ctx->algtype;
 	const lsh_u64* const_v = NULL;
-
 	ctx->remain_databitlen = 0;
 
 	switch (algtype){
@@ -1286,8 +1323,11 @@ lsh_err lsh512_init(LSH512_Context* ctx)
 	lsh_u64* cv_l = ctx->cv_l;
 	lsh_u64* cv_r = ctx->cv_r;
 
-	memset(cv_l, 0, 8 * sizeof(lsh_u64));
-	memset(cv_r, 0, 8 * sizeof(lsh_u64));
+#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
+	AVX_Cleanup cleanup;
+#endif
+
+	zero_iv(cv_l, cv_r);
 	cv_l[0] = LSH512_HASH_VAL_MAX_BYTE_LEN;
 	cv_l[1] = LSH_GET_HASHBIT(algtype);
 
@@ -1317,17 +1357,13 @@ lsh_err lsh512_update(LSH512_Context* ctx, const lsh_u8* data, size_t databitlen
 		return LSH_SUCCESS;
 	}
 
-#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
-	AVX_Cleanup cleanup();
-#endif
-
 	size_t databytelen = databitlen >> 3;
 	lsh_uint pos2 = databitlen & 0x7;
 
 	// We are byte oriented. remain_msg_bit will always be 0.
 	lsh_uint remain_msg_byte = ctx->remain_databitlen >> 3;
 	// remain_msg_bit = ctx->remain_databitlen & 7;
-	lsh_uint remain_msg_bit = 0;
+	const lsh_uint remain_msg_bit = 0;
 
 	if (remain_msg_byte >= LSH512_MSG_BLK_BYTE_LEN){
 		return LSH_ERR_INVALID_STATE;
@@ -1358,6 +1394,9 @@ lsh_err lsh512_update(LSH512_Context* ctx, const lsh_u8* data, size_t databitlen
 
 	while (databytelen >= LSH512_MSG_BLK_BYTE_LEN)
 	{
+		// This call to compress caused some trouble.
+		// The data pointer can become unaligned in the
+		// previous block.
 		compress(ctx, data);
 		data += LSH512_MSG_BLK_BYTE_LEN;
 		databytelen -= LSH512_MSG_BLK_BYTE_LEN;
@@ -1383,7 +1422,7 @@ lsh_err lsh512_final(LSH512_Context* ctx, lsh_u8* hashval)
 	// We are byte oriented. remain_msg_bit will always be 0.
 	lsh_uint remain_msg_byte = ctx->remain_databitlen >> 3;
 	// lsh_uint remain_msg_bit = ctx->remain_databitlen & 7;
-	lsh_uint remain_msg_bit = 0;
+	const lsh_uint remain_msg_bit = 0;
 
 	if (remain_msg_byte >= LSH512_MSG_BLK_BYTE_LEN){
 		return LSH_ERR_INVALID_STATE;
@@ -1396,10 +1435,6 @@ lsh_err lsh512_final(LSH512_Context* ctx, lsh_u8* hashval)
 		ctx->last_block[remain_msg_byte] = 0x80;
 	}
 	memset(ctx->last_block + remain_msg_byte + 1, 0, LSH512_MSG_BLK_BYTE_LEN - remain_msg_byte - 1);
-
-#if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
-	AVX_Cleanup cleanup();
-#endif
 
 	compress(ctx, ctx->last_block);
 
@@ -1463,8 +1498,9 @@ void LSH512_Base::TruncatedFinal(byte *hash, size_t size)
 	}
 	else
 	{
-		// TODO: determine if LSH512 supports truncated hashes. See the code in get_hash(),
-		// where a bit-length is added to the last output byte of the hash function.
+		// TODO: determine if LSH512 supports truncated hashes. See the code
+		// in get_hash(), where a bit-length is added to the last output
+		// byte of the hash function.
 		// CRYPTOPP_ASSERT(0);
 
 		byte fullHash[HASH_VAL_MAX_WORD_LEN * sizeof(lsh_u64)];
