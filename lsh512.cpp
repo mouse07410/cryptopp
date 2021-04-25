@@ -16,9 +16,11 @@
 // LLVM Clang 7.0 and above resulted in linker errors. Also see
 // https://bugs.llvm.org/show_bug.cgi?id=50025.
 
-// There's a fair amount of AVX2 code because _mm256_or_si256,
-// _mm256_xor_si256 and _mm256_add_epi64 are AVX2. There's no way
-// to avoid AVX2 for the simple operations.
+// We are hitting some sort of GCC bug in the LSH256 AVX2 code path.
+// Clang is OK on the AVX2 code path. When we enable AVX2 for
+// rotate_msg_gamma, msg_exp_even and msg_exp_odd, then GCC arrives
+// at the wrong result. Making any one of the functions SSE2 clears
+// the problem. See CRYPTOPP_WORKAROUND_AVX2_BUG below.
 
 // TODO: cut-over to a *_simd.cpp file for proper runtime dispatching.
 
@@ -53,9 +55,6 @@
 
 #if defined(CRYPTOPP_LSH512_XOP_AVAILABLE)
 # include <ammintrin.h>
-# if defined(__GNUC__)
-#  include <x86intrin.h>
-# endif
 #endif
 
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
@@ -72,6 +71,11 @@
 
 #if defined(__GNUC__) && defined(__amd64__)
 # include <x86intrin.h>
+#endif
+
+// Use GCC_VERSION to avoid Clang, ICC and other impostors
+#if defined(CRYPTOPP_GCC_VERSION)
+# define CRYPTOPP_WORKAROUND_AVX2_BUG 1
 #endif
 
 ANONYMOUS_NAMESPACE_BEGIN
@@ -145,8 +149,9 @@ const unsigned int LSH512_HASH_VAL_MAX_BYTE_LEN = 64;
 
 // const unsigned int MSG_BLK_WORD_LEN = 32;
 const unsigned int CV_WORD_LEN = 16;
-// const unsigned int CONST_WORD_LEN = 8;
+const unsigned int CONST_WORD_LEN = 8;
 const unsigned int HASH_VAL_MAX_WORD_LEN = 8;
+// const unsigned int WORD_BIT_LEN = 64;
 const unsigned int NUM_STEPS = 28;
 
 const unsigned int ROT_EVEN_ALPHA = 23;
@@ -200,14 +205,8 @@ lsh_u64 ROTL64(lsh_u64 x, lsh_u32 r) {
 * LSH: iv
 * -------------------------------------------------------- */
 
-#if (CRYPTOPP_CXX11_CONSTEXPR)
-# define MAYBE_CONSTEXPR constexpr
-#else
-# define MAYBE_CONSTEXPR const
-#endif
-
 CRYPTOPP_ALIGN_DATA(32)
-MAYBE_CONSTEXPR lsh_u64 g_IV224[CV_WORD_LEN] = {
+const lsh_u64 g_IV224[CV_WORD_LEN] = {
 	W64LIT(0x0C401E9FE8813A55), W64LIT(0x4A5F446268FD3D35), W64LIT(0xFF13E452334F612A), W64LIT(0xF8227661037E354A),
 	W64LIT(0xA5F223723C9CA29D), W64LIT(0x95D965A11AED3979), W64LIT(0x01E23835B9AB02CC), W64LIT(0x52D49CBAD5B30616),
 	W64LIT(0x9E5C2027773F4ED3), W64LIT(0x66A5C8801925B701), W64LIT(0x22BBC85B4C6779D9), W64LIT(0xC13171A42C559C23),
@@ -215,7 +214,7 @@ MAYBE_CONSTEXPR lsh_u64 g_IV224[CV_WORD_LEN] = {
 };
 
 CRYPTOPP_ALIGN_DATA(32)
-MAYBE_CONSTEXPR lsh_u64 g_IV256[CV_WORD_LEN] = {
+const lsh_u64 g_IV256[CV_WORD_LEN] = {
 	W64LIT(0x6DC57C33DF989423), W64LIT(0xD8EA7F6E8342C199), W64LIT(0x76DF8356F8603AC4), W64LIT(0x40F1B44DE838223A),
 	W64LIT(0x39FFE7CFC31484CD), W64LIT(0x39C4326CC5281548), W64LIT(0x8A2FF85A346045D8), W64LIT(0xFF202AA46DBDD61E),
 	W64LIT(0xCF785B3CD5FCDB8B), W64LIT(0x1F0323B64A8150BF), W64LIT(0xFF75D972F29EA355), W64LIT(0x2E567F30BF1CA9E1),
@@ -223,7 +222,7 @@ MAYBE_CONSTEXPR lsh_u64 g_IV256[CV_WORD_LEN] = {
 };
 
 CRYPTOPP_ALIGN_DATA(32)
-MAYBE_CONSTEXPR lsh_u64 g_IV384[CV_WORD_LEN] = {
+const lsh_u64 g_IV384[CV_WORD_LEN] = {
 	W64LIT(0x53156A66292808F6), W64LIT(0xB2C4F362B204C2BC), W64LIT(0xB84B7213BFA05C4E), W64LIT(0x976CEB7C1B299F73),
 	W64LIT(0xDF0CC63C0570AE97), W64LIT(0xDA4441BAA486CE3F), W64LIT(0x6559F5D9B5F2ACC2), W64LIT(0x22DACF19B4B52A16),
 	W64LIT(0xBBCDACEFDE80953A), W64LIT(0xC9891A2879725B3E), W64LIT(0x7C9FE6330237E440), W64LIT(0xA30BA550553F7431),
@@ -231,20 +230,20 @@ MAYBE_CONSTEXPR lsh_u64 g_IV384[CV_WORD_LEN] = {
 };
 
 CRYPTOPP_ALIGN_DATA(32)
-MAYBE_CONSTEXPR lsh_u64 g_IV512[CV_WORD_LEN] = {
+const lsh_u64 g_IV512[CV_WORD_LEN] = {
 	W64LIT(0xadd50f3c7f07094e), W64LIT(0xe3f3cee8f9418a4f), W64LIT(0xb527ecde5b3d0ae9), W64LIT(0x2ef6dec68076f501),
 	W64LIT(0x8cb994cae5aca216), W64LIT(0xfbb9eae4bba48cc7), W64LIT(0x650a526174725fea), W64LIT(0x1f9a61a73f8d8085),
 	W64LIT(0xb6607378173b539b), W64LIT(0x1bc99853b0c0b9ed), W64LIT(0xdf727fc19b182d47), W64LIT(0xdbef360cf893a457),
 	W64LIT(0x4981f5e570147e80), W64LIT(0xd00c4490ca7d3e30), W64LIT(0x5d73940c0e4ae1ec), W64LIT(0x894085e2edb2d819)
 };
 
-MAYBE_CONSTEXPR lsh_uint g_gamma512[8] = { 0, 16, 32, 48, 8, 24, 40, 56 };
+const lsh_uint g_gamma512[8] = { 0, 16, 32, 48, 8, 24, 40, 56 };
 
 /* -------------------------------------------------------- *
 * LSH: step constants
 * -------------------------------------------------------- */
 
-MAYBE_CONSTEXPR lsh_u64 g_StepConstants[16 * NUM_STEPS] = {
+const lsh_u64 g_StepConstants[CONST_WORD_LEN * NUM_STEPS] = {
 	W64LIT(0x97884283c938982a), W64LIT(0xba1fca93533e2355), W64LIT(0xc519a2e87aeb1c03), W64LIT(0x9a0fc95462af17b1),
 	W64LIT(0xfc3dda8ab019a82b), W64LIT(0x02825d079a895407), W64LIT(0x79f2d0a7ee06a6f7), W64LIT(0xd76d15eed9fdf5fe),
 	W64LIT(0x1fcac64d01d0c2c1), W64LIT(0xd9ea5de69161790f), W64LIT(0xdebc8b6366071fc8), W64LIT(0xa9d91db711c6c94b),
@@ -304,7 +303,7 @@ MAYBE_CONSTEXPR lsh_u64 g_StepConstants[16 * NUM_STEPS] = {
 };
 
 // Original code relied upon unaligned lsh_u64 buffer
-inline void load_msg_blk(LSH512_Internal* i_state, const lsh_u8* msgblk)
+inline void load_msg_blk(LSH512_Internal* i_state, const lsh_u8 msgblk[LSH512_MSG_BLK_BYTE_LEN])
 {
 	lsh_u64* submsg_e_l = i_state->submsg_e_l;
 	lsh_u64* submsg_e_r = i_state->submsg_e_r;
@@ -617,10 +616,8 @@ inline void load_sc(const lsh_u64** p_const_v, size_t i)
 	*p_const_v = &g_StepConstants[i];
 }
 
-inline void msg_add_even(lsh_u64* cv_l, lsh_u64* cv_r, LSH512_Internal* i_state)
+inline void msg_add_even(lsh_u64 cv_l[8], lsh_u64 cv_r[8], LSH512_Internal* i_state)
 {
-	CRYPTOPP_ASSERT(cv_l != NULLPTR);
-	CRYPTOPP_ASSERT(cv_r != NULLPTR);
 	CRYPTOPP_ASSERT(i_state != NULLPTR);
 
 	lsh_u64* submsg_e_l = i_state->submsg_e_l;
@@ -677,10 +674,8 @@ inline void msg_add_even(lsh_u64* cv_l, lsh_u64* cv_r, LSH512_Internal* i_state)
 #endif
 }
 
-inline void msg_add_odd(lsh_u64* cv_l, lsh_u64* cv_r, LSH512_Internal* i_state)
+inline void msg_add_odd(lsh_u64 cv_l[8], lsh_u64 cv_r[8], LSH512_Internal* i_state)
 {
-	CRYPTOPP_ASSERT(cv_l != NULLPTR);
-	CRYPTOPP_ASSERT(cv_r != NULLPTR);
 	CRYPTOPP_ASSERT(i_state != NULLPTR);
 
 	lsh_u64* submsg_o_l = i_state->submsg_o_l;
@@ -818,7 +813,7 @@ inline void rotate_blk(lsh_u64 cv[8])
 #endif
 }
 
-inline void xor_with_const(lsh_u64 cv_l[8], const lsh_u64* const_v)
+inline void xor_with_const(lsh_u64 cv_l[8], const lsh_u64 const_v[8])
 {
 #if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
 	_mm256_storeu_si256(M256_CAST(cv_l), _mm256_xor_si256(
@@ -853,12 +848,28 @@ inline void xor_with_const(lsh_u64 cv_l[8], const lsh_u64* const_v)
 #endif
 }
 
-#if defined(CRYPTOPP_HAVE_ATTRIBUTE_TARGET)
-CRYPTOPP_TARGET_SSSE3
-inline void rotate_msg_gamma(lsh_u64* cv_r)
+#if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
+inline void rotate_msg_gamma(lsh_u64 cv_r[8])
 {
-	CRYPTOPP_ASSERT(cv_r != NULLPTR);
-
+	// g_gamma512[8] = { 0, 16, 32, 48, 8, 24, 40, 56 };
+	_mm256_storeu_si256(M256_CAST(cv_r+0),
+		_mm256_shuffle_epi8(
+			_mm256_loadu_si256(CONST_M256_CAST(cv_r+0)),
+			_mm256_set_epi8(
+				/* hi lane */ 9,8,15,14, 13,12,11,10, 3,2,1,0, 7,6,5,4,
+				/* lo lane */ 13,12,11,10, 9,8,15,14, 7,6,5,4, 3,2,1,0)));
+	_mm256_storeu_si256(M256_CAST(cv_r+4),
+		_mm256_shuffle_epi8(
+			_mm256_loadu_si256(CONST_M256_CAST(cv_r+4)),
+			_mm256_set_epi8(
+				/* hi lane */ 8,15,14,13, 12,11,10,9, 2,1,0,7, 6,5,4,3,
+				/* lo lane */ 12,11,10,9, 8,15,14,13, 6,5,4,3, 2,1,0,7)));
+}
+#else  // CRYPTOPP_LSH512_AVX2_AVAILABLE
+# if defined(CRYPTOPP_HAVE_ATTRIBUTE_TARGET)
+CRYPTOPP_TARGET_SSSE3
+inline void rotate_msg_gamma(lsh_u64 cv_r[8])
+{
 	// g_gamma512[8] = { 0, 16, 32, 48, 8, 24, 40, 56 };
 	_mm_storeu_si128(M128_CAST(cv_r+0),
 		_mm_shuffle_epi8(_mm_loadu_si128(CONST_M128_CAST(cv_r+0)),
@@ -873,13 +884,11 @@ inline void rotate_msg_gamma(lsh_u64* cv_r)
 		_mm_shuffle_epi8(_mm_loadu_si128(CONST_M128_CAST(cv_r+6)),
 			_mm_set_epi8(8,15,14,13, 12,11,10,9, 2,1,0,7, 6,5,4,3)));
 }
-#endif
+# endif
 
 CRYPTOPP_TARGET_DEFAULT
-inline void rotate_msg_gamma(lsh_u64* cv_r)
+inline void rotate_msg_gamma(lsh_u64 cv_r[8])
 {
-	CRYPTOPP_ASSERT(cv_r != NULLPTR);
-
 #if defined(CRYPTOPP_LSH512_SSSE3_AVAILABLE)
 	// g_gamma512[8] = { 0, 16, 32, 48, 8, 24, 40, 56 };
 	_mm_storeu_si128(M128_CAST(cv_r+0),
@@ -905,14 +914,11 @@ inline void rotate_msg_gamma(lsh_u64* cv_r)
 	cv_r[7] = ROTL64(cv_r[7], g_gamma512[7]);
 #endif
 }
+#endif  // CRYPTOPP_LSH512_AVX2_AVAILABLE
 
-inline void word_perm(lsh_u64* cv_l, lsh_u64* cv_r)
+inline void word_perm(lsh_u64 cv_l[8], lsh_u64 cv_r[8])
 {
-	CRYPTOPP_ASSERT(cv_l != NULLPTR);
-	CRYPTOPP_ASSERT(cv_r != NULLPTR);
-
-	// Don't use AVX2 here. It is 0.4 cpb slower.
-#if 0 // defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
+#if defined(CRYPTOPP_LSH512_AVX2_AVAILABLE)
 	__m256i temp[2];
 	_mm256_storeu_si256(M256_CAST(cv_l+0), _mm256_permute4x64_epi64(
 		_mm256_loadu_si256(CONST_M256_CAST(cv_l+0)), _MM_SHUFFLE(3,1,0,2)));
@@ -1077,7 +1083,7 @@ inline void compress(LSH512_Context* ctx, const lsh_u8 pdMsgBlk[LSH512_MSG_BLK_B
 
 /* -------------------------------------------------------- */
 
-inline void load_iv(word64* cv_l, word64* cv_r, const word64* iv)
+inline void load_iv(word64 cv_l[8], word64 cv_r[8], const word64 iv[16])
 {
 	// The IV's are 32-byte aligned so we can use aligned loads.
 
@@ -1128,7 +1134,7 @@ inline void load_iv(word64* cv_l, word64* cv_r, const word64* iv)
 #endif
 }
 
-inline void zero_iv(lsh_u64* cv_l, lsh_u64* cv_r)
+inline void zero_iv(lsh_u64 cv_l[8], lsh_u64 cv_r[8])
 {
 #if defined(CRYPTOPP_LSH512_AVX_AVAILABLE)
 	_mm256_storeu_si256(M256_CAST(cv_l+0), _mm256_setzero_si256());
@@ -1286,7 +1292,7 @@ inline void get_hash(LSH512_Context* ctx, lsh_u8* pbHashVal)
 	lsh_uint hash_val_bit_len = LSH_GET_SMALL_HASHBIT(algtype);
 
 	// Multiplying by sizeof(lsh_u8) looks odd...
-	memcpy(pbHashVal, ctx->cv_l, sizeof(lsh_u8) * hash_val_byte_len);
+	memcpy(pbHashVal, ctx->cv_l, hash_val_byte_len);
 	if (hash_val_bit_len){
 		pbHashVal[hash_val_byte_len-1] &= (((lsh_u8)0xff) << hash_val_bit_len);
 	}
@@ -1465,6 +1471,8 @@ std::string LSH512_Base::AlgorithmProvider() const
 
 void LSH512_Base::Restart()
 {
+	m_remainingBitLength = 0;
+
 	LSH512_Context ctx(m_state, m_algType, m_remainingBitLength);
 	lsh_err err = lsh512_init(&ctx);
 
