@@ -878,7 +878,7 @@ endif  # IBM XL C++ compiler
 # here then all user programs must use it too. The open
 # question is, which choice is easier on users?
 ifneq ($(IS_DARWIN),0)
-  CXX ?= c++
+  CXX ?= clang++
   # CRYPTOPP_CXXFLAGS += -stdlib=libc++
   ifeq ($(findstring -fno-common,$(CXXFLAGS)),)
     CRYPTOPP_CXXFLAGS += -fno-common
