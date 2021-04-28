@@ -27,7 +27,8 @@
 # include <ammintrin.h>
 #endif
 
-#if defined(__GNUC__) && defined(__amd64__)
+// GCC at 4.5. Clang is unknown. Also see https://stackoverflow.com/a/42493893.
+#if (CRYPTOPP_GCC_VERSION >= 40500)
 # include <x86intrin.h>
 #endif
 
