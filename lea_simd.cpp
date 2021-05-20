@@ -18,6 +18,7 @@
 
 #if (CRYPTOPP_SSSE3_AVAILABLE)
 # include "adv_simd.h"
+# include <immintrin.h>
 # include <pmmintrin.h>
 # include <tmmintrin.h>
 #endif
@@ -29,10 +30,10 @@
 # endif
 #endif
 
-#if defined(__AVX512F__) && defined(__AVX512VL__)
-# define CRYPTOPP_AVX512_ROTATE 1
-# include <immintrin.h>
-#endif
+//#if defined(__AVX512F__) && defined(__AVX512VL__)
+//# define CRYPTOPP_AVX512_ROTATE 1
+//# include <immintrin.h>
+//#endif
 
 #if (CRYPTOPP_ARM_NEON_HEADER)
 # include "adv_simd.h"
