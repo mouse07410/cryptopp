@@ -2,13 +2,11 @@
 #ifdef CRYPTOPP_ARM_NEON_HEADER
 # include <arm_neon.h>
 #endif
-#ifdef CRYPTOPP_ARM_ACLE_HEADER
-# include <arm_acle.h>
-#endif
 
 int main(int argc, char* argv[])
 {
     // SM3 hash
+    // https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/intrinsics?search=SM3
     uint32x4_t y;
     y=vsm3ss1q_u32(x,y,y);
     y=vsm3tt1aq_u32(x,y,y,3);
