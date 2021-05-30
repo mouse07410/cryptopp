@@ -122,17 +122,15 @@ endif
 
 # Strip out -Wall, -Wextra and friends for feature testing. FORTIFY_SOURCE is removed
 # because it requires -O1 or higher, but we use -O0 to tame the optimizer.
-ifeq ($(DETECT_FEATURES),1)
-  TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=% -M -MM -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CPPFLAGS) $(CXXFLAGS))
-  ifneq ($(strip $(TCXXFLAGS)),)
-    $(info Using testing flags: $(TCXXFLAGS))
-  endif
-  TCOMMAND = $(CXX) $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
-  #TPROG = TestPrograms/test_cxx.cpp
-  #TOPT =
-  #$(info Testing compile... )
-  #$(info $(shell $(TCOMMAND)))
+# Always print testing flags since some tests always happen, like 64-bit.
+TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=% -M -MM -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CPPFLAGS) $(CXXFLAGS))
+ifneq ($(strip $(TCXXFLAGS)),)
+  $(info Using testing flags: $(TCXXFLAGS))
 endif
+
+# TCOMMAND is used for just about all tests. Make will lazy-evaluate
+# the variables when executed by $(shell $(TCOMMAND) ...).
+TCOMMAND = $(CXX) $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
 
 # Fixup AIX
 ifeq ($(IS_AIX),1)
@@ -180,31 +178,32 @@ endif
 ifeq ($(PREFIX),)
 PREFIX = /opt/local
 endif
+PC_PREFIX = $(PREFIX)
 ifeq ($(CRYPTOPP_DATA_DIR),)
 # Default CRYPTOPP_DATA_DIR location
 CRYPTOPP_DATA_DIR=/opt/local/share/cryptopp/
 endif
 PC_PREFIX = $(PREFIX)
 ifeq ($(LIBDIR),)
-LIBDIR := $(PREFIX)/lib
-PC_LIBDIR = $${prefix}/lib
+  LIBDIR := $(PREFIX)/lib
+  PC_LIBDIR = $${prefix}/lib
 else
-PC_LIBDIR = $(LIBDIR)
+  PC_LIBDIR = $(LIBDIR)
 endif
 ifeq ($(DATADIR),)
-DATADIR := $(PREFIX)/share
-PC_DATADIR = $${prefix}/share
+  DATADIR := $(PREFIX)/share
+  PC_DATADIR = $${prefix}/share
 else
-PC_DATADIR = $(DATADIR)
+  PC_DATADIR = $(DATADIR)
 endif
 ifeq ($(INCLUDEDIR),)
-INCLUDEDIR := $(PREFIX)/include
-PC_INCLUDEDIR = $${prefix}/include
+  INCLUDEDIR := $(PREFIX)/include
+  PC_INCLUDEDIR = $${prefix}/include
 else
-PC_INCLUDEDIR = $(INCLUDEDIR)
+  PC_INCLUDEDIR = $(INCLUDEDIR)
 endif
 ifeq ($(BINDIR),)
-BINDIR := $(PREFIX)/bin
+  BINDIR := $(PREFIX)/bin
 endif
 
 # We honor ARFLAGS, but the "v" option used by default causes a noisy make
@@ -488,8 +487,8 @@ ifeq ($(DETECT_FEATURES),1)
 
   # Clang needs an option to include <arm_neon.h>
   TPROG = TestPrograms/test_arm_neon_header.cpp
-  TOPT = -march=armv7-a -mfpu=neon
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_NEON_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_NEON_HEADER=1 -march=armv7-a -mfpu=neon
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_NEON_HEADER=1
   endif
@@ -534,15 +533,15 @@ ifneq ($(IS_ARMV8),0)
 ifeq ($(DETECT_FEATURES),1)
 
   TPROG = TestPrograms/test_arm_neon_header.cpp
-  TOPT =
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_NEON_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_NEON_HEADER=1
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_NEON_HEADER=1
   endif
 
   TPROG = TestPrograms/test_arm_acle_header.cpp
-  TOPT = -march=armv8-a
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_ACLE_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_ACLE_HEADER=1 -march=armv8-a
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_ACLE_HEADER=1
   endif

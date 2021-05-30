@@ -60,23 +60,21 @@ endif
 #####                General Variables                #####
 ###########################################################
 
-# Default prefix for make install
-ifeq ($(PREFIX),)
-PREFIX = /usr/local
-endif
-
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
-ifeq ($(DATADIR),)
-DATADIR := $(PREFIX)/share
+ifeq ($(PREFIX),)
+  PREFIX = /usr/local
 endif
 ifeq ($(LIBDIR),)
-LIBDIR := $(PREFIX)/lib
+  LIBDIR := $(PREFIX)/lib
 endif
-ifeq ($(BINDIR),)
-BINDIR := $(PREFIX)/bin
+ifeq ($(DATADIR),)
+  DATADIR := $(PREFIX)/share
 endif
 ifeq ($(INCLUDEDIR),)
-INCLUDEDIR := $(PREFIX)/include
+  INCLUDEDIR := $(PREFIX)/include
+endif
+ifeq ($(BINDIR),)
+  BINDIR := $(PREFIX)/bin
 endif
 
 # We honor ARFLAGS, but the "v" option used by default causes a noisy make
@@ -200,20 +198,15 @@ endif
 
 # Strip out -Wall, -Wextra and friends for feature testing. FORTIFY_SOURCE is removed
 # because it requires -O1 or higher, but we use -O0 to tame the optimizer.
-ifeq ($(DETECT_FEATURES),1)
-  TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=% -M -MM -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CPPFLAGS) $(CXXFLAGS))
-  ifneq ($(strip $(TCXXFLAGS)),)
-    $(info Using testing flags: $(TCXXFLAGS))
-  endif
-  TCOMMAND = $(CXX) $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
-  #TPROG = TestPrograms/test_cxx.cpp
-  #TOPT =
-  #$(info Testing compile... )
-  #$(info $(shell $(TCOMMAND)))
+# Always print testing flags since some tests always happen, like 64-bit.
+TCXXFLAGS := $(filter-out -D_FORTIFY_SOURCE=% -M -MM -Wall -Wextra -Werror% -Wunused -Wconversion -Wp%, $(CPPFLAGS) $(CXXFLAGS))
+ifneq ($(strip $(TCXXFLAGS)),)
+  $(info Using testing flags: $(TCXXFLAGS))
 endif
 
-# For the previous messages
-$(info )
+# TCOMMAND is used for just about all tests. Make will lazy-evaluate
+# the variables when executed by $(shell $(TCOMMAND) ...).
+TCOMMAND = $(CXX) $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
 
 ###########################################################
 #####               X86/X32/X64 Options               #####
@@ -414,8 +407,8 @@ ifeq ($(DETECT_FEATURES),1)
 
   # Clang needs an option to include <arm_neon.h>
   TPROG = TestPrograms/test_arm_neon_header.cpp
-  TOPT = $(NEON_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_NEON_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_NEON_HEADER=1 $(NEON_FLAG)
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_NEON_HEADER=1
   endif
@@ -462,11 +455,11 @@ ifneq ($(IS_ARMV8),0)
 ifeq ($(DETECT_FEATURES),1)
 
   ifeq ($(IS_IOS),1)
-    ASIMD_FLAG =
-    CRC_FLAG =
-    AES_FLAG =
-    PMUL_FLAG =
-    SHA_FLAG =
+    ASIMD_FLAG = -arch arm64
+    CRC_FLAG = -arch arm64
+    AES_FLAG = -arch arm64
+    PMUL_FLAG = -arch arm64
+    SHA_FLAG = -arch arm64
   else
     ASIMD_FLAG = -march=armv8-a
     CRC_FLAG = -march=armv8-a+crc
@@ -477,15 +470,15 @@ ifeq ($(DETECT_FEATURES),1)
   endif
 
   TPROG = TestPrograms/test_arm_neon_header.cpp
-  TOPT =
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_NEON_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_NEON_HEADER=1
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_NEON_HEADER=1
   endif
 
   TPROG = TestPrograms/test_arm_acle_header.cpp
-  TOPT = $(ASIMD_FLAG)
-  HAVE_OPT = $(shell $(CXX) $(TCXXFLAGS) -DCRYPTOPP_ARM_ACLE_HEADER=1 $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT) 2>&1 | wc -w)
+  TOPT = -DCRYPTOPP_ARM_ACLE_HEADER=1 $(ASIMD_FLAG)
+  HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
   ifeq ($(strip $(HAVE_OPT)),0)
     TEXTRA += -DCRYPTOPP_ARM_ACLE_HEADER=1
   endif
