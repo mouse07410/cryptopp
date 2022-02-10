@@ -297,7 +297,7 @@ ifeq ($(DETECT_FEATURES),1)
   endif
 
   ifeq ($(SSE2_FLAG),)
-    CRYPTOPP_CXXFLAGS += -DCRYPTOPP_DISABLE_ASM
+    CRYPTOPP_CPPFLAGS += -DCRYPTOPP_DISABLE_ASM
   endif
 
   # Need SSE2 or higher for these tests
@@ -971,8 +971,8 @@ endif
 # No ASM for Travis testing
 ifeq ($(findstring no-asm,$(MAKECMDGOALS)),no-asm)
   ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)),)
-    CRYPTOPP_CXXFLAGS += -DCRYPTOPP_DISABLE_ASM
-  endif # CRYPTOPP_CXXFLAGS
+    CRYPTOPP_CPPFLAGS += -DCRYPTOPP_DISABLE_ASM
+  endif # CRYPTOPP_CPPFLAGS
 endif # No ASM
 
 # Native build testing. Issue 'make native'.
@@ -1097,7 +1097,7 @@ ifneq ($(filter -DDEBUG -DDEBUG=1,$(CXXFLAGS)),)
   ifneq ($(USING_GLIBCXX),0)
     ifeq ($(HAS_NEWLIB),0)
       ifeq ($(findstring -D_GLIBCXX_DEBUG,$(CPPFLAGS)$(CXXFLAGS)),)
-        CRYPTOPP_CXXFLAGS += -D_GLIBCXX_DEBUG
+        CRYPTOPP_CPPFLAGS += -D_GLIBCXX_DEBUG
       endif # CRYPTOPP_CPPFLAGS
     endif # HAS_NEWLIB
   endif # USING_GLIBCXX
@@ -1189,18 +1189,20 @@ ifneq ($(IS_MINGW),0)
 INCL += resource.h
 endif
 
-# Cryptogams source files. We couple to ARMv7.
+# Cryptogams source files. We couple to ARMv7 and NEON.
 # Limit to Linux. The source files target the GNU assembler.
 # Also see https://www.cryptopp.com/wiki/Cryptogams.
 ifeq ($(IS_ARM32)$(IS_LINUX),11)
-  ifeq ($(CLANG_COMPILER),1)
-    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
-  else
-    CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
-    CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
+  ifeq ($(filter -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_ARM_NEON,$(CPPFLAGS)$(CXXFLAGS)),)
+    ifeq ($(CLANG_COMPILER),1)
+      CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+      CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -mthumb -Wa,--noexecstack
+    else
+      CRYPTOGAMS_ARMV4_FLAG = -march=armv7-a -Wa,--noexecstack
+      CRYPTOGAMS_ARMV4_THUMB_FLAG = -march=armv7-a -Wa,--noexecstack
+    endif
+    SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
   endif
-  SRCS += aes_armv4.S sha1_armv4.S sha256_armv4.S sha512_armv4.S
 endif
 
 # Remove unneeded arch specific files to speed build time.
