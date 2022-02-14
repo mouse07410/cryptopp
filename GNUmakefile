@@ -107,7 +107,7 @@ endif
 
 # Hack to skip CPU feature tests for some recipes
 DETECT_FEATURES ?= 1
-ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)),)
+ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
   DETECT_FEATURES := 0
 else ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   DETECT_FEATURES := 0
@@ -222,10 +222,10 @@ endif
 # Original MinGW targets Win2k by default, but lacks proper Win2k support
 # if target Windows version is not specified, use Windows XP instead
 ifeq ($(IS_MINGW),1)
-ifeq ($(findstring -D_WIN32_WINNT,$(CPPFLAGS)$(CXXFLAGS)),)
-ifeq ($(findstring -D_WIN32_WINDOWS,$(CPPFLAGS)$(CXXFLAGS)),)
-ifeq ($(findstring -DWINVER,$(CPPFLAGS)$(CXXFLAGS)),)
-ifeq ($(findstring -DNTDDI_VERSION,$(CPPFLAGS)$(CXXFLAGS)),)
+ifeq ($(findstring -D_WIN32_WINNT,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
+ifeq ($(findstring -D_WIN32_WINDOWS,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
+ifeq ($(findstring -DWINVER,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
+ifeq ($(findstring -DNTDDI_VERSION,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
   CRYPTOPP_CPPFLAGS += -D_WIN32_WINNT=0x0501
 endif # NTDDI_VERSION
 endif # WINVER
@@ -238,7 +238,7 @@ TPROG = TestPrograms/test_newlib.cpp
 TOPT =
 HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
 ifeq ($(strip $(HAVE_OPT)),0)
-  ifeq ($(findstring -D_XOPEN_SOURCE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -D_XOPEN_SOURCE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -D_XOPEN_SOURCE=600
   endif
 endif
@@ -479,13 +479,13 @@ endif
 
 # Allow use of "/" operator for GNU Assembler.
 #   http://sourceware.org/bugzilla/show_bug.cgi?id=4572
-ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)),)
+ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
   ifeq ($(IS_SUN)$(GCC_COMPILER),11)
     CRYPTOPP_CXXFLAGS += -Wa,--divide
   endif
 endif
 
-# IS_X86, IS_X32 and IS_X64
+# IS_X86 and IS_X64
 endif
 
 ###########################################################
@@ -495,7 +495,7 @@ endif
 ifneq ($(IS_ARM32),0)
 
 # No need for feature detection on this platform if NEON is disabled
-ifneq ($(findstring -DCRYPTOPP_DISABLE_ARM_NEON,$(CPPFLAGS)$(CXXFLAGS)),)
+ifneq ($(findstring -DCRYPTOPP_DISABLE_ARM_NEON,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
   DETECT_FEATURES := 0
 endif
 
@@ -945,7 +945,7 @@ endif
 # http://www.oracle.com/technetwork/server-storage/solaris/hwcap-modification-139536.html
 ifeq ($(IS_SUN)$(SUN_COMPILER),11)
   ifneq ($(IS_X86)$(IS_X64),00)
-    ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)),)
+    ifeq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
       CRYPTOPP_LDFLAGS += -M cryptopp.mapfile
     endif  # No CRYPTOPP_DISABLE_ASM
   endif  # X86/X32/X64
@@ -1018,7 +1018,7 @@ ifeq ($(findstring ubsan,$(MAKECMDGOALS)),ubsan)
   ifeq ($(findstring -fsanitize=undefined,$(CXXFLAGS)),)
     CRYPTOPP_CXXFLAGS += -fsanitize=undefined
   endif # CRYPTOPP_CPPFLAGS
-  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -DCRYPTOPP_COVERAGE
   endif # CRYPTOPP_CPPFLAGS
 endif # UBsan
@@ -1031,7 +1031,7 @@ ifeq ($(findstring asan,$(MAKECMDGOALS)),asan)
   ifeq ($(findstring -fsanitize=address,$(CXXFLAGS)),)
     CRYPTOPP_CXXFLAGS += -fsanitize=address
   endif # CRYPTOPP_CXXFLAGS
-  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -DCRYPTOPP_COVERAGE
   endif # CRYPTOPP_CPPFLAGS
   ifeq ($(findstring -fno-omit-frame-pointer,$(CXXFLAGS)),)
@@ -1055,7 +1055,7 @@ ifneq ($(filter lcov coverage,$(MAKECMDGOALS)),)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-g%=-g3)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-O%=-O1)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-xO%=-xO1)
-  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -DCRYPTOPP_COVERAGE
   endif # CRYPTOPP_COVERAGE
   ifeq ($(findstring -coverage,$(CXXFLAGS)),)
@@ -1068,7 +1068,7 @@ ifneq ($(filter gcov codecov,$(MAKECMDGOALS)),)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-g%=-g3)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-O%=-O1)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-xO%=-xO1)
-  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -DCRYPTOPP_COVERAGE
   endif # CRYPTOPP_COVERAGE
   ifeq ($(findstring -coverage,$(CXXFLAGS)),)
@@ -1082,20 +1082,20 @@ ifneq ($(filter valgrind,$(MAKECMDGOALS)),)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-g%=-g3)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-O%=-O1)
   CRYPTOPP_CXXFLAGS := $(CRYPTOPP_CXXFLAGS:-xO%=-xO1)
-  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(findstring -DCRYPTOPP_COVERAGE,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     CRYPTOPP_CPPFLAGS += -DCRYPTOPP_COVERAGE
   endif # CRYPTOPP_CPPFLAGS
 endif # Valgrind
 
 # Debug testing on GNU systems. Triggered by -DDEBUG.
 #   Newlib test due to http://sourceware.org/bugzilla/show_bug.cgi?id=20268
-ifneq ($(filter -DDEBUG -DDEBUG=1,$(CXXFLAGS)),)
+ifneq ($(filter -DDEBUG -DDEBUG=1,$(CPPFLAGS)$(CXXFLAGS)),)
   TPROG = TestPrograms/test_cxx.cpp
   TOPT =
-  USING_GLIBCXX := $(shell $(CXX)$(CXXFLAGS) -E $(TPROG) -c 2>&1 | $(GREP) -i -c "__GLIBCXX__")
+  USING_GLIBCXX := $(shell $(CXX) $(CPPFLAGS) $(CXXFLAGS) -E $(TPROG) -c 2>&1 | $(GREP) -i -c "__GLIBCXX__")
   ifneq ($(USING_GLIBCXX),0)
     ifeq ($(HAS_NEWLIB),0)
-      ifeq ($(findstring -D_GLIBCXX_DEBUG,$(CPPFLAGS)$(CXXFLAGS)),)
+      ifeq ($(findstring -D_GLIBCXX_DEBUG,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
         CRYPTOPP_CPPFLAGS += -D_GLIBCXX_DEBUG
       endif # CRYPTOPP_CPPFLAGS
     endif # HAS_NEWLIB
@@ -1106,7 +1106,7 @@ ifneq ($(filter -DDEBUG -DDEBUG=1,$(CXXFLAGS)),)
    TOPT = -qheapdebug -qro
    HAVE_OPT = $(shell $(TCOMMAND) 2>&1 | wc -w)
    ifeq ($(strip $(HAVE_OPT)),0)
-    CRYPTOPP_CXXFLAGS += -qheapdebug -qro
+     CRYPTOPP_CXXFLAGS += -qheapdebug -qro
    endif  # CRYPTOPP_CXXFLAGS
   endif # XLC_COMPILER
 endif  # Debug build
@@ -1188,14 +1188,14 @@ ifneq ($(IS_MINGW),0)
 INCL += resource.h
 endif
 
-# Cryptogams source files. We couple to ARMv7 and NEON.
+# Cryptogams source files. We couple to ARMv7 and NEON due to SHA using NEON.
 # Limit to Linux. The source files target the GNU assembler.
 # Also see https://www.cryptopp.com/wiki/Cryptogams.
 ifeq ($(IS_ARM32)$(IS_LINUX),11)
-  ifeq ($(filter -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_ARM_NEON,$(CPPFLAGS)$(CXXFLAGS)),)
+  ifeq ($(filter -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_ARM_NEON,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
     # Do not use -march=armv7 if the compiler is already targeting the ISA.
     # Also see https://github.com/weidai11/cryptopp/issues/1094
-    ifneq ($($(CXX) -dM -E - </dev/null 2>/dev/null| grep -E 'ARM_ARCH 7|_ARM_ARCH_7A__'),)
+    ifeq ($(shell $(CXX) -dM -E TestPrograms/test_cxx.cpp 2>/dev/null | grep -E '__ARM_ARCH 7|__ARM_ARCH_7A__'),)
       CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a
     endif
     ifeq ($(CLANG_COMPILER),1)
@@ -1218,8 +1218,10 @@ ifeq ($(IS_ARM32)$(IS_ARMV8),00)
   SRCS := $(filter-out arm_%,$(SRCS))
   SRCS := $(filter-out neon_%,$(SRCS))
 endif
-ifeq ($(IS_X86)$(IS_X32)$(IS_X64),000)
+ifeq ($(IS_X86)$(IS_X64),00)
   SRCS := $(filter-out sse_%,$(SRCS))
+  SRCS := $(filter-out %_sse.cpp,$(SRCS))
+  SRCS := $(filter-out %_avx.cpp,$(SRCS))
 endif
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
@@ -1381,7 +1383,7 @@ clean:
 
 .PHONY: autotools-clean
 autotools-clean:
-	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
+	@-$(RM) -f bootstrap.sh configure.ac configure configure.in Makefile.am Makefile.in Makefile
 	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
 	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
 	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*

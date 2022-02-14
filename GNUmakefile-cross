@@ -184,7 +184,6 @@ ifeq ($(IS_ARMV8),1)
   IS_ARM32 = 0
 endif
 
-IS_X32 := 0
 IS_PPC32 := 0
 IS_PPC64 := 0
 
@@ -197,7 +196,7 @@ IS_PPC64 := 0
 
 # Hack to skip CPU feature tests for some recipes
 DETECT_FEATURES ?= 1
-ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)),)
+ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CPPFLAGS)$(CXXFLAGS)h),)
   DETECT_FEATURES := 0
 else ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   DETECT_FEATURES := 0
@@ -403,7 +402,7 @@ ifeq ($(DETECT_FEATURES),1)
 # DETECT_FEATURES
 endif
 
-# IS_X86, IS_X32 and IS_X64
+# IS_X86 and IS_X64
 endif
 
 ###########################################################
@@ -706,7 +705,7 @@ ifeq ($(IS_ARM32)$(IS_LINUX),11)
   ifeq ($(filter -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_ARM_NEON,$(CPPFLAGS)$(CXXFLAGS)),)
     # Do not use -march=armv7 if the compiler is already targeting the ISA.
     # Also see https://github.com/weidai11/cryptopp/issues/1094
-    ifneq ($($(CXX) -dM -E - </dev/null 2>/dev/null| grep -E 'ARM_ARCH 7|_ARM_ARCH_7A__'),)
+    ifeq ($(shell $(CXX) -dM -E TestPrograms/test_cxx.cpp 2>/dev/null | grep -E '__ARM_ARCH 7|__ARM_ARCH_7A__'),)
       CRYPTOGAMS_ARMV7_FLAG = -march=armv7-a
     endif
     ifeq ($(CLANG_COMPILER),1)
@@ -729,8 +728,10 @@ ifeq ($(IS_ARM32)$(IS_ARMV8),00)
   SRCS := $(filter-out arm_%,$(SRCS))
   SRCS := $(filter-out neon_%,$(SRCS))
 endif
-ifeq ($(IS_X86)$(IS_X32)$(IS_X64),000)
+ifeq ($(IS_X86)$(IS_X64),00)
   SRCS := $(filter-out sse_%,$(SRCS))
+  SRCS := $(filter-out %_sse.cpp,$(SRCS))
+  SRCS := $(filter-out %_avx.cpp,$(SRCS))
 endif
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
@@ -811,7 +812,7 @@ clean:
 
 .PHONY: autotools-clean
 autotools-clean:
-	@-$(RM) -f configure.ac configure configure.in Makefile.am Makefile.in Makefile
+	@-$(RM) -f bootstrap.sh configure.ac configure configure.in Makefile.am Makefile.in Makefile
 	@-$(RM) -f config.guess config.status config.sub config.h.in compile depcomp
 	@-$(RM) -f install-sh stamp-h1 ar-lib *.lo *.la *.m4 local.* lt*.sh missing
 	@-$(RM) -f cryptest cryptestcwd libtool* libcryptopp.la libcryptopp.pc*

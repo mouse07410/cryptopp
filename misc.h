@@ -1125,8 +1125,9 @@ template <class T1, class T2>
 inline T2 ModPowerOf2(const T1 &a, const T2 &b)
 {
 	CRYPTOPP_ASSERT(IsPowerOf2(b));
-	// Coverity finding CID 170383 Overflowed return value (INTEGER_OVERFLOW)
-	return T2(a) & SaturatingSubtract(b,1U);
+    // Coverity finding CID 170383 Overflowed return value (INTEGER_OVERFLOW)
+    // Visual Studio and /RTCc warning, https://docs.microsoft.com/en-us/cpp/build/reference/rtc-run-time-error-checks
+	return T2(a & SaturatingSubtract(b,1U));
 }
 
 /// \brief Rounds a value down to a multiple of a second value
