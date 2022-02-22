@@ -61,7 +61,7 @@ endif
 ###########################################################
 
 # Needed when the assembler is invoked
-ifeq ($(findstring $(ASFLAGS),-Wa,--noexecstack),)
+ifeq ($(findstring -Wa,--noexecstack,$(ASFLAGS)$(CXXFLAGS)),)
   ASFLAGS += -Wa,--noexecstack
 endif
 
@@ -218,7 +218,7 @@ endif
 
 # TCOMMAND is used for just about all tests. Make will lazy-evaluate
 # the variables when executed by $(shell $(TCOMMAND) ...).
-TCOMMAND = $(CXX) $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
+TCOMMAND = $(CXX) -I. $(TCXXFLAGS) $(TEXTRA) $(ZOPT) $(TOPT) $(TPROG) -o $(TOUT)
 
 ###########################################################
 #####               X86/X32/X64 Options               #####
@@ -732,6 +732,17 @@ ifeq ($(IS_X86)$(IS_X64),00)
   SRCS := $(filter-out sse_%,$(SRCS))
   SRCS := $(filter-out %_sse.cpp,$(SRCS))
   SRCS := $(filter-out %_avx.cpp,$(SRCS))
+endif
+
+# If ASM is disabled we can remove the SIMD files, too.
+ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXFLAGS)),)
+  SRCS := $(filter-out arm_%,$(SRCS))
+  SRCS := $(filter-out ppc_%,$(SRCS))
+  SRCS := $(filter-out neon_%,$(SRCS))
+  SRCS := $(filter-out sse_%,$(SRCS))
+  SRCS := $(filter-out %_sse.cpp,$(SRCS))
+  SRCS := $(filter-out %_avx.cpp,$(SRCS))
+  SRCS := $(filter-out %_simd.cpp,$(SRCS))
 endif
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
