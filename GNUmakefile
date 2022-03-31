@@ -1219,11 +1219,12 @@ endif
 
 # Remove unneeded arch specific files to speed build time.
 ifeq ($(IS_PPC32)$(IS_PPC64),00)
-  SRCS := $(filter-out ppc_%,$(SRCS))
+  SRCS := $(filter-out %_ppc.cpp,$(SRCS))
 endif
 ifeq ($(IS_ARM32)$(IS_ARMV8),00)
   SRCS := $(filter-out arm_%,$(SRCS))
   SRCS := $(filter-out neon_%,$(SRCS))
+  SRCS := $(filter-out %_armv4.S,$(SRCS))
 endif
 ifeq ($(IS_X86)$(IS_X64),00)
   SRCS := $(filter-out sse_%,$(SRCS))
@@ -1239,7 +1240,9 @@ ifneq ($(findstring -DCRYPTOPP_DISABLE_ASM,$(CRYPTOPP_CPPFLAGS)$(CPPFLAGS)$(CXXF
   SRCS := $(filter-out sse_%,$(SRCS))
   SRCS := $(filter-out %_sse.cpp,$(SRCS))
   SRCS := $(filter-out %_avx.cpp,$(SRCS))
+  SRCS := $(filter-out %_ppc.cpp,$(SRCS))
   SRCS := $(filter-out %_simd.cpp,$(SRCS))
+  SRCS := $(filter-out %_armv4.S,$(SRCS))
 endif
 
 # List cryptlib.cpp first, then cpu.cpp, then integer.cpp to tame C++ static initialization problems.
@@ -1720,18 +1723,6 @@ neon_simd.o : neon_simd.cpp
 # AltiVec available
 ppc_simd.o : ppc_simd.cpp
 	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(ALTIVEC_FLAG) -c) $<
-
-# Power7 available
-ppc_power7.o : ppc_power7.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(POWER7_FLAG) -c) $<
-
-# Power8 available
-ppc_power8.o : ppc_power8.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(POWER8_FLAG) -c) $<
-
-# Power9 available
-ppc_power9.o : ppc_power9.cpp
-	$(CXX) $(strip $(CPPFLAGS) $(CXXFLAGS) $(POWER9_FLAG) -c) $<
 
 # AESNI or ARMv7a/ARMv8a available
 rijndael_simd.o : rijndael_simd.cpp
