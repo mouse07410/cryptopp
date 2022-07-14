@@ -172,7 +172,7 @@ fi
 # Allow a user override? I think we should be doing this. The use case is:
 # move /Applications/Xcode somewhere else for a side-by-side installation.
 if [ -z "${XCODE_DEVELOPER-}" ]; then
-  XCODE_DEVELOPER=$(xcode-select -print-path 2>/dev/null)
+  XCODE_DEVELOPER=$(xcode-select --print-path 2>/dev/null)
 fi
 
 if [ ! -d "${XCODE_DEVELOPER}" ]; then
