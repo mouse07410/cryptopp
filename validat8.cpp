@@ -158,7 +158,7 @@ bool ValidateRSA_Encrypt()
 		rsaPriv.DEREncodePrivateKey(q);
 
 		RSA::PrivateKey rsaPriv2;
-		rsaPriv2.BERDecodePrivateKey(q, true, q.MaxRetrievable());
+		rsaPriv2.BERDecodePrivateKey(q, true, (size_t)q.MaxRetrievable());
 
 		fail = (rsaPriv != rsaPriv2);
 		pass = pass && !fail;
@@ -204,11 +204,11 @@ bool ValidateRSA_Encrypt()
 		rsaPriv.AccessKey().BERDecodePrivateKey(privFile, false, 0);
 		RSAES_OAEP_SHA_Encryptor rsaPub(pubFile);
 
-		memset(out, 0, 50);
-		memset(outPlain, 0, 8);
+		std::memset(out, 0, 50);
+		std::memset(outPlain, 0, 8);
 		rsaPub.Encrypt(rng, plain, 8, out);
 		DecodingResult result = rsaPriv.FixedLengthDecrypt(GlobalRNG(), encrypted, outPlain);
-		fail = !result.isValidCoding || (result.messageLength!=8) || memcmp(out, encrypted, 50) || memcmp(plain, outPlain, 8);
+		fail = !result.isValidCoding || (result.messageLength!=8) || std::memcmp(out, encrypted, 50) || std::memcmp(plain, outPlain, 8);
 		pass = pass && !fail;
 
 		std::cout << (fail ? "FAILED    " : "passed    ");
