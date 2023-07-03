@@ -3,14 +3,6 @@
 #include "pch.h"
 #include "config.h"
 
-#if CRYPTOPP_MSC_VERSION
-# pragma warning(disable: 4100)
-#endif
-
-#if CRYPTOPP_GCC_DIAGNOSTIC_AVAILABLE
-# pragma GCC diagnostic ignored "-Wunused-value"
-#endif
-
 #ifndef CRYPTOPP_IMPORTS
 
 #include "basecode.h"
@@ -225,7 +217,7 @@ size_t Grouper::Put2(const byte *begin, size_t length, int messageEnd, bool bloc
 			}
 
 			size_t len;
-			FILTER_OUTPUT2(2, len = STDMIN(length-m_inputPosition, m_groupSize-m_counter),
+			FILTER_OUTPUT2(2, (len = STDMIN(length-m_inputPosition, m_groupSize-m_counter)),
 				begin+m_inputPosition, len, 0);
 			m_inputPosition += len;
 			m_counter += len;

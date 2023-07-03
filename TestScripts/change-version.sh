@@ -16,14 +16,17 @@
 #
 #############################################################################
 
-sed 's/Library 8.7 API/Library 8.6 API/g' cryptlib.h > cryptlib.h.new
+sed 's/Library 8.9 API/Library 8.8 API/g' cryptlib.h > cryptlib.h.new
 mv cryptlib.h.new cryptlib.h
 
-sed 's/= 8.7/= 8.6/g' Doxyfile > Doxyfile.new
+sed 's/= 8.9/= 8.8/g' Doxyfile > Doxyfile.new
 mv Doxyfile.new Doxyfile
 
-sed 's/CRYPTOPP_MINOR 7/CRYPTOPP_MINOR 6/g' config_ver.h > config_ver.h.new
+sed 's/CRYPTOPP_MINOR 9/CRYPTOPP_MINOR 8/g' config_ver.h > config_ver.h.new
 mv config_ver.h.new config_ver.h
 
-sed 's/CRYPTOPP_VERSION 870/CRYPTOPP_VERSION 860/g' config_ver.h > config_ver.h.new
+# sed 'CRYPTOPP_REVISION CRYPTOPP_REVISION 1/g' config_ver.h > config_ver.h.new
+# mv config_ver.h.new config_ver.h
+
+sed 's/CRYPTOPP_VERSION 890/CRYPTOPP_VERSION 880/g' config_ver.h > config_ver.h.new
 mv config_ver.h.new config_ver.h
